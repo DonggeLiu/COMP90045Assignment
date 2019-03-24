@@ -2,9 +2,9 @@
 
 ## Members
 
-| Name                      | Student ID | Email                            |
+| Name                      | Username   | Email                            |
 | ------------------------- | ---------- | -------------------------------- |
 |                           |            |                                  |
 |                           |            |                                  |
-| Matthew Farrugia-Roberts  | 694719     | farrugiam@student.unimelb.edu.au |
-| Dongge Liu                | 569456     | donggel@student.unimelb.edu.au   |
+| Matthew Farrugia-Roberts  | farrugiam  | farrugiam@student.unimelb.edu.au |
+| Dongge Liu                | donggel    | donggel@student.unimelb.edu.au   |
