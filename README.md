@@ -8,3 +8,5 @@
 |                           |            |                                  |
 | Matthew Farrugia-Roberts  | farrugiam  | farrugiam@student.unimelb.edu.au |
 | Dongge Liu                | donggel    | donggel@student.unimelb.edu.au   |
+| David Stern               | dibstern   | dstern@student.unimelb.edu.au    |
+
