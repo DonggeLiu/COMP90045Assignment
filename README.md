@@ -53,22 +53,22 @@ TODO!
 
 #### Planning & Preparation Week: Tuesday 26th - Tuesday 2nd
 
-- Understand Theory (LL, LR)
-- Understand Parsec
-- Break up work into smaller subtasks, planning the implementation week
-- Review Kid Parser
-- Plan Paired Programming
-- Ask Harald Clarifying Questions
+- [ ] Understand Theory (LL, LR)
+- [ ] Understand Parsec
+- [ ] Break up work into smaller subtasks, planning the implementation week
+- [ ] Review Kid Parser
+- [ ] Plan Paired Programming
+- [ ] Ask Harald Clarifying Questions
 
 #### Implementation Week: Tuesday 2nd-Tuesday 9th
 
-- Start and Finish 95% of the work
-- Tuesday 9th Meeting: Decide on next steps, how to finish it off 
+- [ ] Start and Finish 95% of the work
+- [ ] Tuesday 9th Meeting: Decide on next steps, how to finish it off 
 
 #### Review Week: Tuesday 9th-Monday 15th
 
-- Complete any tasks assigned on Tuesday 9th
-- Review Submission
+- [ ] Complete any tasks assigned on Tuesday 9th
+- [ ] Review Submission
 
 
 
