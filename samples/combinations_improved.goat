@@ -2,10 +2,11 @@
 # collection of n items. (improved approach)
 
 proc main ()
+begin
     int n;
     int r;
     int combos;
-start
+
     write "Combinations calculator.\n";
     write "Enter collection size (n): ";
     read n;
@@ -31,10 +32,11 @@ end
 # partially cancels out n! in the combination formula: n! / (r!(n-r)!).
 # For example, 15C4 = 15*14*13*12 / 4!
 proc nCr (val int n, val int r, ref int result)
+begin
     int i;
     int numerator;
     int rfact;
-begin
+
     # calculate denominator
     call fact(r, rfact);
 
@@ -51,8 +53,9 @@ end
 # Calculate the factorial of a number iteratively.
 # If n is negative, result := -1.
 proc fact (val int n, ref int result)
-    int i;
 begin
+    int i;
+    
     if n < 0 then
         result := -1;
     else

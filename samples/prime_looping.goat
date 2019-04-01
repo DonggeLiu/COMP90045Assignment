@@ -1,9 +1,10 @@
 # Primality checking of a (small) number by looping.
 
 proc main ():
+begin
     int n;
     bool isprime;
-start
+    
     write "Primality checking by looping.\n";
     write "Type a non-negative integer: ";
     read n;
@@ -25,9 +26,10 @@ start
 end
 
 proc check_prime (val int n, ref bool result)
+begin
     int i;
     int j;
-start
+
     if n < 2 then
         result := false;
     else if n = 2 then
