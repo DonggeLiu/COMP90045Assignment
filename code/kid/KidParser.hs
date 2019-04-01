@@ -1,6 +1,8 @@
 module Main where
 
 import KidAST
+import KidFormat
+
 import Data.Char
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
@@ -211,7 +213,11 @@ main
        ; input <- readFile (head args)
        ; let output = runParser pMain 0 "" input
        ; case output of
-           Right ast -> print ast
+           Right ast -> do { putStrLn "Abstract syntax tree:"
+                           ; print ast
+                           ; putStrLn "Pretty-printed program:"
+                           ; putStr $ prettifyKP ast
+                           }
            Left  err -> do { putStr "Parse error at "
                            ; print err
                            }
