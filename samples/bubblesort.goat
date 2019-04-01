@@ -1,12 +1,11 @@
 # Bubble sort of 10 numbers.
 
 proc main ()
-begin
     int numbers[10];
     int i;
     int n;
     bool swapped;
-
+begin
     write "Bubble sort of 10 numbers!\n";
 
     # prompt user for 10 numbers
@@ -38,9 +37,8 @@ end
 
 # Swap two integers.
 proc int_swap (ref int a, ref int b)
-begin
     int temp;
-    
+begin
     temp := a;
     a := b;
     b := temp;

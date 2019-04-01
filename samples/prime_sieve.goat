@@ -1,10 +1,9 @@
 # Primality checking using the Sieve of Eratosthenes method.
 
 proc main ()
-begin
     int n;
     bool isprime;
-    
+begin
     write "Primality checking by looping.\n";
     write "Type a non-negative integer: ";
     read n;
@@ -23,11 +22,11 @@ begin
 end
 
 proc check_prime (val int n, ref bool result)
-begin
     bool numarray[n-1]; # unsure if this is allowed in Goat
     int i;
     int i';
     int j;
+begin
     if n < 2 then
         result := false;
     else if n = 2 then

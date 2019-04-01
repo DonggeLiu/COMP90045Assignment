@@ -2,11 +2,10 @@
 # collection of n items. (naïve approach)
 
 proc main ()
-begin
     int n;
     int r;
     int combos;
-    
+begin
     write "Combinations calculator.\n";
     write "Enter collection size (n): ";
     read n;
@@ -29,11 +28,10 @@ end
 
 # Calculate the number of combinations of size r from collection of size n.
 proc nCr (val int n, val int r, ref int result)
-begin
     int nfact;          # n!
     int rfact;          # r!
     int nminusrfact;    # (n-r)!
-
+begin
     call fact(n, nfact);
     call fact(r, rfact);
     call fact(n-r, nminusrfact);
@@ -43,9 +41,8 @@ end
 # Calculate the factorial of a number recursively (yes, I know).
 # If n is negative, result := -1.
 proc fact (val int n, ref int result)
-begin
     int subresult;
-
+begin
     if n < 0 then
         result := -1
     else if n = 0 then
