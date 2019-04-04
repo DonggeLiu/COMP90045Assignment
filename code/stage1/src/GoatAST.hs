@@ -16,13 +16,15 @@ module GoatAST where
 -- ----------------------------------------------------------------------------
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
-data GoatProgram = GoatProgram [Proc]
+data GoatProgram
+  = GoatProgram [Proc]
     deriving (Show, Eq)
 
 -- A procedure is referenced by an identifier, takes a (possibly empty)
 -- list of parameters, contains a (possibly empty) list of local variable
 -- declarations and contains a body of statements.
-data Proc = Proc Id [Param] [Decl] [Stmt]
+data Proc
+  = Proc Id [Param] [Decl] [Stmt]
     deriving (Show, Eq)
 
 -- An identifier is a string which is used to reference -
@@ -31,27 +33,36 @@ data Proc = Proc Id [Param] [Decl] [Stmt]
 --       (i)  a parameter; or
 --       (ii) a local variable.
 -- The number of required expressions is governed by dimensionality.
-data Id = Id String
+data Id
+  = Id String
     deriving (Show, Eq)
 
 -- A parameter must be of a type contained in the BaseType data type (either
 -- BoolType, FloatType or IntType). It is passed to a procedure by either value
 -- or reference and assigned an identifier.
-data Param = Param PassBy BaseType Id
+data Param
+  = Param PassBy BaseType Id
     deriving (Show, Eq)
-data PassBy = Val | Ref
+data PassBy
+  = Val | Ref
     deriving (Show, Eq)
-data BaseType = BoolType | FloatType | IntType
+data BaseType
+  = BoolType | FloatType | IntType
     deriving (Show, Eq)
 
 -- The declaration of a local variable consists of an identifier and a
 -- dimensionality indicator. It must be of a type contained in the BaseType
 -- data type.
-data Decl = Decl BaseType Id Dim
+data Decl
+  = Decl BaseType Id Dim
     deriving (Show, Eq)
-data Dim = Dim0             -- single variable
-         | Dim1 Int         -- array of variables
-         | Dim2 Int Int     -- matrix of variables
+-- A dimensionality indicator has a constructor of the form DimN (N Ints) 
+-- representing the 'shape' of the variable---or collection or variables---being
+-- declared.
+data Dim
+  = Dim0             -- a single variable
+  | Dim1 Int         -- an array of variables, with integer 'length'
+  | Dim2 Int Int     -- a matrix of variables, with integer 'length' and 'width'
     deriving (Show, Eq)
 
 -- Statements can take 6 different forms, as indicated below.
@@ -69,16 +80,18 @@ data Stmt
 -- an identifier used in conjunction with 0, 1 or 2 expressions (depending on
 -- dimensionality) to denote a specific memory location which can hold a value.
 -- The Var type is analagous to the mathematical notion of a subscripted
--- 'variable', whereas the Id type is simply a name given to a single variable,
--- array of variables or matrix of variables (or procedure).
-data Var = Var0 Id              -- a direct identifier
-         | Var1 Id Expr         -- an identifier requiring one subscript
-         | Var2 Id Expr Expr    -- a matrix of variables
+-- 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply a name given 
+-- to a singular variable (e.g. y), array of variables (e.g. x, the vector) or 
+-- matrix of variables (e.g. A, the matrix), or to a procedure.
+data Var
+  = Var0 Id              -- a 'direct identifier' (no subscript necessary)
+  | Var1 Id Expr         -- an array element (identifier plus one subscript)
+  | Var2 Id Expr Expr    -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
 
 -- Expressions can take 19 different forms, as indicated below.
 data Expr
-  = VarExp Var          -- variable
+  = VarExpr Var         -- variable
 
   | BoolConst Bool      -- boolean constant
   | FloatConst Float    -- floating point constant
