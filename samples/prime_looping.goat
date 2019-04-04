@@ -21,7 +21,7 @@ begin
         else
             write " is not a prime number.\n"
         fi
-    fi
+    fi fi
 end
 
 proc check_prime (val int n, ref bool result)
@@ -45,7 +45,7 @@ begin
                 j := 2;
             else
                 j := j+1;
-            fi
+            fi fi
         od
-    fi
+    fi fi
 end

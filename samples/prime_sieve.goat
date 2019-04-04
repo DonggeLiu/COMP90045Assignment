@@ -5,12 +5,14 @@ proc main ()
     bool isprime;
 begin
     write "Primality checking by looping.\n";
-    write "Type a non-negative integer: ";
+    write "Type a non-negative integer up to 1000: ";
     read n;
 
     write n;
     if n < 0 then
         write " is a negative number.\n";
+    else if n > 1000 then
+        write " is too large to compute.\n";
     else
         call check_prime(n, isprime);
         if isprime then
@@ -18,11 +20,11 @@ begin
         else
             write " is not a prime number.\n"
         fi
-    fi
+    fi fi
 end
 
 proc check_prime (val int n, ref bool result)
-    bool numarray[n-1]; # unsure if this is allowed in Goat
+    bool numarray[999];
     int i;
     int i';
     int j;
@@ -55,5 +57,5 @@ begin
         od
 
         result := numarray[n-2];
-    fi
+    fi fi
 end

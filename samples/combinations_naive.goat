@@ -50,5 +50,5 @@ begin
     else
         call fact(n-1, subresult);
         result := n * subresult;
-    fi
+    fi fi
 end
