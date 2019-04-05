@@ -43,9 +43,11 @@ data Id
 data Param
   = Param PassBy BaseType Id
     deriving (Show, Eq)
+
 data PassBy
   = Val | Ref
     deriving (Show, Eq)
+
 data BaseType
   = BoolType | FloatType | IntType
     deriving (Show, Eq)
@@ -56,6 +58,7 @@ data BaseType
 data Decl
   = Decl BaseType Id Dim
     deriving (Show, Eq)
+
 -- A dimensionality indicator has a constructor of the form DimN (N Ints) 
 -- representing the 'shape' of the variable---or collection or variables---being
 -- declared.
@@ -106,10 +109,10 @@ data Expr
 
   | Equ Expr Expr       -- equality of expressions
   | NEq Expr Expr       -- inequality of expressions
-  | LT  Expr Expr       -- less-than comparison
-  | LTE Expr Expr       -- less-than-or-equal comparison
-  | GT  Expr Expr       -- greater-than comparison
-  | GTE Expr Expr       -- greater-than-or-equal comparison
+  | LTh Expr Expr       -- less-than comparison
+  | LEq Expr Expr       -- less-than-or-equal comparison
+  | GTh Expr Expr       -- greater-than comparison
+  | GEq Expr Expr       -- greater-than-or-equal comparison
 
   | And Expr Expr       -- boolean conjunction
   | Or  Expr Expr       -- boolean disjunction
