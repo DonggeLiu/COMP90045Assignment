@@ -43,9 +43,11 @@ data Id
 data Param
   = Param PassBy BaseType Id
     deriving (Show, Eq)
+
 data PassBy
   = Val | Ref
     deriving (Show, Eq)
+
 data BaseType
   = BoolType | FloatType | IntType
     deriving (Show, Eq)
@@ -56,6 +58,7 @@ data BaseType
 data Decl
   = Decl BaseType Id Dim
     deriving (Show, Eq)
+
 -- A dimensionality indicator has a constructor of the form DimN (N Ints) 
 -- representing the 'shape' of the variable---or collection or variables---being
 -- declared.
