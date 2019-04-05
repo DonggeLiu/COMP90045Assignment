@@ -33,9 +33,7 @@ data Proc
 --       (i)  a parameter; or
 --       (ii) a local variable.
 -- The number of required expressions is governed by dimensionality.
-data Id
-  = Id String
-    deriving (Show, Eq)
+type Id = String
 
 -- A parameter must be of a type contained in the BaseType data type (either
 -- BoolType, FloatType or IntType). It is passed to a procedure by either value
@@ -59,7 +57,7 @@ data Decl
   = Decl BaseType Id Dim
     deriving (Show, Eq)
 
--- A dimensionality indicator has a constructor of the form DimN (N Ints) 
+-- A dimensionality indicator has a constructor of the form DimN (N Ints)
 -- representing the 'shape' of the variable---or collection or variables---being
 -- declared.
 data Dim
@@ -83,8 +81,8 @@ data Stmt
 -- an identifier used in conjunction with 0, 1 or 2 expressions (depending on
 -- dimensionality) to denote a specific memory location which can hold a value.
 -- The Var type is analagous to the mathematical notion of a subscripted
--- 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply a name given 
--- to a singular variable (e.g. y), array of variables (e.g. x, the vector) or 
+-- 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply a name given
+-- to a singular variable (e.g. y), array of variables (e.g. x, the vector) or
 -- matrix of variables (e.g. A, the matrix), or to a procedure.
 data Var
   = Var0 Id              -- a 'direct identifier' (no subscript necessary)
@@ -92,29 +90,26 @@ data Var
   | Var2 Id Expr Expr    -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
 
--- Expressions can take 19 different forms, as indicated below.
+-- Expressions can take 7 different forms, as indicated below.
 data Expr
-  = VarExpr Var         -- variable
+  = VarExpr Var               -- variable
+  | BoolConst Bool            -- boolean constant
+  | FloatConst Float          -- floating point constant
+  | IntConst Int              -- integer constant
+  | StrConst String           -- string constant (only be used for writing)
+  | BinExpr BinOp Expr Expr   -- binary expression
+  | UnExpr UnOp Expr          -- unary expression
+    deriving (Show, Eq)
 
-  | BoolConst Bool      -- boolean constant
-  | FloatConst Float    -- floating point constant
-  | IntConst Int        -- integer constant
-  | StrConst String     -- string constant (only be used for writing)
+-- Binary operators
+data BinOp
+ = Add | Sub | Mul | Div              -- arithmetic
+ | Equ | NEq | LTh | LEq | GTh | GEq  -- relational
+ | And | Or                           -- boolean
+  deriving (Show, Eq)
 
-  | Add Expr Expr       -- sum of expressions
-  | Sub Expr Expr       -- difference of expressions
-  | Mul Expr Expr       -- product of expressions
-  | Div Expr Expr       -- quotient of expressions
-  | Neg Expr            -- mathematical (not boolean) negation of an expression
-
-  | Equ Expr Expr       -- equality of expressions
-  | NEq Expr Expr       -- inequality of expressions
-  | LTh Expr Expr       -- less-than comparison
-  | LEq Expr Expr       -- less-than-or-equal comparison
-  | GTh Expr Expr       -- greater-than comparison
-  | GEq Expr Expr       -- greater-than-or-equal comparison
-
-  | And Expr Expr       -- boolean conjunction
-  | Or  Expr Expr       -- boolean disjunction
-  | Not Expr            -- boolean complement
+-- Unary operators
+data UnOp
+  = Neg   -- mathematical (not boolean) negation
+  | Not   -- boolean complement
     deriving (Show, Eq)
