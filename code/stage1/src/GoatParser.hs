@@ -195,35 +195,81 @@ pWhile
       return (While cond stmts)
 
 
+
+
 {-
 
-ZOOM a -> ε | "[" a "]" | "[" a "," a "]"
+That was all pretty straight-forward, but we are a bit stuck with pVar and pDim
+===============================================================================
 
+The Grammar rules:
 
-ZOOM_a  -> ε | "[" a "]" | "[" a "," a "]"
-ZOOM_a  -> ε | "[" a ZOOM1_a
-ZOOM1_a -> "," a "]" | "]"
+  (1) DECL_SHAPE -> ε | "[" int  "]" | "[" int  "," int  "]"
+  (2) EXPR_SHAPE -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 
+obviously have very similar structure. They are both of the form:
 
-X[4,5]----------------->
-|
-|
-|
-|
-|
-v
+  Z_a -> ε | "[" a "]" | "[" a "," a "]"
 
-.-----------------------
-|      |
-|      v
-|-->[X_3,2]
-|
-|
-|
-|
+where a is either an int or an expression.
+
+It's be nice to capture this similarity in some kind of parser combinator
+to avoid repeating code
+
+Note that (1) represents resizing a variable according to some integer
+dimensions, while (2) represents looking within a large structure for a
+partciular element:
+
+    X[4,5]----------------->                 .-----------------------
+    |                                        |      |
+    |                                        |      v
+    |                                        |-->X[3,2]
+    |                                        |
+    |                                        |
+    |                                        |
+    v                                        |
+              (1)                                      (2)
+
+In the first case, we are 'zooming out' the variable to become an array/matrix
+of variables. In the second case, we are 'zooming in' to a particular element
+of such a matrix.
+
+So we shall name this [,] construct our 'zoom'?!
+
+  ZOOM_a -> ε | "[" a "]" | "[" a "," a "]"
+
+Left-factoring these productions leads to the following:
+
+  ZOOM_a  -> ε | "[" a ZOOM1_a "]"
+  ZOOM1_a -> "," a | ε
+
+We propose the following parser combinator; the 'zoom parser':
 
 -}
 
+zoom :: (Parser a) -> (Parser [a])
+zoom parser
+  = option [] (brackets (zoomInside parser))
+-- parse 1 or 2 things inside those brackets
+zoomInside parser
+  = do
+      a <- parser
+      maybeB <- optionMaybe (comma >> parser)
+      case maybeB of
+        Nothing -> return [a]
+        Just b  -> return [a, b]
+
+{- The parsers for Dims and Vars are now really clean! -}
+
+-- DECL_SHAPE -> ε | "[" int "]" | "[" int "," int "]"
+pDim :: Parser Dim
+pDim
+  = do
+      size <- zoom integer
+      case size of
+        []    -> return (Dim0)
+        [n]   -> return (Dim1 n)
+        [n,m] -> return (Dim2 n m)
 
 -- SHAPED_ID  -> id EXPR_SHAPE
 -- EXPR_SHAPE -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
@@ -237,43 +283,19 @@ pVar
         [i]   -> return Var1 name i
         [i,j] -> return Var2 name i j
 
-zoom :: (Parser a) -> (Parser [a])
-zoom parser
-  = 
-    do 
-      maybe parse "[a" -NO-> return []
-        |YES
-        maybe parse ",b]" -NO-> return [a]
-          |YES
-          return [a,b]
-          
-  = option [] (brackets (zoom' parser))
-zoom' parser -- parse 1 or 2 things inside those brackets
-  = do
-      a <- parser
-      maybeB <- optionMaybe (comma >> parser)
-      case maybeB of
-        Nothing -> return [a]
-        Just b  -> return [a, b]
+{-
 
+Notes:
 
--- DECL_SHAPE -> ε | "[" int "]" | "[" int "," int "]"
-pDim :: Parser Dim
-pDim
-  = option Dim0 $ do
-      ints <- brackets pDim'
-      case ints of
-        [n]   -> return (Dim1 n)
-        [n,m] -> return (Dim2 n m)
-pDim' :: Parser [Int]
-pDim'
-  = do
-      n <- integer
-      maybeM <- optionMaybe (comma >> integer)
-      case maybeM of
-        Nothing -> return [n]
-        Just m  -> return [n, m]
+* Using a list to represent 0, 1, or 2 return values is not so great. It'd 
+  perhaps be cleaner to use a new type for this purpose?
+  `data Zoom a = Zoom0 | Zoom1 a | Zoom2 a a` ? The definitions of Var and Dim
+  could be refactored to have an accompanying `Zoom Expr` or `Zoom Int` too.
+* Maybe there is some way to avoid more of the clutter WITHIN the definition of
+  zoom and zoomInside. Something to do with Maybe being a monad.
+  I can't figure it out, though.
 
+-}
 
 
 
