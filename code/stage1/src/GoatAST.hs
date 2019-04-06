@@ -80,10 +80,10 @@ data Stmt
 -- A variable (:: Var) is distinct from an identifier (:: Id). A variable is
 -- an identifier used in conjunction with 0, 1 or 2 expressions (depending on
 -- dimensionality) to denote a specific memory location which can hold a value.
--- The Var type is analagous to the mathematical notion of a subscripted
--- 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply a name given
--- to a singular variable (e.g. y), array of variables (e.g. x, the vector) or
--- matrix of variables (e.g. A, the matrix), or to a procedure.
+-- The Var type is analagous to the mathematical notion of a (possibly)
+-- subscripted 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply
+-- a name given to a singular variable (e.g. y), array of variables (e.g. x,
+-- the vector) or matrix of variables (e.g. A, the matrix), or to a procedure.
 data Var
   = Var0 Id              -- a 'direct identifier' (no subscript necessary)
   | Var1 Id Expr         -- an array element (identifier plus one subscript)
