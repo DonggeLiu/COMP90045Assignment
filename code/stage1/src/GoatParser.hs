@@ -18,20 +18,20 @@ reservedNames = [ "begin", "bool", "call", "do", "else", "end", "false", "fi"
                 , "true", "val", "while", "write"
                 ]
 reservedOpNames = [ ":=" -- assignment
-                  -- other operators:
-                  , "||"                            -- boolean disjunction (left)
-                  , "&&"
-                  , "!"
-                  , "=", "!=", "<", "<=", ">", ">=" -- relational (not associative)
-                  , "+", "-"
-                  , "*", "/"
-                  , "-"
+                  -- other operators: (arranged by precedence low to high)
+                  , "||"                            -- disjunction (left assoc)
+                  , "&&"                            -- conjunction (left assoc)
+                  , "!"                             -- negation (unary, prefix)
+                  , "=", "!=", "<", "<=", ">", ">=" -- relational (non-assoc)
+                  , "+", "-"                        -- arithmetic binary ops
+                  , "*", "/"                        -- (all left assoc)
+                  , "-"                             -- negative (unary, prefix)
                   ]
 languageDef
   = emptyDef { Token.commentLine     = "#"
              , Token.identStart      = letter                  -- [a-zA-Z]
              , Token.identLetter     = alphaNum <|> oneOf "_'" -- [a-zA-Z0-9_']
-             , Token.opLetter        = oneOf "<-&*!|/>+=:"
+             , Token.opLetter        = oneOf ":=|&!<>+-*/"     -- [:=|&!<>+-*/]
              , Token.reservedNames   = reservedNames
              , Token.reservedOpNames = reservedOpNames
              }
@@ -68,19 +68,26 @@ stringLiteral = Token.stringLiteral lexer
 -- ----------------------------------------------------------------------------
 -- Program parsing
 
-
+-- parseProgram
+-- top level parser for an entire program, including (eating leading whiteSpace 
+-- as required by parsec's lexeme parser approach, and requiring no trailing 
+-- input after the program is parsed):
+parseProgram :: Parser GoatProgram
 parseProgram
   = between whiteSpace eof parseGoatProgram
 
+-- after that, we'll just need (roughly) one parser per grammar non-terminal
+-- (see grammar.txt).
+
 -- GOAT       -> PROC+
-parseGoatProgram :: Parser GoatProgram
-parseGoatProgram
+pGoatProgram :: Parser GoatProgram
+pGoatProgram
   = do
       procs <- many1 pProc
       return (GoatProgram procs)
 
 -- PROC       -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
--- PARAMS     -> (PARAM ",")* PARAM | ε
+-- PARAMS     -> (PARAM ",")* PARAM | ε               <-- `commaSep` combinator
 pProc :: Parser Proc
 pProc
   = do
@@ -105,36 +112,37 @@ pParam
 -- PASSBY     -> "val" | "ref"
 pPassBy :: Parser PassBy
 pPassBy
-  =   reserved "val" >> return Val -- Look for other methods of doing this?
-  <|> reserved "ref" >> return Ref -- for example, consider making PassBy an
-                                   -- instance of the Read typeclass or something?
+  =   reserved "val" >> return Val -- TODO: Is there a cleaner way to go from
+  <|> reserved "ref" >> return Ref -- reserved words to constants?
+                                   -- Consider instancing the Read typeclass?
 
 -- TYPE       -> "bool" | "float" | "int"
 pBaseType :: Parser BaseType
 pBaseType
-  =   reserved "bool"  >> return BoolType
+  =   reserved "bool"  >> return BoolType  -- TODO: See above.
   <|> reserved "float" >> return FloatType
   <|> reserved "int"   >> return IntType
 
--- DECL       -> TYPE id DECL_SHAPE ";"
+-- DECL       -> TYPE id DIM ";"
 pDecl :: Parser Decl
 pDecl
   = do
       baseType <- pBaseType
       name <- identifier
-      dim <- pDim
+      dim <- pDim -- see the parser pDim much later in this file
       semi
       return (Decl baseType name dim)
 
 
 -- STMT       -> ASGN | READ | WRITE | CALL | IF | WHILE 
 pStmt :: Parser Stmt
-pAgn, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
 pStmt
   = choice [pAsg, pRead, pWrite, pCall, pIf, pWhile]
 
+-- Each of these statement helper parsers also return Stmts:
+pAgn, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
 
--- ASGN       -> SHAPED_ID ":=" EXPR ";"
+-- ASGN       -> VAR ":=" EXPR ";"
 pAsg
   = do
       var <- pVar
@@ -143,7 +151,7 @@ pAsg
       semi
       return (Asg var expr)
 
--- READ       -> "read" SHAPED_ID ";"
+-- READ       -> "read" VAR ";"
 pRead
   = do
       reserved "read"
@@ -160,7 +168,7 @@ pWrite
       return (Write expr)
 
 -- CALL       -> "call" id "(" EXPRS ")" ";"
--- EXPRS      -> (EXPR ",")* EXPR | ε
+-- EXPRS      -> (EXPR ",")* EXPR | ε                 <-- `commaSep` combinator
 pCall
   = do
       reserved "call"
@@ -169,8 +177,8 @@ pCall
       semi
       return (Call name args)
 
--- IF         -> "if" EXPR "then" STMT+ MAYBE_ELSE "fi" 
--- MAYBE_ELSE -> "else" STMT+ | ε
+-- IF         -> "if" EXPR "then" STMT+ OPT_ELSE "fi" 
+-- OPT_ELSE   -> "else" STMT+ | ε
 pIf
   = do
       reserved "if"
@@ -182,7 +190,6 @@ pIf
       case maybeElseStmts of
         Nothing        -> return (If cond thenStmts)
         Just elseStmts -> return (IfElse cond thenStmts elseStmts)
-
 
 -- WHILE      -> "while" EXPR "do" STMT+ "od"
 pWhile
@@ -196,110 +203,112 @@ pWhile
 
 
 
+-- Now, for capturing the similarity that exists between the VAR and DIM rules:
+-- 
+-- The Grammar rules:
+-- 
+--   (1) DIM        -> ε | "[" int  "]" | "[" int  "," int  "]"
+--   (2) SUBSCRIPT  -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+--
+-- obviously have very similar structure. They are both of the form:
+--
+--   Z_a            -> ε | "[" a "]" | "[" a "," a "]"
+--
+-- where a is either an int or an expression.
+--
+-- It's be nice to capture this similarity in some kind of parser combinator
+-- (parametrised by a parser for a) to avoid repeating code!
+--
+-- Note that (1) represents possibly resizing a variable according to some
+-- integer dimensions (simensionality, or shape), while (2) represents looking 
+-- within a possibly large structure for a partciular element (indexing or 
+-- subscripting):
+--
+--     X[12,7]---------------->                 .----------------------.
+--     |                      |                 |     |                |
+--     |                      |                 |     v                |
+--     |                      |                 |---->X[3,2]           |
+--     |                      |                 |                      |
+--     |                      |                 |                      |
+--     |                      |                 |                      |
+--     V______________________|                 |______________________|
+--               (1)                                      (2)
+--
+-- In the first case, we are 'zooming out' the variable to become an array /
+-- matrix of variables. In the second case, we are 'zooming in' to a particular 
+-- element of such an array / matrix.
+-- 
+-- So... we shall name this [,] construct our 'zoom'!..  ...!?
+--                                                       any other suggestions?
+-- 
+--   ZOOM_a         -> ε | "[" a "]" | "[" a "," a "]"
+-- 
+-- Left-factoring these productions leads to the following:
+-- 
+--   ZOOM_a         -> ε | "[" a ZOOM1_a "]"
+--   ZOOM1_a        -> "," a | ε
+-- 
+-- We propose the following parser combinator; the 'zoom parser':
 
-{-
 
-That was all pretty straight-forward, but we are a bit stuck with pVar and pDim
-===============================================================================
-
-The Grammar rules:
-
-  (1) DECL_SHAPE -> ε | "[" int  "]" | "[" int  "," int  "]"
-  (2) EXPR_SHAPE -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
-
-obviously have very similar structure. They are both of the form:
-
-  Z_a -> ε | "[" a "]" | "[" a "," a "]"
-
-where a is either an int or an expression.
-
-It's be nice to capture this similarity in some kind of parser combinator
-to avoid repeating code
-
-Note that (1) represents resizing a variable according to some integer
-dimensions, while (2) represents looking within a large structure for a
-partciular element:
-
-    X[4,5]----------------->                 .-----------------------
-    |                                        |      |
-    |                                        |      v
-    |                                        |-->X[3,2]
-    |                                        |
-    |                                        |
-    |                                        |
-    v                                        |
-              (1)                                      (2)
-
-In the first case, we are 'zooming out' the variable to become an array/matrix
-of variables. In the second case, we are 'zooming in' to a particular element
-of such a matrix.
-
-So we shall name this [,] construct our 'zoom'?!
-
-  ZOOM_a -> ε | "[" a "]" | "[" a "," a "]"
-
-Left-factoring these productions leads to the following:
-
-  ZOOM_a  -> ε | "[" a ZOOM1_a "]"
-  ZOOM1_a -> "," a | ε
-
-We propose the following parser combinator; the 'zoom parser':
-
--}
-
-zoom :: (Parser a) -> (Parser [a])
+-- zoom
+-- "To _zoom_ a parser, possibly look for brackets containing one occurrence of 
+-- the thing, followed by a possible second occurrence."
+-- Return either Nothing or Just [x] or Just [x,y] with the 0, 1 or 2 results.
+zoom :: (Parser a) -> Parser (Maybe [a])
 zoom parser
-  = option [] (brackets (zoomInside parser))
--- parse 1 or 2 things inside those brackets
-zoomInside parser
-  = do
-      a <- parser
-      maybeB <- optionMaybe (comma >> parser)
-      case maybeB of
-        Nothing -> return [a]
-        Just b  -> return [a, b]
+  = optionMaybe $ brackets (parser <:> optionList (comma >> parser))
+--                                 /   `--,-----------------------'
+--                              .-'      ;
+-- (<:>) 'applicative cons' operator     |
+-- mnemonic shortcut for using cons as an|applicative function
+(<:>) x xs            --                 |
+  = (:) <$> x <*> xs  --                 |
+                      --                 |
+-- optionList ---------------------------'
+-- Apply a parser at most once, and keep its result in a list
+-- [] for failure (without consuming input), or [result] for success
+-- (This is very like Parsec's optionMaybe, but with [] and [result]
+-- instead of Nothing and Just result)
+optionList parser
+  = option [] $ (:[]) <$> parser
 
-{- The parsers for Dims and Vars are now really clean! -}
 
--- DECL_SHAPE -> ε | "[" int "]" | "[" int "," int "]"
+
+-- DIM        -> ε | "[" int  "]" | "[" int  "," int  "]"
 pDim :: Parser Dim
 pDim
   = do
       size <- zoom integer
       case size of
-        []    -> return (Dim0)
-        [n]   -> return (Dim1 n)
-        [n,m] -> return (Dim2 n m)
+        Nothing    -> return (Dim0)
+        Just [n]   -> return (Dim1 n)
+        Just [n,m] -> return (Dim2 n m)
 
--- SHAPED_ID  -> id EXPR_SHAPE
--- EXPR_SHAPE -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+-- VAR        -> id SUBSCRIPT
+-- SUBSCRIPT  -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 pVar :: Parser Var
 pVar
   = do
       name <- identifier
       subscript <- zoom pExpr
       case subscript of
-        []    -> return Var0 name
-        [i]   -> return Var1 name i
-        [i,j] -> return Var2 name i j
+        Nothing    -> return (Var0 name)
+        Just [i]   -> return (Var1 name i)
+        Just [i,j] -> return (Var2 name i j)
 
-{-
-
-Notes:
-
-* Using a list to represent 0, 1, or 2 return values is not so great. It'd 
-  perhaps be cleaner to use a new type for this purpose?
-  `data Zoom a = Zoom0 | Zoom1 a | Zoom2 a a` ? The definitions of Var and Dim
-  could be refactored to have an accompanying `Zoom Expr` or `Zoom Int` too.
-* Maybe there is some way to avoid more of the clutter WITHIN the definition of
-  zoom and zoomInside. Something to do with Maybe being a monad.
-  I can't figure it out, though.
-
--}
+-- 
+-- Notes:
+-- * Using a list to represent 0, 1, or 2 return values is not so great. It'd 
+--   perhaps be cleaner to use a new type for this purpose?
+--   `data Zoom a = Zoom0 | Zoom1 a | Zoom2 a a` ? The definitions of Var and 
+--   Dim could be refactored to have an accompanying `Zoom Expr` or `Zoom Int` 
+--   too.
+-- 
 
 
+-- The above assumes a function named `pExpr :: Parser Expr` is defined below.
 
--- assumes a function named `pExpr :: Parser Expr` is defined below
 
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
