@@ -19,10 +19,10 @@ reservedNames = [ "begin", "bool", "call", "do", "else", "end", "false", "fi"
                 ]
 reservedOpNames = [ ":=" -- assignment
                   -- other operators:
-                  , "||"
+                  , "||"                            -- boolean disjunction (left)
                   , "&&"
                   , "!"
-                  , "=", "!=", "<", "<=", ">", ">="
+                  , "=", "!=", "<", "<=", ">", ">=" -- relational (not associative)
                   , "+", "-"
                   , "*", "/"
                   , "-"
@@ -68,14 +68,19 @@ stringLiteral = Token.stringLiteral lexer
 -- ----------------------------------------------------------------------------
 -- Program parsing
 
+
+parseProgram
+  = between whiteSpace eof parseGoatProgram
+
+-- GOAT       -> PROC+
 parseGoatProgram :: Parser GoatProgram
 parseGoatProgram
   = do
-      whiteSpace
       procs <- many1 pProc
-      eof
       return (GoatProgram procs)
 
+-- PROC       -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
+-- PARAMS     -> (PARAM ",")* PARAM | ε
 pProc :: Parser Proc
 pProc
   = do
@@ -88,6 +93,7 @@ pProc
       reserved "end"
       return (Proc name params decls stmts)
 
+-- PARAM      -> PASSBY TYPE id
 pParam :: Parser Param
 pParam
   = do
@@ -96,38 +102,39 @@ pParam
       name <- identifier
       return (Param passBy baseType name)
 
+-- PASSBY     -> "val" | "ref"
 pPassBy :: Parser PassBy
 pPassBy
-  =   reserved "val" >> return Val
-  <|> reserved "ref" >> return Ref
+  =   reserved "val" >> return Val -- Look for other methods of doing this?
+  <|> reserved "ref" >> return Ref -- for example, consider making PassBy an
+                                   -- instance of the Read typeclass or something?
 
+-- TYPE       -> "bool" | "float" | "int"
 pBaseType :: Parser BaseType
 pBaseType
   =   reserved "bool"  >> return BoolType
   <|> reserved "float" >> return FloatType
   <|> reserved "int"   >> return IntType
 
+-- DECL       -> TYPE id DECL_SHAPE ";"
 pDecl :: Parser Decl
 pDecl
   = do
       baseType <- pBaseType
       name <- identifier
       dim <- pDim
+      semi
       return (Decl baseType name dim)
 
--- this is a trickier one...?
-pDim :: Parser Dim
-pDim
-  = do
-      -- TODO:
-      -- return Dim0 or Dim1 n or Dim2 n m
-      return Dim0
 
+-- STMT       -> ASGN | READ | WRITE | CALL | IF | WHILE 
 pStmt :: Parser Stmt
 pAgn, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
 pStmt
   = choice [pAsg, pRead, pWrite, pCall, pIf, pWhile]
 
+
+-- ASGN       -> SHAPED_ID ":=" EXPR ";"
 pAsg
   = do
       var <- pVar
@@ -135,18 +142,25 @@ pAsg
       expr <- pExpr
       semi
       return (Asg var expr)
+
+-- READ       -> "read" SHAPED_ID ";"
 pRead
   = do
       reserved "read"
       var <- pVar
       semi
       return (Read var)
+
+-- WRITE      -> "write" EXPR ";"
 pWrite
   = do
       reserved "write"
       expr <- pExpr
       semi
       return (Write expr)
+
+-- CALL       -> "call" id "(" EXPRS ")" ";"
+-- EXPRS      -> (EXPR ",")* EXPR | ε
 pCall
   = do
       reserved "call"
@@ -154,24 +168,113 @@ pCall
       args <- parens (commaSep pExpr)
       semi
       return (Call name args)
+
+-- IF         -> "if" EXPR "then" STMT+ MAYBE_ELSE "fi" 
+-- MAYBE_ELSE -> "else" STMT+ | ε
 pIf
   = do
-      -- TODO:
-      return ()
+      reserved "if"
+      cond <- pExpr
+      reserved "then"
+      thenStmts <- many1 pStmt
+      maybeElseStmts <- optionMaybe (reserved "else" >> many1 pStmt)
+      reserved "fi"
+      case maybeElseStmts of
+        Nothing        -> return (If cond thenStmts)
+        Just elseStmts -> return (IfElse cond thenStmts elseStmts)
+
+
+-- WHILE      -> "while" EXPR "do" STMT+ "od"
 pWhile
   = do
       reserved "while"
-      expr <- pExpr
+      cond <- pExpr
       reserved "do"
-      stmts <- many1 stmt -- TODO: check many1 right!?
+      stmts <- many1 pStmt
       reserved "od"
-      return (While expr stmt)
+      return (While cond stmts)
 
+
+{-
+
+ZOOM a -> ε | "[" a "]" | "[" a "," a "]"
+
+
+ZOOM_a  -> ε | "[" a "]" | "[" a "," a "]"
+ZOOM_a  -> ε | "[" a ZOOM1_a
+ZOOM1_a -> "," a "]" | "]"
+
+
+X[4,5]----------------->
+|
+|
+|
+|
+|
+v
+
+.-----------------------
+|      |
+|      v
+|-->[X_3,2]
+|
+|
+|
+|
+
+-}
+
+
+-- SHAPED_ID  -> id EXPR_SHAPE
+-- EXPR_SHAPE -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 pVar :: Parser Var
 pVar
   = do
-    -- TODO:
-    return ()
+      name <- identifier
+      subscript <- zoom pExpr
+      case subscript of
+        []    -> return Var0 name
+        [i]   -> return Var1 name i
+        [i,j] -> return Var2 name i j
+
+zoom :: (Parser a) -> (Parser [a])
+zoom parser
+  = 
+    do 
+      maybe parse "[a" -NO-> return []
+        |YES
+        maybe parse ",b]" -NO-> return [a]
+          |YES
+          return [a,b]
+          
+  = option [] (brackets (zoom' parser))
+zoom' parser -- parse 1 or 2 things inside those brackets
+  = do
+      a <- parser
+      maybeB <- optionMaybe (comma >> parser)
+      case maybeB of
+        Nothing -> return [a]
+        Just b  -> return [a, b]
+
+
+-- DECL_SHAPE -> ε | "[" int "]" | "[" int "," int "]"
+pDim :: Parser Dim
+pDim
+  = option Dim0 $ do
+      ints <- brackets pDim'
+      case ints of
+        [n]   -> return (Dim1 n)
+        [n,m] -> return (Dim2 n m)
+pDim' :: Parser [Int]
+pDim'
+  = do
+      n <- integer
+      maybeM <- optionMaybe (comma >> integer)
+      case maybeM of
+        Nothing -> return [n]
+        Just m  -> return [n, m]
+
+
 
 
 -- assumes a function named `pExpr :: Parser Expr` is defined below
