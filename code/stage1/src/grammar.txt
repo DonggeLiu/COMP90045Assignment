@@ -1,0 +1,89 @@
+A 'grammar' for Goat Programs:
+
+GOAT       -> PROC+
+
+PROC       -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
+PARAMS     -> (PARAM ",")* PARAM | ε
+
+PARAM      -> PASSBY TYPE id
+
+PASSBY     -> "val" | "ref"
+
+TYPE       -> "bool" | "float" | "int"
+
+DECL       -> TYPE id DIM ";"
+DIM        -> ε | "[" int "]" | "[" int "," int "]"
+
+VAR        -> id SUBSCRIPT
+SUBSCRIPT  -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+
+STMT       -> ASGN | READ | WRITE | CALL | IF | WHILE 
+ASGN       -> VAR ":=" EXPR ";"
+READ       -> "read" VAR ";"
+WRITE      -> "write" EXPR ";"
+CALL       -> "call" id "(" EXPRS ")" ";"
+EXPRS      -> (EXPR ",")* EXPR | ε
+IF         -> "if" EXPR "then" STMT+ OPT_ELSE "fi" 
+OPT_ELSE   -> "else" STMT+ | ε
+WHILE      -> "while" EXPR "do" STMT+ "od"
+
+EXPR       -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
+CONST      -> int | float | bool | string
+BINOP      -> "+"  | "-"  | "*"  | "/"
+            | "<=" | "<"  | "="  | "!=" | ">"  | ">="
+            | "&&" | "||"
+UNOP       -> "!"  | "-"
+
+
+Key:
+
+Uppercase strings                grammar nonterminals
+(e.g. TYPE)
+
+strings in double quotes         terminals (representing reserved keywords or 
+(e.g. "int")                     operators, or structural terminals like "(", 
+                                 ")", "[", "]", and ";").
+
+lowercase strings w/o quotes     terminals representing tokens (so an example 
+(e.g. int)                       of int is the string "2"). These will be 
+                                 handled by parsec's internal lexer, see below 
+                                 for token definitions.
+
+non-grammar symbols              shortcuts that map easily to parsec combinators
+(e.g. *, +, (, etc.)             (e.g. * --> `many`, + --> `many1`). The parens 
+                                 and * in PARAMS and EXPRS can be captured by
+                                 the commaSep / sepBy combinators
+
+Other notes:
+
+* Further shortcuts may be possible. In particular, we may be able to capture 
+  the similarity between DIM and SUBSCRIPT using a combinator we define 
+  ourselves.
+
+* We haven't built the precedence and associativity rules for operators into 
+  the EXPR grammar (in fact it is currently ambiguous); but this is something
+  we can configure in parsec (based on precedence and associativity details in 
+  spec).
+
+* We also have not included anything about comments but skipping comments is 
+  easily configurable in the parsec tokenizer.
+
+
+Tokens:
+
+id      -> [a-zA-Z][a-zA-Z0-9_']*
+int     -> [0-9]+
+float   -> [0-9]+\.[0-9]+
+bool    -> true|false
+string  -> "[^"\n\t]*" ---To clarify, you ARE allowed to have the character '\' 
+                          followed by the character 'n' but not the single 
+                          character '\n' (newline).
+
+Some of these (id) are configurable using parsec's lexer generator/language 
+definiton feature. Unfortunately the provided lexeme parsers for ints, floats,
+and strings are not appropriate for our purposes since they are TOO PERMISSIVE,
+allowing strings like '0x42', '3.14e0', and '"hello\nworld"' (with an actual 
+newline) to be parsed. Nothing is provided for bool. Thus we will need to
+create our own lexeme parsers for these tokens. Actually, as it turns out,
+the provided decimal lexeme parser corresponds to the integer parser we want.
+So we don't have to worry about that one.
