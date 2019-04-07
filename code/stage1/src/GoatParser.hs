@@ -1,14 +1,17 @@
 module GoatParser where
 
-import GoatAST
-
 import Text.Parsec
 import Text.Parsec.Expr
 import Text.Parsec.Language
 import qualified Text.Parsec.Token as Token
+import Control.Applicative (liftA2)
+
+
+import GoatAST
+
 
 type Parser a
-   = Parsec String Int a
+   = Parsec String () a
 
 -- ----------------------------------------------------------------------------
 -- Token parser generation
@@ -58,8 +61,8 @@ commaSep   = Token.commaSep   lexer -- parse a comma-separated list
 -- like in 0x42 and 3.14e-7 (and escape sequences for strings)
 integer       = Token.integer       lexer
 float         = Token.float         lexer
-stringLiteral = Token.stringLiteral lexer
--- E.g.:
+stringLiteral = Token.stringLiteral lexer -- the name 'string' is taken
+-- E.g.:                                  -- by Text.Parsec.Char I think.
 -- digit = oneOf "0123456789"
 -- integer = (lexeme $ many1 digit) >>= (\s -> return (read s :: Int))
 -- float   = (lexeme $ (many1 digit >> char "." >> many1 digit))
@@ -74,7 +77,7 @@ stringLiteral = Token.stringLiteral lexer
 -- input after the program is parsed):
 parseProgram :: Parser GoatProgram
 parseProgram
-  = between whiteSpace eof parseGoatProgram
+  = between whiteSpace eof pGoatProgram
 
 -- after that, we'll just need (roughly) one parser per grammar non-terminal
 -- (see grammar.txt).
@@ -112,16 +115,16 @@ pParam
 -- PASSBY     -> "val" | "ref"
 pPassBy :: Parser PassBy
 pPassBy
-  =   reserved "val" >> return Val -- TODO: Is there a cleaner way to go from
-  <|> reserved "ref" >> return Ref -- reserved words to constants?
+  =   (reserved "val" >> return Val) -- TODO: Is there a cleaner way to go from
+  <|> (reserved "ref" >> return Ref) -- reserved words to constants?
                                    -- Consider instancing the Read typeclass?
 
 -- TYPE       -> "bool" | "float" | "int"
 pBaseType :: Parser BaseType
 pBaseType
-  =   reserved "bool"  >> return BoolType  -- TODO: See above.
-  <|> reserved "float" >> return FloatType
-  <|> reserved "int"   >> return IntType
+  =   (reserved "bool"  >> return BoolType)  -- TODO: See above.
+  <|> (reserved "float" >> return FloatType)
+  <|> (reserved "int"   >> return IntType)
 
 -- DECL       -> TYPE id DIM ";"
 pDecl :: Parser Decl
@@ -140,7 +143,7 @@ pStmt
   = choice [pAsg, pRead, pWrite, pCall, pIf, pWhile]
 
 -- Each of these statement helper parsers also return Stmts:
-pAgn, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
+pAsg, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
 
 -- ASGN       -> VAR ":=" EXPR ";"
 pAsg
@@ -257,21 +260,32 @@ pWhile
 -- Return either Nothing or Just [x] or Just [x,y] with the 0, 1 or 2 results.
 zoom :: (Parser a) -> Parser (Maybe [a])
 zoom parser
-  = optionMaybe $ brackets (parser <:> optionList (comma >> parser))
---                                 /   `--,-----------------------'
---                              .-'      ;
--- (<:>) 'applicative cons' operator     |
--- mnemonic shortcut for using cons as an|applicative function
-(<:>) x xs            --                 |
-  = (:) <$> x <*> xs  --                 |
-                      --                 |
--- optionList ---------------------------'
--- Apply a parser at most once, and keep its result in a list
--- [] for failure (without consuming input), or [result] for success
--- (This is very like Parsec's optionMaybe, but with [] and [result]
--- instead of Nothing and Just result)
-optionList parser
-  = option [] $ (:[]) <$> parser
+  = optionMaybe $ brackets $ commaSepMN 1 2 parser
+
+manyMN :: Int -> Int -> (Parser a) -> (Parser [a])
+manyMN m n p
+  | m<0 || n<m = error "manyMN expects 0 <= m <= n"
+  | n == 0     = return []
+  | m == 0     = option [] $ p <:> manyMN 0 (n-1) p
+  | otherwise  = p <:> manyMN (m-1) (n-1) p
+
+sepByMN :: (Parser a) -> Int -> Int -> (Parser b) -> (Parser [b])
+sepByMN s m n p
+  | m<0 || n<m = error "sepByMN expects 0 <= m <= n"
+  | n == 0     = return []
+  | m == 0     = option [] $ p <:> manyMN 0 (n-1) (s >> p)
+  | otherwise  = p <:> manyMN (m-1) (n-1) (s >> p)
+
+commaSepMN :: Int -> Int -> (Parser a) -> Parser [a]
+commaSepMN
+  = sepByMN comma
+
+-- (<:>) 'applicative cons' operator
+-- mnemonic shortcut for using cons as an applicative function
+-- (<:>) x xs
+  -- = liftA2 (:)
+-- it's like:
+(<:>) a_x a_xs = (:) <$> a_x <*> a_xs
 
 
 
@@ -279,7 +293,7 @@ optionList parser
 pDim :: Parser Dim
 pDim
   = do
-      size <- zoom integer
+      size <- zoom (integer >>= (\i -> return (fromIntegral i)))
       case size of
         Nothing    -> return (Dim0)
         Just [n]   -> return (Dim1 n)
@@ -309,6 +323,10 @@ pVar
 
 -- The above assumes a function named `pExpr :: Parser Expr` is defined below.
 
+-- A dummy-definition for now:
+pExpr = do
+  var <- pVar
+  return (VarExpr var)
 
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
