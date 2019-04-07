@@ -1,6 +1,4 @@
-module GoatWriter (
-  prettify
-) where
+module GoatWriter where
 
 -- ----------------------------------------------------------------------------
 -- NOTE: This module is NOT to be confised with the 2007 Action film starring
@@ -29,29 +27,37 @@ import Control.Monad (mapM, mapM_)
 
 
 import GoatAST
-import StringBuilder
 
--- ----------------------------------------------------------------------------
--- Our StringBuilder utility module provides us a monadic interface for 
+
+-- Our custom StringBuilder utility module provides us a monadic interface for 
 -- efficiently constructing strings (using a specialised Writer Monad powered
 -- by difference lists).
 -- 
+import StringBuilder
+-- 
 -- With this, we can prettify a Goat Program using Monadic style. Yay!
 -- You can think of it as kind of like an opposite of Parsec---Complete
--- with some helpful string builder combinators defined later in this
--- file.
+-- with some helpful string builders and string builder combinators defined 
+-- for us by that file (imported above, plus some Goat-specific ones defined
+-- below)
 -- 
 -- Okay, let's get to it!                                  (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
--- ----------------------------------------------------------------------------
+
 
 -- prettify
--- Transform a GoatProgram (an Abstract Syntax Tree) into a String.
+-- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into 
+-- a String, using an efficient String Builder approach.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn.
 prettify :: GoatProgram -> String
 prettify gp
   = buildString $ writeGoatProgram gp
 
+
+
+-- ----------------------------------------------------------------------------
+-- StringBuilders for the different elements of a program
+-- ----------------------------------------------------------------------------
 
 -- writeGoatProgram
 -- Create an action for building a String representing an entire
@@ -68,7 +74,7 @@ writeProc (Proc name params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
       write "proc" >> space >> write name >> space
-      parens (commas (map writeF params)) >> newline
+      parens (commaSep (map writeF params)) >> newline
       
       -- then proceed to write lines for each decl and stmt (indented 1 level)
       mapM (writeDeclWith indent1) decls
@@ -78,13 +84,20 @@ writeProc (Proc name params decls stmts)
       -- finish with the "end" keyword on its own line
       writeLn "end"
 
--- >                        Aren't Monads awesome?                __φ ʕ ^ᴥ^ ʔ Μ
+--                          Aren't Monads Awesome?                ___φʕ ^ᴥ^ ʔ
+
+
+-- indent1
+-- Helper-action to write a single level of indentation
+indent1 :: StringBuilder
+indent1
+  = space >> space >> space >> space
 
 
 -- writeDeclWith
 -- Create an action for building a declaration as a string, using a
--- provided action for indenting each line (actually, there is only
--- one line in this case)
+-- provided action for indenting each line
+-- (actually, there is only one line in this case)
 writeDeclWith :: StringBuilder -> Decl -> StringBuilder
 writeDeclWith indent (Decl baseType name dim)
   = indent >> writeF baseType >> space >> write name >> writeF dim >> endline
@@ -96,7 +109,7 @@ writeDeclWith indent (Decl baseType name dim)
 writeStmtWith :: StringBuilder -> Stmt -> StringBuilder
 
 -- For atomic statements, building will involve writing a single line
--- with the current level of indentation (given by indent)
+-- with the current level of indentation (accomplished by indent)
 writeStmtWith indent (Asg var expr)
   = indent >> writeVar var >> spaces (write ":=") >> writeExpr expr >> endline
 
@@ -109,7 +122,7 @@ writeStmtWith indent (Write expr)
 writeStmtWith indent (Call name exprs)
   = do
       indent >> write "call" >> space >> write name
-      parens (commas (map writeExpr exprs)) >> endline
+      parens (commaSep (map writeExpr exprs)) >> endline
 
 -- For composite statements, we will have to write some lines at the current 
 -- level of indentation (given by indent), and also some statements at the
@@ -145,7 +158,7 @@ writeVar (Var0 name)
 writeVar (Var1 name expr)
   = write name >> brackets (writeExpr expr)
 writeVar (Var2 name expr1 expr2)
-  = write name >> brackets (commas (map writeExpr [expr1, expr2]))
+  = write name >> brackets (commaSep (map writeExpr [expr1, expr2]))
 
 
 -- writeExpr
@@ -186,85 +199,16 @@ writeExprParens expr
 
 
 -- ----------------------------------------------------------------------------
--- Custom StringBuilders and StringBuilder combinators
+-- The remaining code deals with converting simpler structures to
+-- to Strings directly, in non-monadic style. We create a new typeclass
+-- `Displayable' providing a function `format' for converting its members'
+-- values to strings, and ONE general function `writeF' for writing something
+-- of this type class to our StringBuilder.
+-- 
+-- NOTE: We could have overridden the implementation of `show' for these types
+-- but this way we are still able to keep the default behaviour or `show'
+-- (which is useful to enable viewing ASTs such as for debugging this module).
 -- ----------------------------------------------------------------------------
-
--- Simple helper StringBuilders:
-
--- space
--- Action to add a single space character
-space :: StringBuilder
-space
-  = write " "
-
--- indent1
--- Action to add a single level of indentation
-indent1 :: StringBuilder
-indent1
-  = space >> space >> space >> space
-
--- newline
--- To add a newline character
-newline :: StringBuilder
-newline
-  = write "\n"
-
--- semi
--- To add a semicolon character
-semi :: StringBuilder
-semi 
-  = write ";"
-
--- newline
--- To add a semicolon AND terminate the line
-endline :: StringBuilder
-endline
-  = semi >> newline
-
-
--- StringBuilder Combinators
-
--- parens
--- To enclose an action in parentheses
-parens :: StringBuilder -> StringBuilder
-parens writer
-  = write "(" >> writer >> write ")"
-
--- brackets
--- To enclose an action in square brackets
-brackets :: StringBuilder -> StringBuilder
-brackets writer
-  = write "(" >> writer >> write ")"
-
--- quote
--- To surround an action in double quotes
-quote :: StringBuilder -> StringBuilder
-quote writer
-  = write "\"" >> writer >> write "\""
-
--- spaces
--- To surround an action in single spaces
-spaces :: StringBuilder -> StringBuilder
-spaces writer
-  = space >> writer >> space
-
--- sepBy
--- To intersperse a list of writers with a separating writer
-sepBy :: StringBuilder -> [StringBuilder] -> StringBuilder
-sepBy _ []
-  = return ()
-sepBy separator (writer:writers)
-  = do
-      writer
-      mapM_ (separator >>) writers
-
--- commas
--- To intersperse commas/spaces between a list of writers
--- (reflecting common usage of sepBy)
-commas :: [StringBuilder] -> StringBuilder
-commas
-  = sepBy (write ", ")
-
 
 -- writeF
 -- Shortcut for action to write a displayable as a string using the format 
@@ -273,17 +217,6 @@ writeF :: (Display a) => a -> StringBuilder
 writeF d
   = write $ format d
 
-
--- ----------------------------------------------------------------------------
--- The remaining code deals with converting simpler structures to
--- to Strings directly, in non-monadic style. We create a new typeclass
--- `Displayable' providing a function `format' for converting its members'
--- values to strings.
--- 
--- We could have overridden the implementation of `show' for these types
--- but this way we are able to keep the default behaviour or `show' (which
--- is useful to enable viewing ASTs such as for debugging this module).
--- ----------------------------------------------------------------------------
 
 -- A Display type implements the format function, for converting
 -- values to strings for pretty-printing.
