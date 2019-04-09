@@ -1,4 +1,4 @@
-module GoatAST where
+module GoatLang.AST where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -94,8 +94,8 @@ data Var
 data Expr
   = VarExpr Var               -- variable
   | BoolConst Bool            -- boolean constant
-  | FloatConst Double          -- floating point constant
-  | IntConst Integer              -- integer constant
+  | FloatConst Float          -- floating point constant
+  | IntConst Int              -- integer constant
   | StrConst String           -- string constant (only be used for writing)
   | BinExpr BinOp Expr Expr   -- binary expression
   | UnExpr UnOp Expr          -- unary expression
