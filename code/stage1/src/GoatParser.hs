@@ -72,8 +72,8 @@ stringLiteral = Token.stringLiteral lexer -- the name 'string' is taken
 -- Program parsing
 
 -- parseProgram
--- top level parser for an entire program, including (eating leading whiteSpace 
--- as required by parsec's lexeme parser approach, and requiring no trailing 
+-- top level parser for an entire program, including (eating leading whiteSpace
+-- as required by parsec's lexeme parser approach, and requiring no trailing
 -- input after the program is parsed):
 parseProgram :: Parser GoatProgram
 parseProgram
@@ -82,15 +82,15 @@ parseProgram
 -- after that, we'll just need (roughly) one parser per grammar non-terminal
 -- (see grammar.txt).
 
--- GOAT       -> PROC+
+-- GOAT        -> PROC+
 pGoatProgram :: Parser GoatProgram
 pGoatProgram
   = do
       procs <- many1 pProc
       return (GoatProgram procs)
 
--- PROC       -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
--- PARAMS     -> (PARAM ",")* PARAM | ε               <-- `commaSep` combinator
+-- PROC        -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
+-- PARAMS      -> (PARAM ",")* PARAM | ε               <-- `commaSep` combinator
 pProc :: Parser Proc
 pProc
   = do
@@ -103,7 +103,7 @@ pProc
       reserved "end"
       return (Proc name params decls stmts)
 
--- PARAM      -> PASSBY TYPE id
+-- PARAM       -> PASSBY TYPE id
 pParam :: Parser Param
 pParam
   = do
@@ -112,21 +112,21 @@ pParam
       name <- identifier
       return (Param passBy baseType name)
 
--- PASSBY     -> "val" | "ref"
+-- PASSBY      -> "val" | "ref"
 pPassBy :: Parser PassBy
 pPassBy
   =   (reserved "val" >> return Val) -- TODO: Is there a cleaner way to go from
   <|> (reserved "ref" >> return Ref) -- reserved words to constants?
                                    -- Consider instancing the Read typeclass?
 
--- TYPE       -> "bool" | "float" | "int"
+-- TYPE        -> "bool" | "float" | "int"
 pBaseType :: Parser BaseType
 pBaseType
   =   (reserved "bool"  >> return BoolType)  -- TODO: See above.
   <|> (reserved "float" >> return FloatType)
   <|> (reserved "int"   >> return IntType)
 
--- DECL       -> TYPE id DIM ";"
+-- DECL        -> TYPE id DIM ";"
 pDecl :: Parser Decl
 pDecl
   = do
@@ -136,7 +136,7 @@ pDecl
       semi
       return (Decl baseType name dim)
 
--- DIM        -> ε | "[" int  "]" | "[" int  "," int  "]"
+-- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
 pDim :: Parser Dim
 pDim
   = do
@@ -151,15 +151,15 @@ pDim
 
 
 
--- STMT       -> ASGN | READ | WRITE | CALL | IF | WHILE 
+-- STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
 pStmt :: Parser Stmt
 pStmt
-  = choice [pAsg, pRead, pWrite, pCall, pIf, pWhile]
+  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile]
 
 -- Each of these statement helper parsers also return Stmts:
-pAsg, pRead, pWrite, pCall, pIf, pWhile :: Parser Stmt
+pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
 
--- ASGN       -> VAR ":=" EXPR ";"
+-- ASGN        -> VAR ":=" EXPR ";"
 pAsg
   = do
       var <- pVar
@@ -168,7 +168,7 @@ pAsg
       semi
       return (Asg var expr)
 
--- READ       -> "read" VAR ";"
+-- READ        -> "read" VAR ";"
 pRead
   = do
       reserved "read"
@@ -176,7 +176,7 @@ pRead
       semi
       return (Read var)
 
--- WRITE      -> "write" EXPR ";"
+-- WRITE       -> "write" EXPR ";"
 pWrite
   = do
       reserved "write"
@@ -184,8 +184,8 @@ pWrite
       semi
       return (Write expr)
 
--- CALL       -> "call" id "(" EXPRS ")" ";"
--- EXPRS      -> (EXPR ",")* EXPR | ε                 <-- `commaSep` combinator
+-- CALL        -> "call" id "(" EXPRS ")" ";"
+-- EXPRS       -> (EXPR ",")* EXPR | ε                 <-- `commaSep` combinator
 pCall
   = do
       reserved "call"
@@ -194,9 +194,9 @@ pCall
       semi
       return (Call name args)
 
--- IF         -> "if" EXPR "then" STMT+ OPT_ELSE "fi" 
--- OPT_ELSE   -> "else" STMT+ | ε
-pIf
+-- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
+-- OPT_ELSE    -> "else" STMT+ | ε
+pIfOptElse
   = do
       reserved "if"
       cond <- pExpr
@@ -208,19 +208,19 @@ pIf
         Nothing        -> return (If cond thenStmts)
         Just elseStmts -> return (IfElse cond thenStmts elseStmts)
 
--- WHILE      -> "while" EXPR "do" STMT+ "od"
+-- WHILE       -> "while" EXPR "do" STMT+ "od"
 pWhile
   = do
       reserved "while"
       cond <- pExpr
       reserved "do"
-      stmts <- many1 pStmt
+      doStmts <- many1 pStmt
       reserved "od"
-      return (While cond stmts)
+      return (While cond doStmts)
 
 
--- VAR        -> id SUBSCRIPT
--- SUBSCRIPT  -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+-- VAR         -> id SUBSCRIPT
+-- SUBSCRIPT   -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 pVar :: Parser Var
 pVar
   = do
@@ -234,23 +234,23 @@ pVar
 
 
 
--- Now, for capturing the similarity that exists between the SUBSCRIPT and DIM 
+-- Now, for capturing the similarity that exists between the SUBSCRIPT and DIM
 -- rules!
 --
 -- The Grammar rules:
--- 
---   (1) DIM        -> ε | "[" int  "]" | "[" int  "," int  "]"
---   (2) SUBSCRIPT  -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+--
+--   (1) DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
+--   (2) SUBSCRIPT   -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 --
 -- obviously have very similar structure. They are both of the form:
 --
---   S_a            -> ε | "[" a "]" | "[" a "," a "]"
+--   S_a             -> ε | "[" a "]" | "[" a "," a "]"
 --
 -- where a is either an int or an expression.
 --
 -- It's be nice to capture this similarity in some kind of parser combinator
 -- (parametrised by a parser for a) to avoid repeating code!
--- 
+--
 -- Well, we can make one! Here it is:
 
 -- suffixMaybe
@@ -262,7 +262,7 @@ suffixMaybe parser
   = optionMaybe $ brackets $ commaSepMN 1 2 parser
 
 -- This parser uses commaSepMN, a general parser combinator in the spirit of
--- parsec's commaSep and commaSep1. It's defined using the following general 
+-- parsec's commaSep and commaSep1. It's defined using the following general
 -- combinators:
 
 -- manyMN
@@ -282,11 +282,11 @@ manyMN m n p
   | otherwise  = p <:> manyMN (m-1) (n-1) p
 
 -- sepByMN
--- Insipired by parsec's sepBy1 and sepBy, this combinator allows us to 
+-- Insipired by parsec's sepBy1 and sepBy, this combinator allows us to
 -- look for a list of results from parser `p`, parsing a `sep` in between
 -- each one.
--- It mainly relies on `manyMN (m-1) (n-1) (sep >> p)' but we must take 
--- some care to treat the first instance correctly (it may be not allowed, 
+-- It mainly relies on `manyMN (m-1) (n-1) (sep >> p)' but we must take
+-- some care to treat the first instance correctly (it may be not allowed,
 -- optional, or mandatory depending on m and n) and set off the right call
 -- to manyMN.
 sepByMN :: (Parser a) -> Int -> Int -> (Parser b) -> (Parser [b])
@@ -305,7 +305,7 @@ commaSepMN
   = sepByMN comma
 
 -- (<:>)
--- 'applicative cons' operator - A mnemonic shortcut for using cons as an 
+-- 'applicative cons' operator - A mnemonic shortcut for using cons as an
 -- applicative function
 (<:>)
   = liftA2 (:) -- liftA2: it's just like: (<:>) a_x a_xs = (:) <$> a_x <*> a_xs
@@ -323,4 +323,3 @@ pExpr = do
 
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
-
