@@ -24,8 +24,12 @@ COMP90045Assignment/
 │       ├── Goat.cabal, Setup.hs        # This is a cabal project (see below)
 │       └── src/                        # code goes in here:
 │           ├── Goat.hs                   # main module; compiler entry-point
-|           ├── GoatLang/...                # parser, pretty-printer, ast
-|           ├── Util/...                    # non-Goat-specific utilities
+|           ├── GoatLang/                 # parser, pretty-printer, ast
+|           |   ├── AST.hs                  # language structure definitions
+|           |   ├── Token.hs                # lexeme parsers
+|           |   ├── Parser.hs               # program, statement, expr parsers
+|           |   └── ...                     # (we may need to create more)
+|           ├── Util/...                  # non-Goat-specific utilities
 │           └── Makefile                  # submission requires a Makefile
 └── spec/...                        # project specifications
 ```
@@ -54,21 +58,30 @@ TODO!
 
 #### Planning & Preparation Week: Tuesday 26th - Tuesday 2nd
 
-- [ ] Understand Theory (LL, LR)
-- [ ] Understand Parsec
-- [ ] Break up work into smaller subtasks, planning the implementation week
-- [ ] Review Kid Parser
-- [ ] Plan Paired Programming
-- [ ] Ask Harald Clarifying Questions
+- Understand Theory (LL, LR)
+- Understand Parsec
+- Break up work into smaller subtasks, planning the implementation week
+- Review Kid Parser
+- Create a Kid Pretty-Printer
+- Plan Paired Programming
+- Ask Harald Clarifying Questions
+
+This was mostly accomplished, with the following plan for implementation week:
 
 #### Implementation Week: Tuesday 2nd-Tuesday 9th
 
-- [ ] Start and Finish 95% of the work
-- [ ] Tuesday 9th Meeting: Decide on next steps, how to finish it off 
+- [x] Task 0: Create Goat Grammar
+- [x] Task 1: Abstract Syntax Tree
+- [ ] Task 2a: Parsec parser (work underway on branch `parser`)
+- [ ] Task 2b: Pretty-Printer (see PR#4)
+- [ ] Task 3: Testing parser and pretty-printer
+
+We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it off 
 
 #### Review Week: Tuesday 9th-Monday 15th
 
 - [ ] Complete any tasks assigned on Tuesday 9th
+- [ ] Experiment with bonus-worthy ideas
 - [ ] Review Submission
 
 
