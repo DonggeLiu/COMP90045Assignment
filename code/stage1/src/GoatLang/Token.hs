@@ -4,7 +4,10 @@ import Text.Parsec
 import Text.Parsec.Language
 import qualified Text.Parsec.Token as Token
 
-import Util.Combinators (Parser, (<:>), (<++>), sepByMN)
+import Util.Combinators ((<:>), (<++>), sepByMN)
+
+type Parser a
+  = Parsec String () a
 
 -- ----------------------------------------------------------------------------
 -- Token parser generation

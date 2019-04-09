@@ -3,15 +3,14 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
-import Util.Combinators (Parser, (<:>), (<++>))
+import Util.Combinators ((<:>), (<++>))
 
 import GoatLang.AST
 import GoatLang.Token
 
-
-
 -- ----------------------------------------------------------------------------
 -- Program parsing
+-- ----------------------------------------------------------------------------
 
 -- parseProgram
 -- top level parser for an entire program, including (eating leading whiteSpace
@@ -205,7 +204,13 @@ suffixMaybe parser
 
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
+-- ----------------------------------------------------------------------------
 
+-- Grammar for expressions:
+-- 
+-- NOTE: precedence and associativity rules not encoded in grammar; see spec.
+-- in fact this grammar was left ambiguous (for brevity)
+-- 
 -- EXPR        -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
 -- CONST       -> int | float | BOOL | string
 -- BINOP       -> "+"  | "-"  | "*"  | "/"
@@ -213,7 +218,7 @@ suffixMaybe parser
 --              | "&&" | "||"
 -- UNOP        -> "!"  | "-"
 -- 
--- NOTE: precedence and associativity rules not encoded in grammar; see spec
+
 
 -- pExpr
 -- Parse an expression into a tree with operations as nodes and terms as
