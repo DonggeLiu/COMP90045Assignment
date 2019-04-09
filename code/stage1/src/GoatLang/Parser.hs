@@ -3,7 +3,7 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
-import Util.Combinators
+import Util.Combinators (Parser, (<:>), (<++>))
 
 import GoatLang.AST
 import GoatLang.Token

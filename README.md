@@ -23,8 +23,9 @@ COMP90045Assignment/
 │   └── stage1/                       # STAGE 1 CODE
 │       ├── Goat.cabal, Setup.hs        # This is a cabal project (see below)
 │       └── src/                        # code goes in here:
-│           ├── Goat.hs                   # parser and pretty-printer
-|           ├── ...                       # (we may need to create more files)
+│           ├── Goat.hs                   # main module; compiler entry-point
+|           ├── GoatLang/...                # parser, pretty-printer, ast
+|           ├── Util/...                    # non-Goat-specific utilities
 │           └── Makefile                  # submission requires a Makefile
 └── spec/...                        # project specifications
 ```

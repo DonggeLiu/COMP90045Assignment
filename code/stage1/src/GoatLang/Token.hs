@@ -4,9 +4,7 @@ import Text.Parsec
 import Text.Parsec.Language
 import qualified Text.Parsec.Token as Token
 
-import Util.Combinators
-
-import GoatLang.AST
+import Util.Combinators (Parser, (<:>), (<++>), sepByMN)
 
 -- ----------------------------------------------------------------------------
 -- Token parser generation
@@ -118,7 +116,7 @@ stringLiteral
   = lexeme stringLiteral'
 
 -- stringLiteral
--- lexeme parser for a string literal without internal newlines or tabs
+-- (non-lexeme) parser for a string literal without internal newlines or tabs
 stringLiteral'
   = do
       char '"'
