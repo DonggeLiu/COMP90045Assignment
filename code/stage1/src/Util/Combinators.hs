@@ -1,8 +1,27 @@
 module Util.Combinators where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 1
+-- 
+--                      UTIL - ADDITIONAL GENERAL PARSER COMBINATORS
+-- 
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
+
 import Control.Applicative (liftA2)
 
 import Text.Parsec
+
+-- ----------------------------------------------------------------------------
+-- Parsing for lists of bounded size
+-- ----------------------------------------------------------------------------
 
 -- manyMN
 -- Inspired by parsec's many and many1 combinators which gives us a way to
@@ -37,6 +56,10 @@ sepByMN sep m n p
   | m == 0     = option [] $ p <:> manyMN 0 (n-1) (sep >> p)
   | otherwise  = p <:> manyMN (m-1) (n-1) (sep >> p)
 
+
+-- ----------------------------------------------------------------------------
+-- Automatically combining the results of list-producing parsers
+-- ----------------------------------------------------------------------------
 
 -- (<:>)
 -- 'applicative cons' operator - A mnemonic shortcut for using cons as an
