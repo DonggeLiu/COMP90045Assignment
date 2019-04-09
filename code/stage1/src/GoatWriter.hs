@@ -2,13 +2,13 @@ module GoatWriter where
 
 -- ----------------------------------------------------------------------------
 -- NOTE: This module is NOT to be confised with the 2007 Action film starring
--- Nicholas Cage (... and Eva Mendez. Nicholas Cage starred in at least FOUR 
+-- Nicholas Cage (... and Eva Mendez. Nicholas Cage starred in at least FOUR
 -- films in 2007---Confusing; I know!).
 --
 --                            This is not Goast Wrider.
 --
 --                                    This is...
--- 
+--
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
 --
 --                      GOAT WRITER - PRETTY-PRINTING MODULE
@@ -29,23 +29,23 @@ import Control.Monad (mapM, mapM_)
 import GoatAST
 
 
--- Our custom StringBuilder utility module provides us a monadic interface for 
+-- Our custom StringBuilder utility module provides us a monadic interface for
 -- efficiently constructing strings (using a specialised Writer Monad powered
 -- by difference lists).
--- 
+--
 import StringBuilder
--- 
+--
 -- With this, we can prettify a Goat Program using Monadic style. Yay!
 -- You can think of it as kind of like an opposite of Parsec---Complete
--- with some helpful string builders and string builder combinators defined 
+-- with some helpful string builders and string builder combinators defined
 -- for us by that file (imported above, plus some Goat-specific ones defined
 -- below)
--- 
--- Okay, let's get to it!                                  (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
+--
+-- Okay, let's get to it!                              (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
 
 
 -- prettify
--- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into 
+-- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a String, using an efficient String Builder approach.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn.
@@ -75,11 +75,11 @@ writeProc (Proc name params decls stmts)
       -- first write a line with the keyword and the procedure header
       write "proc" >> space >> write name >> space
       parens (commaSep (map writeF params)) >> newline
-      
+
       -- then proceed to write lines for each decl and stmt (indented 1 level)
-      mapM (writeDeclWith indent1) decls
+      mapM (writeDeclWith softTab) decls
       writeLn "begin"
-      mapM (writeStmtWith indent1) stmts
+      mapM (writeStmtWith softTab) stmts
 
       -- finish with the "end" keyword on its own line
       writeLn "end"
@@ -87,11 +87,17 @@ writeProc (Proc name params decls stmts)
 --                          Aren't Monads Awesome?                ___φʕ ^ᴥ^ ʔ
 
 
--- indent1
+-- softTab
 -- Helper-action to write a single level of indentation
-indent1 :: StringBuilder
-indent1
+softTab :: StringBuilder
+softTab
   = space >> space >> space >> space
+
+-- endLine
+-- Helper action to add a semicolon AND terminate the line
+endLine :: StringBuilder
+endLine
+  = semi >> newline
 
 
 -- writeDeclWith
@@ -100,7 +106,7 @@ indent1
 -- (actually, there is only one line in this case)
 writeDeclWith :: StringBuilder -> Decl -> StringBuilder
 writeDeclWith indent (Decl baseType name dim)
-  = indent >> writeF baseType >> space >> write name >> writeF dim >> endline
+  = indent >> writeF baseType >> space >> write name >> writeF dim >> endLine
 
 
 -- writeStmtWith
@@ -111,42 +117,43 @@ writeStmtWith :: StringBuilder -> Stmt -> StringBuilder
 -- For atomic statements, building will involve writing a single line
 -- with the current level of indentation (accomplished by indent)
 writeStmtWith indent (Asg var expr)
-  = indent >> writeVar var >> spaces (write ":=") >> writeExpr expr >> endline
+  = indent >> writeVar var >> spaces (write ":=") >> writeExpr expr >> endLine
 
 writeStmtWith indent (Read var)
-  = indent >> write "read" >> space >> writeVar var >> endline
+  = indent >> write "read" >> space >> writeVar var >> endLine
 
 writeStmtWith indent (Write expr)
-  = indent >> write "write" >> space >> writeExpr expr >> endline
+  = indent >> write "write" >> space >> writeExpr expr >> endLine
 
-writeStmtWith indent (Call name exprs)
+writeStmtWith indent (Call name args)
   = do
       indent >> write "call" >> space >> write name
-      parens (commaSep (map writeExpr exprs)) >> endline
+      parens (commaSep (map writeExpr args)) >> endLine
 
--- For composite statements, we will have to write some lines at the current 
+-- For composite statements, we will have to write some lines at the current
 -- level of indentation (given by indent), and also some statements at the
--- next level of indentation (using indent' = indent1 >> indent).
-writeStmtWith indent (If expr stmts)
+-- next level of indentation (using indent' = softTab >> indent).
+writeStmtWith indent (If cond thenStmts)
   = do
-      let indent' = indent1 >> indent
-      indent >> write "if" >> spaces (writeExpr expr) >> writeLn "then"
-      mapM (writeStmtWith indent') stmts
-      indent >> writeLn "fi"
-writeStmtWith indent (IfElse expr stmts1 stmts2)
-  = do
-      let indent' = indent1 >> indent
-      indent >> write "if" >> spaces (writeExpr expr) >> writeLn "then"
-      mapM (writeStmtWith indent') stmts1
-      indent >> writeLn "else"
-      mapM (writeStmtWith indent') stmts2
+      let indent' = softTab >> indent
+      indent >> write "if" >> spaces (writeExpr cond) >> writeLn "then"
+      mapM (writeStmtWith indent') thenStmts
       indent >> writeLn "fi"
 
-writeStmtWith indent (While expr stmts)
+writeStmtWith indent (IfElse cond thenStmts elseStmts)
   = do
-      let indent' = indent1 >> indent
-      indent >> write "while" >> spaces (writeExpr expr) >> writeLn "do"
-      mapM (writeStmtWith indent') stmts
+      let indent' = indent >> softTab
+      indent >> write "if" >> spaces (writeExpr cond) >> writeLn "then"
+      mapM (writeStmtWith indent') thenStmts
+      indent >> writeLn "else"
+      mapM (writeStmtWith indent') elseStmts
+      indent >> writeLn "fi"
+
+writeStmtWith indent (While cond doStmts)
+  = do
+      let indent' = softTab >> indent
+      indent >> write "while" >> spaces (writeExpr cond) >> writeLn "do"
+      mapM (writeStmtWith indent') doStmts
       indent >> writeLn "od"
 
 
@@ -155,10 +162,10 @@ writeStmtWith indent (While expr stmts)
 writeVar :: Var -> StringBuilder
 writeVar (Var0 name)
   = write name
-writeVar (Var1 name expr)
-  = write name >> brackets (writeExpr expr)
-writeVar (Var2 name expr1 expr2)
-  = write name >> brackets (commaSep (map writeExpr [expr1, expr2]))
+writeVar (Var1 name index)
+  = write name >> brackets (writeExpr index)
+writeVar (Var2 name index1 index2)
+  = write name >> brackets (commaSep (map writeExpr [index1, index2]))
 
 
 -- writeExpr
@@ -204,14 +211,14 @@ writeExprParens expr
 -- `Displayable' providing a function `format' for converting its members'
 -- values to strings, and ONE general function `writeF' for writing something
 -- of this type class to our StringBuilder.
--- 
+--
 -- NOTE: We could have overridden the implementation of `show' for these types
 -- but this way we are still able to keep the default behaviour or `show'
 -- (which is useful to enable viewing ASTs such as for debugging this module).
 -- ----------------------------------------------------------------------------
 
 -- writeF
--- Shortcut for action to write a displayable as a string using the format 
+-- Shortcut for action to write a displayable as a string using the format
 -- function (see below for Display type-class definitions)
 writeF :: (Display a) => a -> StringBuilder
 writeF d

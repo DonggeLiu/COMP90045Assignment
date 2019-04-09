@@ -78,14 +78,8 @@ newline
 -- semi
 -- To add a semicolon character
 semi :: StringBuilder
-semi 
+semi
   = write ";"
-
--- endline
--- To add a semicolon AND terminate the line
-endline :: StringBuilder
-endline
-  = semi >> newline
 
 
 -- ----------------------------------------------------------------------------
@@ -138,7 +132,7 @@ commaSep
 
 -- ----------------------------------------------------------------------------
 -- Storing lists as functions representing 'list differences' gives us efficient
--- append functionality through function composition! This will be very useful 
+-- append functionality through function composition! This will be very useful
 -- for our string builder.
 -- ----------------------------------------------------------------------------
 
