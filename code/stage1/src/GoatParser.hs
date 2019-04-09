@@ -311,27 +311,16 @@ commaSepMN
   = liftA2 (:) -- liftA2: it's just like: (<:>) a_x a_xs = (:) <$> a_x <*> a_xs
 
 
-
-
-
--- The above assumes a function named `pExpr :: Parser Expr` is defined below.
-
--- A dummy-definition for now:
-pExpr = do
-  var <- pVar
-  return (VarExpr var)
-
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
 
--- Parsing an expression for an arithmetic operator
-
+-- Parsing an expression
 pExpr :: Parser Expr
 pExpr 
   = buildExpressionParser operatorTable pTerm
 
--- Defining the operator precedence, associativity and constructors for arithmetic
--- operators
+-- Defining the operator precedence, associativity and constructors for the
+-- different operator types
 operatorTable = [ [ prefix "-" Neg ]       
                 , [ binary "*" Mul, binary "/" Div ]
                 , [ binary "+" Add, binary "-" Sub ]
@@ -339,26 +328,26 @@ operatorTable = [ [ prefix "-" Neg ]
                   , relation "<" LTh, relation "<=" LEq
                   , relation ">" GTh, relation ">=" GEq
                   ]
-                , [ Prefix "!" Not ]
+                , [ prefix "!" Not ]
                 , [ binary "&&" And ]
                 , [ binary "||" Or ]
                 ]
 
+-- The following helper functions help define the rows in the operator table
+
+-- Parses prfix operators
 prefix name op
   = Prefix (reservedOp name  >> return (UnExpr op))
 
+-- Parses binary operators
 binary name op
   = Infix (reservedOp name >> return (BinExpr op)) AssocLeft
 
+-- Parses relational operators
 relation name op
   = Infix (reservedOp name   >> return (BinExpr op )) AssocNone
 
--- Defining the terms for Boolean operators
-pBoolConst 
-  =   (reserved "true"  >> return (BoolConst True ))
-  <|> (reserved "false" >> return (BoolConst False))
-
-
+-- parsing the different terms
 pTerm = parens pExpr
       <|> pVarExpr
       <|> pBoolConst
@@ -366,10 +355,19 @@ pTerm = parens pExpr
       <|> pFloatConst
       <|> pStrConst
 
+-- VAREXPR
+pVarExpr = fmap VarExpr pVar
+
+-- BOOLCONST
+pBoolConst 
+  =   (reserved "true"  >> return (BoolConst True ))
+  <|> (reserved "false" >> return (BoolConst False))
+
+-- INTCONST
 pIntConst = fmap IntConst integer
 
+-- FLOATCONST
 pFloatConst = fmap FloatConst float
 
+-- STRCONST
 pStrConst = fmap StrConst stringLiteral
-
-pVarExpr = fmap VarExpr pVar
