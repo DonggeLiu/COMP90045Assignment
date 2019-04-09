@@ -69,20 +69,22 @@ This was mostly accomplished, with the following plan for implementation week:
 - [x] Task 0: Create Goat Grammar
 - [x] Task 1: Abstract Syntax Tree
 - [ ] Task 2a: Parsec parser (work underway on branch `parser`)
-- [ ] Task 2b: Pretty-Printer (see PR#4)
+- [x] Task 2b: Pretty-Printer (see PR#4)
 - [ ] Task 3: Testing parser and pretty-printer
 
-We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it off 
+We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it off
 
 #### Review Week: Tuesday 9th-Monday 15th
 
-- [ ] Complete any tasks assigned on Tuesday 9th
+- [ ] Complete parser
+  - [ ] Lexeme parsers (string, int, float)
+  - [ ] Language parsers (manyMN etc. to use count)
+  - [ ] Expression parser
+- [ ] Testing
+- [ ] Error reporting
 - [ ] Experiment with bonus-worthy ideas
 - [ ] Review Submission
-
-
-
-
+- [ ] Submit
 
 ## Stage 3 - Goat compiler
 
