@@ -1,0 +1,11 @@
+TEAM=PLI-DREAM-TEAM-TWENTEE-NINETEEN
+PROJ=stage1
+
+Goat: unzip
+	ghc Goat.hs
+
+unzip: $(PROJ).tar.gz
+	tar -xvf $(PROJ).tar.gz
+
+clean:
+	rm -f *.o *.hi */*.o */*.hi Goat
