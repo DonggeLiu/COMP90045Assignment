@@ -1,17 +1,31 @@
 module GoatLang.Parser where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 1
+-- 
+--                      GOAT - LANGUAGE PARSER USING PARSEC
+-- 
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
+
 import Text.Parsec
 import Text.Parsec.Expr
 
-import Util.Combinators
+import Util.Combinators ((<:>), (<++>))
 
 import GoatLang.AST
 import GoatLang.Token
 
-
-
 -- ----------------------------------------------------------------------------
 -- Program parsing
+-- ----------------------------------------------------------------------------
 
 -- parseProgram
 -- top level parser for an entire program, including (eating leading whiteSpace
@@ -32,7 +46,7 @@ pGoatProgram
       return (GoatProgram procs)
 
 -- PROC        -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
--- PARAMS      -> (PARAM ",")* PARAM | ε              <-- `commaSep` combinator
+-- PARAMS      -> (PARAM ",")* PARAM | ε
 pProc :: Parser Proc
 pProc
   = do
@@ -124,7 +138,7 @@ pWrite
       return (Write expr)
 
 -- CALL        -> "call" id "(" EXPRS ")" ";"
--- EXPRS       -> (EXPR ",")* EXPR | ε                <-- `commaSep` combinator
+-- EXPRS       -> (EXPR ",")* EXPR | ε
 pCall
   = do
       reserved "call"
@@ -199,13 +213,19 @@ suffixMaybe :: (Parser a) -> Parser (Maybe [a])
 suffixMaybe parser
   = optionMaybe $ brackets $ commaSepMN 1 2 parser
 
--- This parser uses commaSepMN, a general parser combinator in the spirit of
--- parsec's commaSep and commaSep1. It's defined in Util.Combinators.
+-- This parser uses commaSepMN, a general parser combinator defned in the
+-- spirit of parsec's commaSep and commaSep1. It's defined in Util.Combinators.
 
 
 -- ----------------------------------------------------------------------------
 -- Expression Parsing
+-- ----------------------------------------------------------------------------
 
+-- Grammar for expressions:
+-- 
+-- NOTE: precedence and associativity rules not encoded in grammar; see spec.
+-- in fact this grammar was left ambiguous (for brevity)
+-- 
 -- EXPR        -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
 -- CONST       -> int | float | BOOL | string
 -- BINOP       -> "+"  | "-"  | "*"  | "/"
@@ -213,7 +233,7 @@ suffixMaybe parser
 --              | "&&" | "||"
 -- UNOP        -> "!"  | "-"
 -- 
--- NOTE: precedence and associativity rules not encoded in grammar; see spec
+
 
 -- pExpr
 -- Parse an expression into a tree with operations as nodes and terms as

@@ -1,15 +1,36 @@
 module GoatLang.Token where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 1
+-- 
+--                      GOAT - LANGUAGE DEFINITION, LEXEME PARSERS
+-- 
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
+
 import Text.Parsec
 import Text.Parsec.Language
 import qualified Text.Parsec.Token as Token
 
-import Util.Combinators
-
-import GoatLang.AST
+import Util.Combinators ((<:>), (<++>), sepByMN)
 
 -- ----------------------------------------------------------------------------
--- Token parser generation
+-- First, a parser type to simplify type signatures
+-- ----------------------------------------------------------------------------
+
+type Parser a
+  = Parsec String () a
+
+-- ----------------------------------------------------------------------------
+-- Language definition / lexeme parser generation
+-- ----------------------------------------------------------------------------
 
 reservedNames = [ "begin", "bool", "call", "do", "else", "end", "false", "fi"
                 , "float", "if", "int", "od", "proc", "read", "ref", "then"
@@ -51,6 +72,10 @@ parens     = Token.parens     lexer -- parse inside parens
 brackets   = Token.brackets   lexer -- parse inside brackets
 commaSep   = Token.commaSep   lexer -- parse a comma-separated list
 
+
+-- ----------------------------------------------------------------------------
+-- Custom lexeme parsers
+-- ----------------------------------------------------------------------------
 
 -- Unfortunately, the out-of-box parsers for natural integers, floats, and
 -- string literals are too permissive and allow literals that would be legal
@@ -118,7 +143,7 @@ stringLiteral
   = lexeme stringLiteral'
 
 -- stringLiteral
--- lexeme parser for a string literal without internal newlines or tabs
+-- (non-lexeme) parser for a string literal without internal newlines or tabs
 stringLiteral'
   = do
       char '"'
@@ -126,6 +151,10 @@ stringLiteral'
       char '"'
       return contents
 
+
+-- ----------------------------------------------------------------------------
+-- Custom combinators
+-- ----------------------------------------------------------------------------
 
 -- Finally, we'll also want to define an enhanced version of commaSep
 -- (based on the enhanced sepByMN combinator from Util.Combinators):
