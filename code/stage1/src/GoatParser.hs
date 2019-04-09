@@ -314,52 +314,51 @@ pVar
 -- Expression Parsing
 
 -- Parsing an expression for an arithmetic operator
-arithmeticExpr :: Parser AExpr
-aExpression = buildExpressionParser aOperators aTerm
 
-
--- Parsing an expression for a boolean operator
-bExpression :: Parser BExpr
-bExpression = buildExpressionParser bOperators bTerm
+pExpr :: Parser Expr
+pExpr 
+  = buildExpressionParser operatorTable pTerm
 
 -- Defining the operator precedence, associativity and constructors for arithmetic
 -- operators
-aOperators = [ [  Prefix (reservedOp "-"   >> return (UnOp Neg        ))        ]
-             , [  Infix  (reservedOp "*"   >> return (ABinary Multiply)) AssocLeft
-                , Infix  (reservedOp "/"   >> return (ABinary Divide  )) AssocLeft ]
-             , [  Infix  (reservedOp "+"   >> return (ABinary Add     )) AssocLeft
-                , Infix  (reservedOp "-"   >> return (ABinary Subtract)) AssocLeft ]
-              ]
+operatorTable = [ [ prefix "-" Neg ]       
+                , [ binary "*" Mul, binary "/" Div ]
+                , [ binary "+" Add, binary "-" Sub ]
+                , [ relation "=" Equ, relation "!=" NEq
+                  , relation "<" LTh, relation "<=" LEq
+                  , relation ">" GTh, relation ">=" GEq
+                  ]
+                , [ Prefix "!" Not ]
+                , [ binary "&&" And ]
+                , [ binary "||" Or ]
+                ]
 
--- Defining the operator precedence, associativity and constructors for boolean
--- operators
-bOperators = [ [Prefix (reservedOp "!"  >> return (UnOp Not      ))          ]
-             , [Infix  (reservedOp "&&" >> return (BinOp And     )) AssocLeft]
-             , [Infix  (reservedOp "||" >> return (BinOp Or      )) AssocLeft]
-             ]
+prefix name op
+  = Prefix (reservedOp name  >> return (UnExpr op))
 
--- Defining the terms for arithmetic operators
-aTerm =  parens aExpression
-     <|> liftM Var identifier
-     <|> liftM IntConst integer
+binary name op
+  = Infix (reservedOp name >> return (BinExpr op)) AssocLeft
+
+relation name op
+  = Infix (reservedOp name   >> return (BinExpr op )) AssocNone
 
 -- Defining the terms for Boolean operators
-bTerm =  parens bExpression
-      <|> (reserved "true"  >> return (BoolType True ))
-      <|> (reserved "false" >> return (BoolType False))
-      <|> rExpression
-
--- Parser to handle relational expressions
-rExpression =
-  do a1 <- aExpression
-     op <- relation
-     a2 <- aExpression
-     return $ RBinary op a1 a2
+pBoolConst 
+  =   (reserved "true"  >> return (BoolConst True ))
+  <|> (reserved "false" >> return (BoolConst False))
 
 
-relation =  (reservedOp "="  >> return (BinOp Equ ))
-        <|> (reservedOp "!=" >> return (BinOp NEq ))
-        <|> (reservedOp "<"  >> return (BinOp LTh ))
-        <|> (reservedOp "<=" >> return (BinOp LEq ))
-        <|> (reservedOp ">"  >> return (BinOp GTh ))
-        <|> (reservedOp ">=" >> return (BinOp GEq ))
+pTerm = parens pExpr
+      <|> pVarExpr
+      <|> pBoolConst
+      <|> pIntConst
+      <|> pFloatConst
+      <|> pStrConst
+
+pIntConst = fmap IntConst integer
+
+pFloatConst = fmap FloatConst float
+
+pStrConst = fmap StrConst stringLiteral
+
+pVarExpr = fmap VarExpr pVar
