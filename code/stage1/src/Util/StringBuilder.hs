@@ -1,4 +1,4 @@
-module StringBuilder where
+module Util.StringBuilder where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
