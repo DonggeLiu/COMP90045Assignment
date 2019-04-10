@@ -2,9 +2,9 @@ module GoatLang.Parser where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
--- 
+--
 --                      GOAT - LANGUAGE PARSER USING PARSEC
--- 
+--
 -- Well-chosen team name:              pli-dream-team-twentee-nineteen
 -- Well-chosen team members:
 -- * Alan Ung                          alanu
@@ -213,7 +213,7 @@ suffixMaybe :: (Parser a) -> Parser (Maybe [a])
 suffixMaybe parser
   = optionMaybe $ brackets $ commaSepMN 1 2 parser
 
--- This parser uses commaSepMN, a general parser combinator defned in the
+-- This parser uses commaSepMN, a general parser combinator defined in the
 -- spirit of parsec's commaSep and commaSep1. It's defined in Util.Combinators.
 
 
@@ -222,25 +222,25 @@ suffixMaybe parser
 -- ----------------------------------------------------------------------------
 
 -- Grammar for expressions:
--- 
+--
 -- NOTE: precedence and associativity rules not encoded in grammar; see spec.
 -- in fact this grammar was left ambiguous (for brevity)
--- 
+--
 -- EXPR        -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
 -- CONST       -> int | float | BOOL | string
 -- BINOP       -> "+"  | "-"  | "*"  | "/"
 --              | "="  | "!=" | "<=" | "<"  | ">"  | ">="
 --              | "&&" | "||"
 -- UNOP        -> "!"  | "-"
--- 
+--
 
 
 -- pExpr
 -- Parse an expression into a tree with operations as nodes and terms as
--- leaves. We use parsec's buildeExpressionParser to automatically construct 
+-- leaves. We use parsec's buildeExpressionParser to automatically construct
 -- this parser according to the rules for operations and the term parser below.
 pExpr :: Parser Expr
-pExpr 
+pExpr
   = buildExpressionParser operatorTable pTerm
 
 
@@ -299,5 +299,3 @@ binary name op
 -- (not assocative)
 relation name op
   = Infix (reservedOp name   >> return (BinExpr op )) AssocNone
-
-
