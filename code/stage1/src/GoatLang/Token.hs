@@ -92,26 +92,23 @@ commaSep   = Token.commaSep   lexer -- parse a comma-separated list
 -- lexeme parser for non-negative decimal integers
 integer :: Parser Int
 integer
-  = lexeme integer'
-
--- integer'
--- (non-lexeme) parser for non-negative decimal integers
-integer' :: Parser Int
-integer'
-  = fmap read (many1 digit)
-
+  = lexeme $ fmap read (many1 digit)
 
 -- float
 -- lexeme parser for plain floating point literals (without exponentials)
 float :: Parser Float
 float
-  = lexeme float'
+  = lexeme $ fmap read (many1 digit <++> (char '.' <:> many1 digit))
 
--- float'
--- (non-lexeme) parser for plain floating point literals (without exponentials)
-float' :: Parser Float
-float'
-  = fmap read (many1 digit <++> (char '.' <:> many1 digit))
+-- stringLiteral
+-- lexeme parser for a string literal without internal newlines or tabs
+stringLiteral :: Parser String
+stringLiteral
+  = lexeme $ do
+      char '"'
+      contents <- many (noneOf "\"\n\t")
+      char '"'
+      return contents
 
 
 -- integers and floats share a common prefix, so this combination
@@ -122,34 +119,12 @@ float'
 -- lexeme parser for either an integer literal (left) or float literal (right)
 integerOrFloat :: Parser (Either Int Float)
 integerOrFloat
-  = lexeme integerOrFloat'
-
--- integerOrFloat'
--- (non-lexeme) parser for either an int literal (left) or float literal (right)
-integerOrFloat' :: Parser (Either Int Float)
-integerOrFloat'
-  = do
+  = lexeme $ do
       whole <- many1 digit
       maybeDotFrac <- optionMaybe (char '.' <:> many1 digit)
       case maybeDotFrac of
         Nothing      -> return $ Left  $ read whole
         Just dotFrac -> return $ Right $ read (whole ++ dotFrac)
-
-
--- stringLiteral
--- lexeme parser for a string literal without internal newlines or tabs
-stringLiteral :: Parser String
-stringLiteral
-  = lexeme stringLiteral'
-
--- stringLiteral
--- (non-lexeme) parser for a string literal without internal newlines or tabs
-stringLiteral'
-  = do
-      char '"'
-      contents <- many (noneOf "\"\n\t")
-      char '"'
-      return contents
 
 
 -- ----------------------------------------------------------------------------
