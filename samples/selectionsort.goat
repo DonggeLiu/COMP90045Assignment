@@ -13,7 +13,7 @@ begin
     while i < 10 do
         write "Please type number ";
         write i+1;
-        write ": "
+        write ": ";
         read numbers[i];
     od
 
@@ -31,14 +31,14 @@ begin
         od
 
         # move minimum to end of sorted prefix
-        int_swap(numbers[j], numbers[i_min]);
+        call int_swap(numbers[j], numbers[i_min]);
         j := j+1;
     od
 end
 
 # Swap two integers.
 proc int_swap (ref int a, ref int b)
-    int temp; 
+    int temp;
 begin
     temp := a;
     a := b;

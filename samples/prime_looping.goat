@@ -1,6 +1,6 @@
 # Primality checking of a (small) number by looping.
 
-proc main ():
+proc main ()
     int n;
     bool isprime;
 begin
@@ -17,9 +17,9 @@ begin
     else
         call check_prime(n, isprime);
         if isprime then
-            write " is a prime number!\n"
+            write " is a prime number!\n";
         else
-            write " is not a prime number.\n"
+            write " is not a prime number.\n";
         fi
     fi fi
 end
@@ -34,7 +34,7 @@ begin
         result := true;
     else
         i := 2; j := 2;
-        result := true
+        result := true;
 
         while i*i <= n && result = true do
             # since there is no modulo operator in Goat, this is a bit ugly

@@ -12,7 +12,7 @@ begin
     while i < 10 do
         write "Please type number ";
         write i+1;
-        write ": "
+        write ": ";
         read numbers[i];
     od
 
@@ -21,7 +21,7 @@ begin
     while i < 10 do
         j := i;
         while j > 0 && numbers[j-1] > numbers[j] do
-            int_swap(numbers[j-i], numbers[j]);
+            call int_swap(numbers[j-i], numbers[j]);
             j := j-1;
         od
         i := i+1;

@@ -16,9 +16,9 @@ begin
     else
         call check_prime(n, isprime);
         if isprime then
-            write " is a prime number!\n"
+            write " is a prime number!\n";
         else
-            write " is not a prime number.\n"
+            write " is not a prime number.\n";
         fi
     fi fi
 end
@@ -36,7 +36,7 @@ begin
     else
         # initially set all array values to true
         # note: numarray[i] refers to the primality of i' = i+2
-        i := 0
+        i := 0;
         while i < n-1 do
             numarray[i] := true;
             i := i+1;
