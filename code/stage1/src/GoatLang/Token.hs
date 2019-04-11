@@ -96,6 +96,7 @@ integer
 
 -- float
 -- lexeme parser for plain floating point literals (without exponentials)
+-- NOTE: actually this parser is not used, but is included for completeness
 float :: Parser Float
 float
   = lexeme $ fmap read (many1 digit <++> (char '.' <:> many1 digit))
