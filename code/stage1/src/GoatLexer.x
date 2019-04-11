@@ -1,6 +1,6 @@
 {
--- module Lexer (Token(..), lexer) where
-module Main (main, Token(..), lexer) where  -- for standalone testing
+module GoatLexer (Token(..), lexer) where
+-- module Main (main, Token(..), lexer) where  -- for standalone testing
 }
 
 %wrapper "basic"
@@ -46,7 +46,7 @@ rules :-
   \*                  { \s -> MUL }
   \/                  { \s -> DIV }
   -- binary relational operators
-  ==                  { \s -> EQU }
+  =                   { \s -> EQU }
   !=                  { \s -> NEQ }
   \<                  { \s -> LTH }
   \<=                 { \s -> LTE }
@@ -100,8 +100,8 @@ data Token
 
 lexer = alexScanTokens
 
-main
-  = do
-      s <- getContents
-      print (alexScanTokens s)
+-- main
+--   = do
+--       s <- getContents
+--       print (alexScanTokens s)
 }
