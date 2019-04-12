@@ -23,7 +23,7 @@ import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (prettify)
 
 -- ----------------------------------------------------------------------------
--- Expression Parsing
+-- Program entry-point
 -- ----------------------------------------------------------------------------
 
 main :: IO ()
