@@ -3,7 +3,7 @@ module Main where
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
 -- 
---                      GOAT - PARSER AND PRETTY-PRINTER
+--                               GOAT - COMPILER
 -- 
 -- Well-chosen team name:              pli-dream-team-twentee-nineteen
 -- Well-chosen team members:
@@ -15,24 +15,94 @@ module Main where
 --
 -- ----------------------------------------------------------------------------
 
-import System.Environment
 import System.Exit
+import System.Environment
+import Control.Monad (when)
+
+import GoatLang.Parser (parseProgram)
+import GoatLang.PrettyPrint (prettify)
 
 -- ----------------------------------------------------------------------------
-
--- TODO: build parser and pretty-printer
-
+-- Expression Parsing
 -- ----------------------------------------------------------------------------
 
 main :: IO ()
 main
   = do
-      progName <- getProgName
+      -- process command-line options:
+      (Opts flags sourceFileName) <- checkArgs
+
+      -- -- PARSING PHASE -- --
+
+      -- parse the contents of sourceFileName into an AST, if possible
+      sourceCode <- readFile sourceFileName
+      let parsed = parseProgram sourceFileName sourceCode
+      ast <- case parsed of
+        Left err  -> do
+            putStrLn $ "Parse error at " ++ show err
+            exitWith (ExitFailure 2)
+        Right ast -> return ast
+      
+      -- handle the parsed program:
+      when (flagIsSet 'a' flags) $ do
+        print ast
+      when (flagIsSet 'p' flags) $ do
+        putStr $ prettify ast
+
+      -- -- CODE GENERATION PHASE -- --
+
+      -- compile AST into machine code, and output executable, if possible
+      when (null flags || flagIsSet 'x' flags) $ do
+        putStrLn "Sorry, can't generate code yet!"
+
+-- ----------------------------------------------------------------------------
+-- Processing command-line options
+-- ----------------------------------------------------------------------------
+
+-- The Opts structure will hold our options for this program: a list of 
+-- flags (Chars like 'p' for pretty-printing) and a single source file name:
+data Opts = Opts [Flag] FilePath
+type Flag = Char
+
+-- flagIsSet
+-- To interrogate the list of flags (basically `elem')
+flagIsSet :: Flag -> [Flag] -> Bool
+flagIsSet f flags
+  = f `elem` flags
+
+-- checkArgs
+-- Parse command line options, either ensuring they have the correct structure
+-- or informing the user.
+checkArgs :: IO Opts
+checkArgs
+  = do
       args <- getArgs
-      case args of
-        ["-p", sourceFile] -> putStrLn "Sorry, can't parse/pretty-print yet!"
-        [sourceFile]       -> putStrLn "Sorry, can't generate code yet!"
-        _                  -> do
-                                putStr "Usage: "
-                                putStrLn $ progName ++ " [-p] source_file"
-                                exitWith $ ExitFailure 1
+      let flags     = getFlags args
+      let arguments = getArguments args
+      case arguments of
+        [sourceFileName] -> return (Opts flags sourceFileName)
+        otherwise        -> usageExit "must specifiy one sourceFileName!"
+
+-- getFlags, getArguments
+-- helper functions to extract flag characters and positional arguments
+-- from the list of all args
+getFlags  :: [String] -> [Flag]
+getFlags args
+  = concat [tail arg | arg <- args, head arg == '-']
+getArguments :: [String] -> [String]
+getArguments args
+  = [arg | arg <- args, head arg /= '-']
+
+-- usageExit
+-- does what it says: display a usage message and then exit
+usageExit :: String -> IO a
+usageExit message
+  = do
+      putStrLn $ "Argument error:\n  " ++ message
+      name <- getProgName
+      putStrLn $ "Usage: " ++ name ++ " [-a] [-p] [-x] sourceFileName"
+      putStrLn "  -x    (or no flags) compile and print executable code"
+      putStrLn "  -a    just parse and print AST"
+      putStrLn "  -p    just parse and pretty-print source code"
+      exitWith (ExitFailure 1)
+
