@@ -94,6 +94,7 @@ integer :: Parser Int
 integer
   = lexeme $ fmap read (many1 digit)
 
+
 -- float
 -- lexeme parser for plain floating point literals (without exponentials)
 -- NOTE: actually this parser is not used, but is included for completeness
@@ -101,15 +102,40 @@ float :: Parser Float
 float
   = lexeme $ fmap read (many1 digit <++> (char '.' <:> many1 digit))
 
+
 -- stringLiteral
 -- lexeme parser for a string literal without internal newlines or tabs
 stringLiteral :: Parser String
 stringLiteral
   = lexeme $ do
       char '"'
-      contents <- many (noneOf "\"\n\t")
+      contents <- many stringChar
       char '"'
       return contents
+
+-- stringChar
+-- parser for a single string character, including possibly an escaped newline
+stringChar :: Parser Char
+stringChar
+  = do
+      -- parse some allowed string literal character
+      nextChar <- noneOf "\"\n\t" -- literal quote, newline and tab not allowed
+      
+      -- check incase it's actually the start of an escaped character combo
+      -- (for Goat, the only possible combo is `\` `n` --> '\n')
+      case nextChar of
+        '\\' -> escapedChar
+        _    -> return nextChar
+
+-- escapedChar
+-- parser for a single string character after we have just seen a `\`.
+-- according to the lexical rules for Goat, if we see an `n` next, we should
+-- consider the `\` and `n` combo as a newline character '\n'; and if not, we
+-- should consider the `\` to be a charachter on its own (Haskell '\\').
+escapedChar :: Parser Char
+escapedChar
+  =   (char 'n' >> return '\n')
+  <|> (return '\\')
 
 
 -- integers and floats share a common prefix, so this combination

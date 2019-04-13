@@ -1,4 +1,4 @@
-Goat: *.hs
+Goat: *.hs */*.hs
 	ghc Goat.hs
 
 clean:
