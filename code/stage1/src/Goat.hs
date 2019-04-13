@@ -2,9 +2,9 @@ module Main where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
--- 
+--
 --                               GOAT - COMPILER
--- 
+--
 -- Well-chosen team name:              pli-dream-team-twentee-nineteen
 -- Well-chosen team members:
 -- * Alan Ung                          alanu
@@ -18,6 +18,7 @@ module Main where
 import System.Exit
 import System.Environment
 import Control.Monad (when)
+import Data.List
 
 import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (prettify)
@@ -42,7 +43,7 @@ main
             putStrLn $ "Parse error at " ++ show err
             exitWith (ExitFailure 2)
         Right ast -> return ast
-      
+
       -- handle the parsed program:
       when (flagIsSet 'a' flags) $ do
         print ast
@@ -59,10 +60,13 @@ main
 -- Processing command-line options
 -- ----------------------------------------------------------------------------
 
--- The Opts structure will hold our options for this program: a list of 
+-- The Opts structure will hold our options for this program: a list of
 -- flags (Chars like 'p' for pretty-printing) and a single source file name:
 data Opts = Opts [Flag] FilePath
 type Flag = Char
+
+-- List of valid flags
+validFlags = "xaph"
 
 -- flagIsSet
 -- To interrogate the list of flags (basically `elem')
@@ -80,11 +84,15 @@ checkArgs
       let flags = getFlags args
       when (flagIsSet 'h' flags) $ do
         helpExit
+      let invalidFlags = nub flags \\ validFlags
+      when (not $ null invalidFlags) $ do
+        usageExit ("Invalid flag(s): " ++ (intersperse ',' invalidFlags))
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        otherwise        -> usageExit $ "must specify a file with flags "
-                                        ++ (concat args)
+        []               -> usageExit $ "missing required argument: file"
+        (_:excess)       -> usageExit $ "excess argument(s): "
+                                        ++ intercalate ", " excess
 
 -- getFlags, getArguments
 -- helper functions to extract flag characters and positional arguments
@@ -127,5 +135,5 @@ usageStr name = "Usage: " ++ name ++ " [option] [file]\n"
         ++ "  -a    : parse the file and print the AST\n"
         ++ "  -p    : parse the file and pretty-print its source code\n"
         ++ "  -h    : print this help message and exit\n"
-        ++ "  file  : path to goat (.gt) file containing a Goat program."
-        ++ " Required argument for -x, -a and -p."
+        ++ "  file  : path to goat (.gt) file containing Goat source code.\n"
+        ++ "          Required argument for -x, -a and -p."
