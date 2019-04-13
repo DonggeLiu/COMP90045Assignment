@@ -43,7 +43,7 @@ pFullProgram
   = between whiteSpace eof pGoatProgram
 
 -- after that, we'll just need (roughly) one parser per grammar non-terminal
--- (see grammar.txt).
+-- (see grammar.txt in the same directory as this file).
 
 -- GOAT        -> PROC+
 pGoatProgram :: Parser GoatProgram

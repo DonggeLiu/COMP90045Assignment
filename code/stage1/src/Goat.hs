@@ -77,11 +77,13 @@ checkArgs :: IO Opts
 checkArgs
   = do
       args <- getArgs
-      let flags     = getFlags args
+      let flags = getFlags args
+      when (flagIsSet 'h' flags) $ do
+        helpExit
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        otherwise        -> usageExit "must specifiy one sourceFileName!"
+        otherwise        -> usageExit "must specify one sourceFileName!"
 
 -- getFlags, getArguments
 -- helper functions to extract flag characters and positional arguments
@@ -94,15 +96,35 @@ getArguments args
   = [arg | arg <- args, head arg /= '-']
 
 -- usageExit
--- does what it says: display a usage message and then exit
+-- does what it says: display a usage message and then exit (with failure)
 usageExit :: String -> IO a
 usageExit message
   = do
       putStrLn $ "Argument error:\n  " ++ message
       name <- getProgName
-      putStrLn $ "Usage: " ++ name ++ " [-a] [-p] [-x] sourceFileName"
-      putStrLn "  -x    (or no flags) compile and print executable code"
-      putStrLn "  -a    just parse and print AST"
-      putStrLn "  -p    just parse and pretty-print source code"
+      putStrLn $ usageStr name
       exitWith (ExitFailure 1)
 
+-- helpExit
+-- Displays a message with usage information and then exits successfully.
+helpExit :: IO a
+helpExit
+  = do
+      putStrLn $ concat $ replicate 80 "="
+      putStrLn $ "Goat Compiler Usage Information"
+      putStrLn $ concat $ replicate 80 "="
+      name <- getProgName
+      putStrLn $ usageStr name
+      exitSuccess
+
+-- usageStr
+-- Simply takes the name of the program and returns the formatted usage message
+usageStr :: String -> String
+usageStr name = "Usage: " ++ name ++ " [option] [file]\n"
+        ++ "Options and arguments: \n"
+        ++ "  -x    : (or no flags) compile the file & print executable code\n"
+        ++ "  -a    : parse the file and print the AST\n"
+        ++ "  -p    : parse the file and pretty-print its source code\n"
+        ++ "  -h    : print this help message and exit\n"
+        ++ "  file  : file containing a Goat program."
+        ++ " Required argument for -x, -a and -p."
