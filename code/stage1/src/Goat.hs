@@ -83,7 +83,8 @@ checkArgs
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        otherwise        -> usageExit "must specify one sourceFileName!"
+        otherwise        -> usageExit $ "must specify a path/to/file.gt with"
+                                        ++ " flags " ++ (concat args)
 
 -- getFlags, getArguments
 -- helper functions to extract flag characters and positional arguments
