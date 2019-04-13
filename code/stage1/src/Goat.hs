@@ -17,8 +17,8 @@ module Main where
 
 import System.Exit
 import System.Environment
-import Control.Monad (when)
-import Data.List
+import Control.Monad (when, unless)
+import Data.List (nub, intersperse, intercalate, (\\))
 
 import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (prettify)
@@ -46,15 +46,15 @@ main
 
       -- handle the parsed program:
       when (flagIsSet 'a' flags) $ do
-        print ast
+          print ast
       when (flagIsSet 'p' flags) $ do
-        putStr $ prettify ast
+          putStr $ prettify ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-        putStrLn "Sorry, can't generate code yet!"
+          putStrLn "Sorry, can't generate code yet!"
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options
@@ -62,17 +62,20 @@ main
 
 -- The Opts structure will hold our options for this program: a list of
 -- flags (Chars like 'p' for pretty-printing) and a single source file name:
-data Opts = Opts [Flag] FilePath
-type Flag = Char
-
--- List of valid flags
-validFlags = "xaph"
+data Opts
+  = Opts [Flag] FilePath
+type Flag
+  = Char
 
 -- flagIsSet
 -- To interrogate the list of flags (basically `elem')
 flagIsSet :: Flag -> [Flag] -> Bool
 flagIsSet f flags
   = f `elem` flags
+
+-- List of valid flags
+validFlags
+  = "xaph"
 
 -- checkArgs
 -- Parse command line options, either ensuring they have the correct structure
@@ -83,15 +86,15 @@ checkArgs
       args <- getArgs
       let flags = getFlags args
       when (flagIsSet 'h' flags) $ do
-        helpExit
+          helpExit
       let invalidFlags = flags \\ validFlags
-      when (not $ null invalidFlags) $ do
-        usageExit ("Invalid flag(s): " ++ (intersperse ',' invalidFlags))
+      unless (null invalidFlags) $ do
+          errorExit $ "invalid flag(s): " ++ (intersperse ',' invalidFlags)
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        []               -> usageExit $ "missing required argument: file"
-        (_:excess)       -> usageExit $ "excess positional argument(s): "
+        []               -> errorExit $ "missing required argument: file"
+        (_:excess)       -> errorExit $ "excess positional argument(s): "
                                         ++ intercalate ", " excess
 
 -- getFlags, getArguments
@@ -104,36 +107,83 @@ getArguments :: [String] -> [String]
 getArguments args
   = [arg | arg <- args, head arg /= '-']
 
--- usageExit
--- does what it says: display a usage message and then exit (with failure)
-usageExit :: String -> IO a
-usageExit message
-  = do
-      putStrLn $ "Argument error:\n  " ++ message
-      name <- getProgName
-      putStrLn $ usageStr name
-      exitWith (ExitFailure 1)
-
 -- helpExit
--- Displays a message with usage information and then exits successfully.
+-- Display a message with usage information and then exit successfully.
 helpExit :: IO a
 helpExit
   = do
-      putStrLn $ concat $ replicate 80 "="
-      putStrLn $ "Goat Compiler Usage Information"
-      putStrLn $ concat $ replicate 80 "="
-      name <- getProgName
-      putStrLn $ usageStr name
+      printUsage
+      printGoat
       exitSuccess
 
--- usageStr
--- Simply takes the name of the program and returns the formatted usage message
-usageStr :: String -> String
-usageStr name = "Usage: " ++ name ++ " [option] [file]\n"
-        ++ "Options and arguments: \n"
-        ++ "  -x    : (or no flags) compile the file & print executable code\n"
-        ++ "  -a    : parse the file and print the AST\n"
-        ++ "  -p    : parse the file and pretty-print its source code\n"
-        ++ "  -h    : print this help message and exit\n"
-        ++ "  file  : path to goat (.gt) file containing Goat source code.\n"
-        ++ "          Required argument for -x, -a and -p."
+-- errorExit
+-- Display an error message and then exit (with failure)
+errorExit :: String -> IO a
+errorExit problem
+  = do
+      putStrLn $ "Argument error:\n  " ++ problem
+      printUsage
+      exitWith (ExitFailure 1)
+
+-- printUsage
+-- Simply print a formatted usage message
+printUsage :: IO ()
+printUsage
+   = do
+      name <- getProgName
+      putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p] [file]\n"
+      putStrLn "Options and arguments:"
+      putStrLn "  -x    : (or no flags) compile the file & print executable code"
+      putStrLn "  -a    : parse the file and print the AST"
+      putStrLn "  -p    : parse the file and pretty-print its source code"
+      putStrLn "  -h    : print this help message and exit"
+      putStrLn "  file  : path to goat (.gt) file containing Goat source code"
+      putStrLn "          (required argument for -x, -a and -p)"
+
+-- printGoat
+-- Simply print a formatted goat.
+printGoat :: IO ()
+printGoat
+  = do
+      putStrLn "                                    .--____."
+      putStrLn "         ,_____._,                ,~-__,__,;\\"
+      putStrLn "       ,/ /  / /~,\\              ~'-_ ,~_/__--\\"
+      putStrLn "     ,~'\\/__:_; / ~\\,_          /-__ ~\\/  \\\";/,\\"
+      putStrLn "    / \\ ,/\\_\\_~\\ /  /|,';;;;`,|\\  /\\/     \\=/- |"
+      putStrLn "   ~--,/_/__  \\ ~\\ |  `._____.'  |/\\/     __---=--"
+      putStrLn "  /==/./ \\ /\\  ;\\~\\_\\          _/\\/,,__--'._/-' `"
+      putStrLn " |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
+      putStrLn " |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
+      putStrLn "  \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
+      putStrLn "   \\______,/; ;   ;;\\ @|\\  | /|@|;: \\__\\__\\_/"
+      putStrLn "             ;   ;;;|\\/' \\ |/ '\\/;;"
+      putStrLn "            ;   ;;;;\\  {  \\|' }/;:'"
+      putStrLn "            ;  ;;;;;:| {   |  }|;'"
+      putStrLn "          ;' ::::::;/    ./ \\  \\"
+      putStrLn "           `,'`'`';/   ./    \\  \\_"
+      putStrLn "              '''|____/   \\__/\\___|"
+      putStrLn "                      \\_.  / _/"
+      putStrLn "             valkyrie    \\/\\/"
+-- goat from: http://www.ascii-art.de/ascii/ghi/goat.txt
+-- note: above string is escaped; it will come out like this:
+--                                    .--____.
+--         ,_____._,                ,~-__,__,;\
+--       ,/ /  / /~,\              ~'-_ ,~_/__--\
+--     ,~'\/__:_; / ~\,_          /-__ ~\/  \";/,\
+--    / \ ,/\_\_~\ /  /|,';;;;`,|\  /\/     \=/- |
+--   ~--,/_/__  \ ~\ |  `._____.'  |/\/     __---=--
+--  /==/./ \ /\  ;\~\_\          _/\/,,__--'._/-' `
+-- |==|/    \==\;  ;\|  , \ \ / /L /::/ \,~~ |==|-|
+-- |//\\,__/== |: ;  |L_\  \ V / /L::/-__/  /=/-,|
+--  \ / | | \ /: ;  ;\ |\\  \ / //|: |__\_/=/--/,,
+--   \______,/; ;   ;;\ @|\  | /|@|;: \__\__\_/
+--             ;   ;;;|\/' \ |/ '\/;;
+--            ;   ;;;;\  {  \|' }/;:'
+--            ;  ;;;;;:| {   |  }|;'
+--          ;' ::::::;/    ./ \  \
+--           `,'`'`';/   ./    \  \_
+--              '''|____/   \__/\___|
+--                      \_.  / _/
+--             valkyrie    \/\/
+
+
