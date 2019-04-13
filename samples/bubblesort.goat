@@ -26,7 +26,7 @@ begin
         i := 0;
         while i < n-1 do
             if numbers[i] > numbers[i+1] then
-                int_swap(numbers[i], numbers[i+1]);
+                call int_swap(numbers[i], numbers[i+1]);
                 swapped := true;
             fi
             i := i+1;
