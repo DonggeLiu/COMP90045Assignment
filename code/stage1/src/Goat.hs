@@ -83,8 +83,8 @@ checkArgs
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        otherwise        -> usageExit $ "must specify a path/to/file.gt with"
-                                        ++ " flags " ++ (concat args)
+        otherwise        -> usageExit $ "must specify a file with flags "
+                                        ++ (concat args)
 
 -- getFlags, getArguments
 -- helper functions to extract flag characters and positional arguments
@@ -127,5 +127,5 @@ usageStr name = "Usage: " ++ name ++ " [option] [file]\n"
         ++ "  -a    : parse the file and print the AST\n"
         ++ "  -p    : parse the file and pretty-print its source code\n"
         ++ "  -h    : print this help message and exit\n"
-        ++ "  file  : file containing a Goat program."
+        ++ "  file  : path to goat (.gt) file containing a Goat program."
         ++ " Required argument for -x, -a and -p."
