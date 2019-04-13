@@ -84,14 +84,14 @@ checkArgs
       let flags = getFlags args
       when (flagIsSet 'h' flags) $ do
         helpExit
-      let invalidFlags = nub flags \\ validFlags
+      let invalidFlags = flags \\ validFlags
       when (not $ null invalidFlags) $ do
         usageExit ("Invalid flag(s): " ++ (intersperse ',' invalidFlags))
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
         []               -> usageExit $ "missing required argument: file"
-        (_:excess)       -> usageExit $ "excess argument(s): "
+        (_:excess)       -> usageExit $ "excess positional argument(s): "
                                         ++ intercalate ", " excess
 
 -- getFlags, getArguments
@@ -99,7 +99,7 @@ checkArgs
 -- from the list of all args
 getFlags  :: [String] -> [Flag]
 getFlags args
-  = concat [tail arg | arg <- args, head arg == '-']
+  = nub $ concat [tail arg | arg <- args, head arg == '-']
 getArguments :: [String] -> [String]
 getArguments args
   = [arg | arg <- args, head arg /= '-']
