@@ -21,12 +21,12 @@ begin
     n := 10;            # current length of unsorted portion
     swapped := true;    # flag to indicate whether swap was performed
 
-    while swapped := true do
+    while swapped = true do
         swapped := false;
         i := 0;
         while i < n-1 do
             if numbers[i] > numbers[i+1] then
-                int_swap(numbers[i], numbers[i+1]);
+                call int_swap(numbers[i], numbers[i+1]);
                 swapped := true;
             fi
             i := i+1;
