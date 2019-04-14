@@ -23,9 +23,18 @@ COMP90045Assignment/
 │   └── stage1/                       # STAGE 1 CODE
 │       ├── Goat.cabal, Setup.hs        # This is a cabal project (see below)
 │       └── src/                        # code goes in here:
-│           ├── Goat.hs                   # entry-point to compiler program
-|           ├── GoatAST.hs                # language structure definitions
-|           ├── ...                       # (we may need to create more files)
+│           ├── Goat.hs                   # main module; compiler entry-point
+|           ├── GoatLang/                 # parser, pretty-printer, ast
+|           |   ├── grammar.txt             # describes Goat program syntax
+|           |   ├── AST.hs                  # language structure definitions
+|           |   ├── Token.hs                # lexeme parsers
+|           |   ├── Parser.hs               # program, statement, expr parsers
+|           |   ├── PrettyPrint.hs          # converting programs to strings
+|           |   └── ...                     # (we may need to create more)
+|           ├── Util/...                  # non-Goat-specific utilities
+|           |   ├── Combinators.hs          # additional parser combinators
+|           |   ├── StringBuilder.hs        # efficient monadic string building
+|           |   └── ...                     # (we may need to create more)
 │           └── Makefile                  # submission requires a Makefile
 └── spec/...                        # project specifications
 ```
@@ -76,10 +85,10 @@ We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it
 
 #### Review Week: Tuesday 9th-Monday 15th
 
-- [ ] Complete parser
-  - [ ] Lexeme parsers (string, int, float)
-  - [ ] Language parsers (manyMN etc. to use count)
-  - [ ] Expression parser
+- [x] Complete parser
+  - [x] Lexeme parsers (string, int, float)
+  - [x] Language parsers (still TODO (if time): manyMN etc. to use count)
+  - [x] Expression parser
 - [ ] Testing
 - [ ] Error reporting
 - [ ] Experiment with bonus-worthy ideas

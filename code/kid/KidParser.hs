@@ -1,6 +1,8 @@
 module Main where
 
 import KidAST
+import KidFormat
+
 import Data.Char
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
@@ -19,15 +21,15 @@ lexer
      , Q.nestedComments  = True
      , Q.identStart      = letter
      , Q.opStart         = oneOf "+-*:"
-     , Q.opLetter        = oneOf "+-*:"
+     , Q.opLetter        = oneOf "+-*:" -- mistake? missing =?
      , Q.reservedNames   = myReserved
      , Q.reservedOpNames = myOpnames
      })
 
 whiteSpace = Q.whiteSpace lexer
 lexeme     = Q.lexeme lexer
-natural    = Q.natural lexer
-identifier = Q.identifier lexer
+natural    = Q.natural lexer    -- mistake? this will allow tokens like 0x42
+identifier = Q.identifier lexer 
 colon      = Q.colon lexer
 semi       = Q.semi lexer
 comma      = Q.comma lexer
@@ -135,7 +137,7 @@ pExp
 pString 
   = do
       char '"'
-      str <- many (satisfy (/= '"'))
+      str <- many (satisfy (/= '"')) -- mistake? this will parse actual newlines
       char '"'
       return (StrConst str)
     <?>
@@ -211,7 +213,11 @@ main
        ; input <- readFile (head args)
        ; let output = runParser pMain 0 "" input
        ; case output of
-           Right ast -> print ast
+           Right ast -> do { putStrLn "Abstract syntax tree:"
+                           ; print ast
+                           ; putStrLn "Pretty-printed program:"
+                           ; putStr $ prettifyKP ast
+                           }
            Left  err -> do { putStr "Parse error at "
                            ; print err
                            }

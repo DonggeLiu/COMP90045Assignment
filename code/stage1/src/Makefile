@@ -2,7 +2,7 @@ Goat: *.hs
 	ghc Goat.hs
 
 clean:
-	rm -f *.o *.hi Goat
+	rm -f *.o *.hi */*.o */*.hi Goat
 
 lexer: GoatLexer.x
 	alex GoatLexer.x
