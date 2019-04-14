@@ -1,6 +1,7 @@
 {
--- module GoatLang.LALRParser where
-module Main (main, parse) where   -- for standalone testing
+module GoatLang.LALRParser where
+-- module Main (main, parse) where   -- for standalone testing
+
 import GoatLang.Lexer
 import GoatLang.AST
 
@@ -186,8 +187,8 @@ spaced_list :: [String] -> String
 spaced_list
   = concat . intersperse " "
 
-main
-  = do
-      s <- getContents
-      print (parse s)
+-- main
+--  = do
+--      s <- getContents
+--      print (parse s)
 }

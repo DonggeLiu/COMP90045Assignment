@@ -1,13 +1,15 @@
-Goat: *.hs
+all: Goat
+
+Goat: Goat.hs */*.hs
 	ghc Goat.hs
 
-clean:
-	rm -f *.o *.hi */*.o */*.hi Goat
-
+Bug: Bug.hs Goat lexer parser
+	ghc Bug.hs
 lexer: GoatLang/Lexer.x
 	alex GoatLang/Lexer.x
-	ghc GoatLang/Lexer.hs
-
 parser: lexer GoatLang/LALRParser.y
 	happy GoatLang/LALRParser.y
-	ghc GoatLang/LALRParser.hs
+
+clean:
+	rm -f *.o *.hi */*.o */*.hi Goat Bug
+
