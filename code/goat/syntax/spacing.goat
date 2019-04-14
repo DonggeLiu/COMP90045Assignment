@@ -131,4 +131,7 @@ n
 
 )
 begin	#???
+    write
+    "at least one statement, right?"
+    ;
 end

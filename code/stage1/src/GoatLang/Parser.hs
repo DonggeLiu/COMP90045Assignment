@@ -18,8 +18,6 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
-import Util.Combinators ((<:>), (<++>))
-
 import GoatLang.AST
 import GoatLang.Token
 
@@ -114,7 +112,7 @@ pDim
 -- STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
 pStmt :: Parser Stmt
 pStmt
-  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile]
+  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile] <?> "statement"
 
 -- Each of these statement helper parsers also return Stmts:
 pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
