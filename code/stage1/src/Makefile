@@ -3,11 +3,11 @@ all: Goat
 Goat: Goat.hs */*.hs
 	ghc Goat.hs
 
-Bug: Bug.hs Goat lexer parser
+Bug: Bug.hs */*.hs
 	ghc Bug.hs
-lexer: GoatLang/Lexer.x
+GoatLang/Lexer.hs: GoatLang/Lexer.x
 	alex GoatLang/Lexer.x
-parser: lexer GoatLang/LALRParser.y
+GoatLang/LALRParser.hs: GoatLang/Lexer.hs GoatLang/LALRParser.y
 	happy GoatLang/LALRParser.y
 
 clean:
