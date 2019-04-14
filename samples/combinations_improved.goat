@@ -1,0 +1,65 @@
+# Program to compute the number of combinations of selection size r from a
+# collection of n items. (improved approach)
+
+proc main ()
+    int n;
+    int r;
+    int combos;
+begin
+    write "Combinations calculator.\n";
+    write "Enter collection size (n): ";
+    read n;
+    write "Enter selection size (r): ";
+    read r;
+
+    if n < 0 || r > n then
+        write "Bad input. n must be non-negative and r must not exceed n.\n";
+    else
+        call nCr(n, r, combos);
+        write "There are ";
+        write combos;
+        write " combinations of size ";
+        write r;
+        write " from a collection of ";
+        write n;
+        write " items.\n";
+    fi
+end
+
+# Calculate the number of combinations of size r from collection of size n.
+# Exploit the fact that not all factorials need to be calculated, as (n-r)!
+# partially cancels out n! in the combination formula: n! / (r!(n-r)!).
+# For example, 15C4 = 15*14*13*12 / 4!
+proc nCr (val int n, val int r, ref int result)
+    int i;
+    int numerator;
+    int rfact;
+begin
+    # calculate denominator
+    call fact(r, rfact);
+
+    # calculate numerator
+    i := n-r + 1; numerator := 1;
+    while i <= n do
+        numerator := numerator * i;
+        i := i+1;
+    od
+
+    result := numerator / rfact;
+end
+
+# Calculate the factorial of a number iteratively.
+# If n is negative, result := -1.
+proc fact (val int n, ref int result)
+    int i;
+begin
+    if n < 0 then
+        result := -1;
+    else
+        i := 1; result := 1;
+        while i <= n do
+            result := result * i;
+            i := i+1;
+        od
+    fi
+end
