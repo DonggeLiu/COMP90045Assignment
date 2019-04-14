@@ -1,0 +1,394 @@
+TEST pParam
+  val val var
+  val ref var
+  ref val var
+  ref ref var
+  bool val var
+  bool ref var
+  float val var
+  float ref var
+  int val var
+  int ref var
+  VAL bool var
+  REF bool var
+  Val bool var
+  Ref bool var
+  vAL bool var
+  rEF bool var
+  bool bool var
+  val' bool var
+  ref' bool var
+  val _ var
+  val bool _
+  val _ _
+  val bool true
+  val bool "hello"
+  val bool 42
+  val bool 3.14
+
+TEST pDecl
+  bool;
+  bool _;
+  bool ';
+  bool (;
+  bool );
+  bool [;
+  bool ];
+  bool +;
+  bool -;
+  bool *;
+  bool /;
+  bool !;
+  bool ||;
+  bool &&;
+  bool =;
+  bool !=;
+  bool <;
+  bool <=;
+  bool >;
+  bool >=;
+  bool "var";
+  bool _var;
+  bool 'var;
+  bool 0var;
+  bool var
+  float;
+  float _;
+  float ';
+  float (;
+  float );
+  float [;
+  float ];
+  float +;
+  float -;
+  float *;
+  float /;
+  float !;
+  float ||;
+  float &&;
+  float =;
+  float !=;
+  float <;
+  float <=;
+  float >;
+  float >=;
+  float "var";
+  float _var;
+  float 'var;
+  float 0var;
+  float var
+  int;
+  int _;
+  int ';
+  int (;
+  int );
+  int [;
+  int ];
+  int +;
+  int -;
+  int *;
+  int /;
+  int !;
+  int ||;
+  int &&;
+  int =;
+  int !=;
+  int <;
+  int <=;
+  int >;
+  int >=;
+  int "var";
+  int _var;
+  int 'var;
+  int 0var;
+  int var
+  bool begin;
+  bool bool;
+  bool call;
+  bool do;
+  bool else;
+  bool end;
+  bool false;
+  bool fi;
+  bool float;
+  bool if;
+  bool int;
+  bool od;
+  bool proc;
+  bool read;
+  bool ref;
+  bool then;
+  bool true;
+  bool val;
+  bool while;
+  bool write;
+  bool BEGIN;
+  bool BOOL;
+  bool CALL;
+  bool DO;
+  bool ELSE;
+  bool END;
+  bool FALSE;
+  bool FI;
+  bool FLOAT;
+  bool IF;
+  bool INT;
+  bool OD;
+  bool PROC;
+  bool READ;
+  bool REF;
+  bool THEN;
+  bool TRUE;
+  bool VAL;
+  bool WHILE;
+  bool WRITE;
+  bool Begin;
+  bool Bool;
+  bool Call;
+  bool Do;
+  bool Else;
+  bool End;
+  bool False;
+  bool Fi;
+  bool Float;
+  bool If;
+  bool Int;
+  bool Od;
+  bool Proc;
+  bool Read;
+  bool Ref;
+  bool Then;
+  bool True;
+  bool Val;
+  bool While;
+  bool Write;
+  bool bEGIN;
+  bool bOOL;
+  bool cALL;
+  bool dO;
+  bool eLSE;
+  bool eND;
+  bool fALSE;
+  bool fI;
+  bool fLOAT;
+  bool iF;
+  bool iNT;
+  bool oD;
+  bool pROC;
+  bool rEAD;
+  bool rEF;
+  bool tHEN;
+  bool tRUE;
+  bool vAL;
+  bool wHILE;
+  bool wRITE;
+  float begin;
+  float bool;
+  float call;
+  float do;
+  float else;
+  float end;
+  float false;
+  float fi;
+  float float;
+  float if;
+  float int;
+  float od;
+  float proc;
+  float read;
+  float ref;
+  float then;
+  float true;
+  float val;
+  float while;
+  float write;
+  float BEGIN;
+  float BOOL;
+  float CALL;
+  float DO;
+  float ELSE;
+  float END;
+  float FALSE;
+  float FI;
+  float FLOAT;
+  float IF;
+  float INT;
+  float OD;
+  float PROC;
+  float READ;
+  float REF;
+  float THEN;
+  float TRUE;
+  float VAL;
+  float WHILE;
+  float WRITE;
+  float Begin;
+  float Bool;
+  float Call;
+  float Do;
+  float Else;
+  float End;
+  float False;
+  float Fi;
+  float Float;
+  float If;
+  float Int;
+  float Od;
+  float Proc;
+  float Read;
+  float Ref;
+  float Then;
+  float True;
+  float Val;
+  float While;
+  float Write;
+  float bEGIN;
+  float bOOL;
+  float cALL;
+  float dO;
+  float eLSE;
+  float eND;
+  float fALSE;
+  float fI;
+  float fLOAT;
+  float iF;
+  float iNT;
+  float oD;
+  float pROC;
+  float rEAD;
+  float rEF;
+  float tHEN;
+  float tRUE;
+  float vAL;
+  float wHILE;
+  float wRITE;
+  int begin;
+  int bool;
+  int call;
+  int do;
+  int else;
+  int end;
+  int false;
+  int fi;
+  int float;
+  int if;
+  int int;
+  int od;
+  int proc;
+  int read;
+  int ref;
+  int then;
+  int true;
+  int val;
+  int while;
+  int write;
+  int BEGIN;
+  int BOOL;
+  int CALL;
+  int DO;
+  int ELSE;
+  int END;
+  int FALSE;
+  int FI;
+  int FLOAT;
+  int IF;
+  int INT;
+  int OD;
+  int PROC;
+  int READ;
+  int REF;
+  int THEN;
+  int TRUE;
+  int VAL;
+  int WHILE;
+  int WRITE;
+  int Begin;
+  int Bool;
+  int Call;
+  int Do;
+  int Else;
+  int End;
+  int False;
+  int Fi;
+  int Float;
+  int If;
+  int Int;
+  int Od;
+  int Proc;
+  int Read;
+  int Ref;
+  int Then;
+  int True;
+  int Val;
+  int While;
+  int Write;
+  int bEGIN;
+  int bOOL;
+  int cALL;
+  int dO;
+  int eLSE;
+  int eND;
+  int fALSE;
+  int fI;
+  int fLOAT;
+  int iF;
+  int iNT;
+  int oD;
+  int pROC;
+  int rEAD;
+  int rEF;
+  int tHEN;
+  int tRUE;
+  int vAL;
+  int wHILE;
+  int wRITE;
+
+TEST pDim
+  []
+  [][]
+  [42][]
+  [][42]
+  [[]]
+  [[]][[]]
+  [][[]]
+  [[]][]
+  [[42]]
+  [[42]][[42]]
+  [42][[42]]
+  [[42]][42]
+  ["hello"]
+  ["hello"]["harald"]
+  [yarra][trams]
+  ["COMP"][90045]
+  [90045]["COMP"]
+  [1][2][3]
+  [3.14]
+  [3.14][42]
+  [42][3.14]
+  [3.14][2.72]
+  [42.]
+  [.42]
+  [42hello]
+  [42_]
+  [42+]
+
+  TEST pAsg
+    var = 1;
+    var :=;
+    := 42;
+    var := read;
+    foo < bar := true;
+    var +:= 1;
+    "var" := true;
+    true := var;
+    [] := 42;
+    [var] := 42;
+    var[] := 42;
+    var[][] := 42;
+    var[[0]] := 42;
+    var := call factorial(n);
+    var := factorial(n);
+    var := main();
+    var := +;
+    -var := 42;
+    !var := false;
