@@ -1,0 +1,6 @@
+# Prints "Hello, Harald!" (that's all).
+
+proc main ()
+begin
+    write "Hello, Harald!\n";
+end

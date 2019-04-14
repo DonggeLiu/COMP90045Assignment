@@ -1,0 +1,46 @@
+# Insertion sort of 10 numbers.
+
+proc main ()
+    int numbers[10];
+    int i;
+    int j;
+    int i_min;
+begin
+    write "Selection sort of 10 numbers!\n";
+
+    # prompt user for 10 numbers
+    i := 0;
+    while i < 10 do
+        write "Please type number ";
+        write i+1;
+        write ": ";
+        read numbers[i];
+    od
+
+    # sorting
+    j := 0;     # length of sorted prefix
+    while j < 10 do
+        # find minimum of unsorted suffix
+        i_min := j;
+        i := j+1;
+        while i < 10 do
+            if numbers[i] < numbers[i_min] then
+                i_min := i;
+            fi
+            i := i+1;
+        od
+
+        # move minimum to end of sorted prefix
+        call int_swap(numbers[j], numbers[i_min]);
+        j := j+1;
+    od
+end
+
+# Swap two integers.
+proc int_swap (ref int a, ref int b)
+    int temp;
+begin
+    temp := a;
+    a := b;
+    b := temp;
+end

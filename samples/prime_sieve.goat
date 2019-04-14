@@ -1,0 +1,61 @@
+# Primality checking using the Sieve of Eratosthenes method.
+
+proc main ()
+    int n;
+    bool isprime;
+begin
+    write "Primality checking by looping.\n";
+    write "Type a non-negative integer up to 1000: ";
+    read n;
+
+    write n;
+    if n < 0 then
+        write " is a negative number.\n";
+    else if n > 1000 then
+        write " is too large to compute.\n";
+    else
+        call check_prime(n, isprime);
+        if isprime then
+            write " is a prime number!\n";
+        else
+            write " is not a prime number.\n";
+        fi
+    fi fi
+end
+
+proc check_prime (val int n, ref bool result)
+    bool numarray[999];
+    int i;
+    int i';
+    int j;
+begin
+    if n < 2 then
+        result := false;
+    else if n = 2 then
+        result := true;
+    else
+        # initially set all array values to true
+        # note: numarray[i] refers to the primality of i' = i+2
+        i := 0;
+        while i < n-1 do
+            numarray[i] := true;
+            i := i+1;
+        od
+
+        # iteratively mark composites
+        i := 0; i' := 2;
+        while i'*i' < n && numarray[n-2] = true do
+            if numarray[i] then
+                j := i*i;
+                while j <= n do
+                    numarray[j-2] := false;
+                    j := j+i;
+                od
+            fi
+            i := i+1;
+            i' := i'+1;
+        od
+
+        result := numarray[n-2];
+    fi fi
+end
