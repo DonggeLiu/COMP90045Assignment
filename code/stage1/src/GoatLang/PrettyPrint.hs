@@ -19,6 +19,7 @@ import Control.Monad (mapM, mapM_)
 import Numeric (showFFloatAlt) -- see LMS
 
 import GoatLang.AST
+import GoatLang.Highlight
 
 
 -- Our custom StringBuilder utility module provides us a monadic interface for
@@ -42,7 +43,7 @@ import Util.StringBuilder
 -- a string and print it directly to stdout.
 printProgram :: GoatProgram -> IO ()
 printProgram gp
-  = putStr $ prettify gp
+  = putStr $ prettify (getColours NoTheme) gp
 
 
 -- prettify
@@ -50,9 +51,9 @@ printProgram gp
 -- a String, using an efficient String Builder approach.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn. Or just use `printProgram'.
-prettify :: GoatProgram -> String
-prettify gp
-  = buildString $ writeGoatProgram gp
+prettify :: Colours -> GoatProgram -> String
+prettify cs gp
+  = buildString $ writeGoatProgram cs gp
 
 
 
@@ -63,18 +64,19 @@ prettify gp
 -- writeGoatProgram
 -- Create an action for building a String representing an entire
 -- Goat Program
-writeGoatProgram :: GoatProgram -> StringBuilder
-writeGoatProgram (GoatProgram procs)
-  = sepBy newline (map writeProc procs)
+writeGoatProgram :: Colours -> GoatProgram -> StringBuilder
+writeGoatProgram cs (GoatProgram procs)
+  = sepBy newline (map (writeProc cs) procs)
 
 
 -- writeProc
 -- Create an action for building a String representing a procedure
-writeProc :: Proc -> StringBuilder
-writeProc (Proc name params decls stmts)
+writeProc :: Colours -> Proc -> StringBuilder
+writeProc cs (Proc name params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
-      write "proc" >> space >> write name >> space
+      wKeyword cs "proc"
+      write ((keyword cs) "proc") >> space >> write name >> space
       parens (commaSep (map writeF params)) >> newline
 
       -- then proceed to write lines for each decl and stmt (indented 1 level)
