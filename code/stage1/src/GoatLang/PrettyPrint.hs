@@ -16,6 +16,7 @@ module GoatLang.PrettyPrint where
 -- ----------------------------------------------------------------------------
 
 import Control.Monad (mapM, mapM_)
+import Numeric (showFFloatAlt) -- see LMS
 
 import GoatLang.AST
 
@@ -183,11 +184,14 @@ writeExpr (BoolConst True)
 writeExpr (BoolConst False)
   = write "false"
 writeExpr (IntConst int)
+  -- default `show` behaves fine for integers
   = write $ show int
 writeExpr (FloatConst float)
-  = write $ show float
+  -- but we always need to show floats without exponentials and with `.`
+  = write $ showFFloatAlt Nothing float ""
 writeExpr (StrConst str)
-  = quote (write str)
+  -- we must also 'un-parse' string literals incl. recreating newline combos
+  = quote $ mapM_ writeF str
 writeExpr (VarExpr var)
   = writeVar var
 
@@ -302,3 +306,12 @@ instance Display UnOp where
     = "-"
   format Not
     = "!"
+
+-- Represent a string literal character as a string
+instance Display Char where
+  -- translate newline back into \ and n combo:
+  format '\n'
+    = "\\n"
+  -- all other characters are just printed as singleton strings
+  format c
+    = c:""
