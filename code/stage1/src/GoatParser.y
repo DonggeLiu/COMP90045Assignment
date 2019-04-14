@@ -171,6 +171,8 @@ BinOp :: { BinOp }
   | lte                                 { LEq }
   | '>'                                 { GTh }
   | gte                                 { GEq }
+  | and                                 { And }
+  | or                                  { Or }
 
 UnOp :: { UnOp }
   : '!'                                 { Not }
