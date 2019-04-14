@@ -28,15 +28,22 @@ import GoatLang.Token
 -- ----------------------------------------------------------------------------
 
 -- parseProgram
--- top level parser for an entire program, including (eating leading whiteSpace
+-- entry-point: Parse a full Goat program from a source code String. The
+-- filepath is only used for error messages, not for IO, and can be "".
+parseProgram :: FilePath -> String -> Either ParseError GoatProgram
+parseProgram filePath input
+  = parse pFullProgram filePath input
+
+-- pFullProgram
+-- top level parser for an entire program (including eating leading whiteSpace
 -- as required by parsec's lexeme parser approach, and requiring no trailing
--- input after the program is parsed):
-parseProgram :: Parser GoatProgram
-parseProgram
+-- garbage after the program is parsed):
+pFullProgram :: Parser GoatProgram
+pFullProgram
   = between whiteSpace eof pGoatProgram
 
 -- after that, we'll just need (roughly) one parser per grammar non-terminal
--- (see grammar.txt).
+-- (see grammar.txt in the same directory as this file).
 
 -- GOAT        -> PROC+
 pGoatProgram :: Parser GoatProgram
