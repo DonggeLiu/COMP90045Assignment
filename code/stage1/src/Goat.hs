@@ -112,8 +112,8 @@ getArguments args
 helpExit :: IO a
 helpExit
   = do
+      printGoatHead
       printUsage
-      printGoat
       exitSuccess
 
 -- errorExit
@@ -133,37 +133,42 @@ printUsage
       name <- getProgName
       putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p] [file]\n"
       putStrLn "Options and arguments:"
-      putStrLn "  -x    : (or no flags) compile the file & print executable code"
+      putStrLn "  -x    : (or no flags) compile the file, print executable code"
       putStrLn "  -a    : parse the file and print the AST"
       putStrLn "  -p    : parse the file and pretty-print its source code"
       putStrLn "  -h    : print this help message and exit"
       putStrLn "  file  : path to goat (.gt) file containing Goat source code"
       putStrLn "          (required argument for -x, -a and -p)"
+      putStr "\n"
 
--- printGoat
--- Simply print a formatted goat.
-printGoat :: IO ()
-printGoat
+-- printGoatHead
+-- Simply print a formatted goat head.
+printGoatHead :: IO ()
+printGoatHead
   = do
-      putStrLn "                                    .--____."
-      putStrLn "         ,_____._,                ,~-__,__,;\\"
-      putStrLn "       ,/ /  / /~,\\              ~'-_ ,~_/__--\\"
-      putStrLn "     ,~'\\/__:_; / ~\\,_          /-__ ~\\/  \\\";/,\\"
-      putStrLn "    / \\ ,/\\_\\_~\\ /  /|,';;;;`,|\\  /\\/     \\=/- |"
-      putStrLn "   ~--,/_/__  \\ ~\\ |  `._____.'  |/\\/     __---=--"
-      putStrLn "  /==/./ \\ /\\  ;\\~\\_\\          _/\\/,,__--'._/-' `"
-      putStrLn " |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
-      putStrLn " |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
-      putStrLn "  \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
-      putStrLn "   \\______,/; ;   ;;\\ @|\\  | /|@|;: \\__\\__\\_/"
-      putStrLn "             ;   ;;;|\\/' \\ |/ '\\/;;"
-      putStrLn "            ;   ;;;;\\  {  \\|' }/;:'"
-      putStrLn "            ;  ;;;;;:| {   |  }|;'"
-      putStrLn "          ;' ::::::;/    ./ \\  \\"
-      putStrLn "           `,'`'`';/   ./    \\  \\_"
-      putStrLn "              '''|____/   \\__/\\___|"
-      putStrLn "                      \\_.  / _/"
-      putStrLn "             valkyrie    \\/\\/"
+      putStrLn "==============================================================="
+      putStrLn "       Goat: Compiler by PLI-DREAM-TEAM-TWENTEE-NINETEEN       "
+      putStrLn "=========================*==*==*==*==*========================="
+      putStrLn "                                          .--____."
+      putStrLn "               ,_____._,                ,~-__,__,;\\"
+      putStrLn "             ,/ /  / /~,\\              ~'-_ ,~_/__--\\"
+      putStrLn "           ,~'\\/__:_; / ~\\,_          /-__ ~\\/  \\\";/,\\"
+      putStrLn "          / \\ ,/\\_\\_~\\ /  /|,';;;;`,|\\  /\\/     \\=/- |"
+      putStrLn "         ~--,/_/__  \\ ~\\ |  `._____.'  |/\\/     __---=--"
+      putStrLn "        /==/./ \\ /\\  ;\\~\\_\\          _/\\/,,__--'._/-' `"
+      putStrLn "       |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
+      putStrLn "       |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
+      putStrLn "        \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
+      putStrLn "         \\______,/; ;   ;;\\ @|\\  | /|@|;: \\__\\__\\_/"
+      putStrLn "                   ;   ;;;|\\/' \\ |/ '\\/;;"
+      putStrLn "                  ;   ;;;;\\  {  \\|' }/;:'"
+      putStrLn "                  ;  ;;;;;:| {   |  }|;'"
+      putStrLn "                ;' ::::::;/    ./ \\  \\"
+      putStrLn "                 `,'`'`';/   ./    \\  \\_"
+      putStrLn "                    '''|____/   \\__/\\___|"
+      putStrLn "                            \\_.  / _/"
+      putStrLn "                      valkyrie \\/\\/"
+      putStrLn "==============================================================="
 -- goat from: http://www.ascii-art.de/ascii/ghi/goat.txt
 -- note: above string is escaped; it will come out like this:
 --                                    .--____.
@@ -185,5 +190,7 @@ printGoat
 --              '''|____/   \__/\___|
 --                      \_.  / _/
 --             valkyrie    \/\/
+
+
 
 
