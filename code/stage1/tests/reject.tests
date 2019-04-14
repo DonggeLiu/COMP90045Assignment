@@ -8,7 +8,7 @@ TEST pParam
   float val var
   float ref var
   int val var
-  int ref var
+  int ref var	
   VAL bool var
   REF bool var
   Val bool var
