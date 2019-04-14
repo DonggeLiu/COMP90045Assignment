@@ -34,12 +34,13 @@ rules :-
   val                 { \s -> VAL }
   while               { \s -> WHILE }
   write               { \s -> WRITE }
-  -- assignment, parens, brackets, semicolon
+  -- assignment, parens, brackets, comma, semicolon
   :=                  { \s -> ASSIGN }
   \(                  { \s -> LPAREN }
   \)                  { \s -> RPAREN }
   \[                  { \s -> LBRACKET }
   \]                  { \s -> RBRACKET }
+  \,                  { \s -> COMMA }
   \;                  { \s -> SEMI }
   -- binary arithmetic operators
   \+                  { \s -> ADD }
@@ -80,8 +81,8 @@ data Token
   | READ | REF | THEN | VAL | WHILE | WRITE
   -- assignment (:=)
   | ASSIGN
-  -- parens, brackets, semicolon
-  | LPAREN | RPAREN | LBRACKET | RBRACKET | SEMI
+  -- parens, brackets, comma, semicolon
+  | LPAREN | RPAREN | LBRACKET | RBRACKET | COMMA | SEMI
   -- binary arithmetic operators
   | ADD | MUL | DIV
   -- binary relational operators
