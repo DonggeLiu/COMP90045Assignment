@@ -4,10 +4,10 @@ Goat: *.hs
 clean:
 	rm -f *.o *.hi */*.o */*.hi Goat
 
-lexer: GoatLexer.x
-	alex GoatLexer.x
-	ghc GoatLexer.hs
+lexer: GoatLang/Lexer.x
+	alex GoatLang/Lexer.x
+	ghc GoatLang/Lexer.hs
 
-parser: lexer GoatParser.y
-	happy GoatParser.y
-	ghc GoatParser.hs
+parser: lexer GoatLang/LALRParser.y
+	happy GoatLang/LALRParser.y
+	ghc GoatLang/LALRParser.hs

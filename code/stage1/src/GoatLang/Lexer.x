@@ -1,6 +1,6 @@
 {
-module GoatLexer (Token(..), lexer) where
--- module Main (main, Token(..), lexer) where  -- for standalone testing
+module GoatLang.Lexer (Token(..), lexer) where
+
 import Data.List (init, tail, intercalate)
 import Data.List.Split (splitOn)
 }
@@ -112,11 +112,5 @@ replace :: Eq a => [a] -> [a] -> [a] -> [a]
 replace query replacement
   = intercalate replacement . splitOn query
 
-
 lexer = alexScanTokens
-
--- main
---   = do
---       s <- getContents
---       print (alexScanTokens s)
 }

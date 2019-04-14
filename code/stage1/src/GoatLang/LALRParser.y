@@ -1,8 +1,8 @@
 {
--- module GoatParser where
+-- module GoatLang.LALRParser where
 module Main (main, parse) where   -- for standalone testing
-import GoatLexer
-import GoatAST
+import GoatLang.Lexer
+import GoatLang.AST
 
 import Data.List (intersperse)
 }
