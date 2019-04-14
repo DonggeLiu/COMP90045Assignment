@@ -1,6 +1,8 @@
 {
 module GoatLexer (Token(..), lexer) where
 -- module Main (main, Token(..), lexer) where  -- for standalone testing
+import Data.List (init, tail, intercalate)
+import Data.List.Split (splitOn)
 }
 
 %wrapper "basic"
@@ -8,7 +10,7 @@ module GoatLexer (Token(..), lexer) where
 $digit       = 0-9
 @digits      = $digit+
 @alpha       = [a-zA-Z]
-@stringlit   = \" [^\"]* \"
+@stringlit   = \" [^\"\n\t]* \"
 @ident       = @alpha (@alpha | $digit | \_ | \')*
 @comment     = \# [^\n]* \n
 
@@ -70,7 +72,7 @@ rules :-
   -- note: greediness ensures that a fractional number will assume this token
   @digits\.@digits    { \s -> FRACTIONAL_CONST (read s :: Float) }
   -- string literals
-  @stringlit          { \s -> STR s }
+  @stringlit          { \s -> STR (interpret s) }
   -- identifier
   @ident              { \s -> IDENT s }
 
@@ -98,6 +100,18 @@ data Token
   -- identifier
   | IDENT String
     deriving (Eq, Show)
+
+-- Remove outer quotes and replace all "\n" escape sequences with newlines
+interpret :: String -> String
+interpret s
+  = replace "\\n" "\n" $ (init . tail) s
+
+-- Replace all occurrences of a query substring with a replacement string
+-- (works more generally on lists of elements in the Eq typeclass)
+replace :: Eq a => [a] -> [a] -> [a] -> [a]
+replace query replacement
+  = intercalate replacement . splitOn query
+
 
 lexer = alexScanTokens
 
