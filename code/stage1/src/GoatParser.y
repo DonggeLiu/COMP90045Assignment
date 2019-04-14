@@ -157,26 +157,20 @@ Expr :: { Expr }
   | intconst                            { IntConst $1 }
   | strconst                            { StrConst $1 }
   | '(' Expr ')'                        { $2 }
-  | Expr BinOp Expr                     { BinExpr $2 $1 $3 }
-  | UnOp Expr                           { UnExpr $1 $2 }
-
-BinOp :: { BinOp }
-  : '+'                                 { Add }
-  | '-'                                 { Sub }
-  | '*'                                 { Mul }
-  | '/'                                 { Div }
-  | '='                                 { Equ }
-  | neq                                 { NEq }
-  | '<'                                 { LTh }
-  | lte                                 { LEq }
-  | '>'                                 { GTh }
-  | gte                                 { GEq }
-  | and                                 { And }
-  | or                                  { Or }
-
-UnOp :: { UnOp }
-  : '!'                                 { Not }
-  | '-' %prec NEG                       { Neg }
+  | Expr '+' Expr                       { BinExpr Add $1 $3 }
+  | Expr '-' Expr                       { BinExpr Sub $1 $3 }
+  | Expr '*' Expr                       { BinExpr Mul $1 $3 }
+  | Expr '/' Expr                       { BinExpr Div $1 $3 }
+  | Expr '=' Expr                       { BinExpr Equ $1 $3 }
+  | Expr neq Expr                       { BinExpr NEq $1 $3 }
+  | Expr '<' Expr                       { BinExpr LTh $1 $3 }
+  | Expr lte Expr                       { BinExpr LEq $1 $3 }
+  | Expr '>' Expr                       { BinExpr GTh $1 $3 }
+  | Expr gte Expr                       { BinExpr GEq $1 $3 }
+  | Expr and Expr                       { BinExpr And $1 $3 }
+  | Expr or Expr                        { BinExpr Or $1 $3 }
+  | '!' Expr                            { UnExpr Not $2 }
+  | '-' Expr %prec NEG                  { UnExpr Neg $2 }
 
 {
 parse :: String -> GoatProgram
