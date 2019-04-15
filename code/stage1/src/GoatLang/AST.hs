@@ -5,14 +5,6 @@ module GoatLang.AST where
 --
 --                      GOAT - ABSTRACT SYNTAX TREE
 --
--- Well-chosen team name:              pli-dream-team-twentee-nineteen
--- Well-chosen team members:
--- * Alan Ung                          alanu
--- * David Stern                       dibstern
--- * Dongge Liu                        donggel
--- * Mariam Shahid                     mariams
--- * Matthew Farrugia-Roberts          farrugiam
---
 -- ----------------------------------------------------------------------------
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.

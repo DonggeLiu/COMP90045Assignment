@@ -5,14 +5,6 @@ module Main where
 --
 --                               GOAT - COMPILER
 --
--- Well-chosen team name:              pli-dream-team-twentee-nineteen
--- Well-chosen team members:
--- * Alan Ung                          alanu
--- * David Stern                       dibstern
--- * Dongge Liu                        donggel
--- * Mariam Shahid                     mariams
--- * Matthew Farrugia-Roberts          farrugiam
---
 -- ----------------------------------------------------------------------------
 
 import System.Exit
@@ -147,7 +139,7 @@ printGoatHead :: IO ()
 printGoatHead
   = do
       putStrLn "==============================================================="
-      putStrLn "       Goat: Compiler by PLI-DREAM-TEAM-TWENTEE-NINETEEN       "
+      putStrLn "                        Goat:  Compiler                        "
       putStrLn "=========================*==*==*==*==*========================="
       putStrLn "                                          .--____."
       putStrLn "               ,_____._,                ,~-__,__,;\\"

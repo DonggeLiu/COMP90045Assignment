@@ -5,14 +5,6 @@ module GoatLang.PrettyPrint where
 --
 --                      GOAT - PRETTY-PRINTING MODULE
 --
--- Well-chosen team name:              pli-dream-team-twentee-nineteen
--- Well-chosen team members:
--- * Alan Ung                          alanu
--- * David Stern                       dibstern
--- * Dongge Liu                        donggel
--- * Mariam Shahid                     mariams
--- * Matthew Farrugia-Roberts          farrugiam
---
 -- ----------------------------------------------------------------------------
 
 import Control.Monad (mapM, mapM_)

@@ -5,14 +5,6 @@ module Util.StringBuilder where
 --
 --                     UTILITY - MONADIC STRING BUILDER
 --
--- Well-chosen team name:              pli-dream-team-twentee-nineteen
--- Well-chosen team members:
--- * Alan Ung                          alanu
--- * David Stern                       dibstern
--- * Dongge Liu                        donggel
--- * Mariam Shahid                     mariams
--- * Matthew Farrugia-Roberts          farrugiam
---
 -- ----------------------------------------------------------------------------
 
 import Control.Monad.Writer (Writer, tell, runWriter)
