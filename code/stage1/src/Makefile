@@ -6,6 +6,10 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 	tar -cvf submission/src.tar.gz Goat.hs GoatLang/*.hs Util/*.hs
 	cp _SubmissionMakefile submission/Makefile
 
-clean:
-	rm -rf *.o *.hi */*.o */*.hi Goat submission
+tests: testgen.py
+	python3 testgen.py > Tests.hs
+	ghc Tests.hs
+	./Tests
 
+clean:
+	rm -rf *.o *.hi */*.o */*.hi Goat submission Tests Tests.hs
