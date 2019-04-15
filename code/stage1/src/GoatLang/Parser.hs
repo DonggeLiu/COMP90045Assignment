@@ -63,6 +63,10 @@ pProc
       stmts <- many1 pStmt
       reserved "end"
       return (Proc name params decls stmts)
+  <?> "at least one procedure definition"
+-- pProc is only ever called by pGoatProgram, and will only ever fail without
+-- consuming any input if the file is blank; thus we can say 'expecting at least
+-- one prcedure definition' to give the programmer a hint about this requirement
 
 -- PARAM       -> PASSBY TYPE id
 pParam :: Parser Param
@@ -72,13 +76,13 @@ pParam
       baseType <- pBaseType
       name <- identifier
       return (Param passBy baseType name)
+  <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
 pPassBy :: Parser PassBy
 pPassBy
   =   (reserved "val" >> return Val)
   <|> (reserved "ref" >> return Ref)
-
 
 -- TYPE        -> "bool" | "float" | "int"
 pBaseType :: Parser BaseType
@@ -96,6 +100,7 @@ pDecl
       dim <- pDim
       semi
       return (Decl baseType name dim)
+  <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
 pDim :: Parser Dim
@@ -112,7 +117,19 @@ pDim
 -- STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
 pStmt :: Parser Stmt
 pStmt
-  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile] <?> "statement"
+  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile]
+  <?> "statement (or, possibly, end-of-block keyword)"
+-- NOTE: Unfortunately, due to the way 'identifier' is implemented and some
+-- weird things about the internals of Parsecs, the "expected <end-of-block
+-- keyword>" context is lost when parsec is parsing a block of statements
+-- that is missing its end-of-block keyword, but followed by another reserved
+-- word (such as a missing "fi" followed by an "od" or "end").
+-- The simplest fix is to recreate the expected message here in the statement
+-- parser. Note it's not always correct to say that we are expecting a keyword!
+-- For example in a block with NO statements, we are not (yet) expecting the
+-- end-of-block keyword. Thus we qualify the message with 'possibly' in the
+-- hope that it will be more helpful to the programmer than the (incomplete)
+-- "expecting statement".
 
 -- Each of these statement helper parsers also return Stmts:
 pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
@@ -189,6 +206,7 @@ pVar
         Nothing    -> return (Var0 name)
         Just [i]   -> return (Var1 name i)
         Just [i,j] -> return (Var2 name i j)
+    <?> "variable"
 
 
 -- Now, for capturing the similarity that exists between the SUBSCRIPT and DIM
@@ -216,8 +234,8 @@ pVar
 -- * Just [x] or Just [x,y] with the 1 or 2 results (if present)
 suffixMaybe :: (Parser a) -> Parser (Maybe [a])
 suffixMaybe parser
-  = optionMaybe $ brackets $ commaSepMN 1 2 parser
-
+  = (optionMaybe $ brackets $ commaSepMN 1 2 parser)
+  <?> "suffix (such as [0, 1])"
 -- This parser uses commaSepMN, a general parser combinator defined in the
 -- spirit of parsec's commaSep and commaSep1. It's defined in Util.Combinators.
 
@@ -247,6 +265,7 @@ suffixMaybe parser
 pExpr :: Parser Expr
 pExpr
   = buildExpressionParser operatorTable pTerm
+  <?> "expression"
 
 
 -- pTerm
@@ -257,6 +276,7 @@ pTerm =   parens pExpr
       <|> pIntOrFloatConst  -- integers and floats share a common prefix!
       <|> pStrConst
       <|> pBoolConst
+      <?> "term (variable, literal, or parenthesised expression)"
 
 pIntOrFloatConst, pStrConst, pBoolConst :: Parser Expr
 pIntOrFloatConst
