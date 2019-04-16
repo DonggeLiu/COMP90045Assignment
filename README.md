@@ -34,27 +34,31 @@ COMP90045Assignment/
 |           ├── Util/...                  # non-Goat-specific utilities
 |           |   ├── Combinators.hs          # additional parser combinators
 |           |   ├── StringBuilder.hs        # efficient monadic string building
+|           |   ├── DiffList.hs             # difference list implementation
 |           |   └── ...                     # (we may need to create more)
+|           ├── gentests.py               # input/output lists for unit tests
 │           └── Makefile                  # submission requires a Makefile
 └── spec/...                        # project specifications
 ```
 
 ### Building
 
-Development can be done with cabal:
+Development can be done with cabal. Inside `code/stage1/`:
 
 * `cabal build` compiles source code and places executable in (ignored) directory `dist/`.
 * `cabal run -- <arguments>` runs `Goat` executable with command-line arguments `<arguments>`.
 * `cabal repl` fires up GHCi.
 * `cabal help` for more.
 
+Or, just work in `code/stage1/src/` and run `make`.
+
 ### Testing
 
-TODO!
+For now:
 
-* Set up test framework
-    * HUnit?
-    * Automatically running tests with `cabal test`?
+* `cd` to `code/stage1/src/`.
+* Add tests to `gentests.py`.
+* Run `make tests`.
 
 
 ## Stage 1 - Goat parser and pretty-printer
@@ -89,11 +93,11 @@ We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it
   - [x] Lexeme parsers (string, int, float)
   - [x] Language parsers (still TODO (if time): manyMN etc. to use count)
   - [x] Expression parser
-- [ ] Testing
-- [ ] Error reporting
+- [x] Testing (we didn't get time to unit test ALL of the parsers and printers, but got the main ones and also ran lots of ad-hoc black box tests of the whole parser/pretty-printer combo comparing our output with other teams').
+- [x] Error reporting
 - [ ] Experiment with bonus-worthy ideas
-- [ ] Review Submission
-- [ ] Submit
+- [x] Review Submission
+- [x] Submit
 
 ## Stage 3 - Goat compiler
 
