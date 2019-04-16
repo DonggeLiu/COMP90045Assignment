@@ -1,5 +1,5 @@
 Goat: src.tar.gz
-	tar -xvf src.tar.gz
+	tar -xvf src.tar
 	ghc Goat.hs
 
 clean:
