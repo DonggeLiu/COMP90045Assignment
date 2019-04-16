@@ -1,4 +1,4 @@
-Goat: src.tar.gz
+Goat: src.tar
 	tar -xvf src.tar
 	ghc Goat.hs
 
