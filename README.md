@@ -18,48 +18,41 @@ Here's a map (:: (a -> b) -> [a] -> [b]) of the repository:
 COMP90045Assignment/
 ├── README.md                       # <-- YOU ARE HERE
 ├── Members.txt                     # list of well-chosen team members
-├── code/                           # code, organised by project stage:
-│   ├── kid/...                       # provided starter code
-│   └── stage1/                       # STAGE 1 CODE
-│       ├── Goat.cabal, Setup.hs        # This is a cabal project (see below)
-│       └── src/                        # code goes in here:
-│           ├── Goat.hs                   # main module; compiler entry-point
-|           ├── GoatLang/                 # parser, pretty-printer, ast
-|           |   ├── grammar.txt             # describes Goat program syntax
-|           |   ├── AST.hs                  # language structure definitions
-|           |   ├── Token.hs                # lexeme parsers
-|           |   ├── Parser.hs               # program, statement, expr parsers
-|           |   ├── PrettyPrint.hs          # converting programs to strings
-|           |   └── ...                     # (we may need to create more)
-|           ├── Util/...                  # non-Goat-specific utilities
-|           |   ├── Combinators.hs          # additional parser combinators
-|           |   ├── StringBuilder.hs        # efficient monadic string building
-|           |   ├── DiffList.hs             # difference list implementation
-|           |   └── ...                     # (we may need to create more)
-|           ├── gentests.py               # input/output lists for unit tests
-│           └── Makefile                  # submission requires a Makefile
-└── spec/...                        # project specifications
+├── spec/...                        # project specifications
+├── oz/...                          # provided C code for an Oz emulator
+└── src/                            # our project code!
+    ├── Makefile                    # run `make` to build Goat compiler
+    ├── _SubmissionMakefile         # submission requires a makefile too
+    ├── Goat.hs                     # main module; compiler entry-point
+    ├── GoatLang/                   # Goat syntax: parser, pretty-printer, ast
+    │   ├── grammar.txt               # describes Goat program syntax
+    │   ├── AST.hs                    # language structure definitions
+    │   ├── Token.hs                  # lexeme parsers for
+    │   ├── Parser.hs                 # program, statement, expr parsers
+    │   ├── PrettyPrint.hs            # converting programs to strings
+    │   └── ...                       # (we may need to create more)
+    ├── OzLang/...                 # Code for targeting Oz, in another module?
+    ├── Util/                      # non-Goat-specific utilities
+    │   ├── Combinators.hs           # additional parser combinators
+    │   ├── DiffList.hs              # difference list implementation
+    │   ├── StringBuilder.hs         # efficient monadic string building
+    |   └── ...                      # (we may need to create more)
+    └── Tests/                     # TODO: Move tests to a Haskell module
+        ├── goat/...                 # contains Goat programs
+        └── testgen.py               # input/output lists for unit tests
 ```
 
 ### Building
 
-Development can be done with cabal. Inside `code/stage1/`:
-
-* `cabal build` compiles source code and places executable in (ignored) directory `dist/`.
-* `cabal run -- <arguments>` runs `Goat` executable with command-line arguments `<arguments>`.
-* `cabal repl` fires up GHCi.
-* `cabal help` for more.
-
-Or, just work in `code/stage1/src/` and run `make`.
+We cut out cabal; just build using `make` inside `src/` or use `ghc`/`ghci` directly.
 
 ### Testing
 
 For now:
 
-* `cd` to `code/stage1/src/`.
+* `cd` to `src/`.
 * Add tests to `gentests.py`.
 * Run `make tests`.
-
 
 ## Stage 1 - Goat parser and pretty-printer
 
@@ -101,4 +94,11 @@ We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it
 
 ## Stage 3 - Goat compiler
 
-(Specification to be released around Easter/mid-semester break...)
+#### Preparation week: Thursday 2nd-Monday 6th
+
+TODO: Meet and decide on how to approach the project
+
+#### Week 1: Tuesday 7th-Monday 13th
+#### Week 2: Tuesday 14th-Monday 20th
+#### Week 3: Tuesday 21st-Monday 27th
+#### Submission: Tuesday 28th, Wednesday 29th.
