@@ -1,0 +1,57 @@
+# Lines marked with "Fail" should cause parse errors
+# All other lines should be parsed, though they are mostly nonsensical
+
+# There is no main procedure, but I think this is a semantic error
+proc fail ()
+	int a;
+	float b[20];
+	float c[10, 10];
+	#bool d[true, 1.9]; # Fail - only integers allowed here (semantic error?)
+	#int e[1, 2, 3];    # Fail - dimensions limited to two
+	#int f[];           # Fail - only brackets for arrays and matrices
+begin
+	#a[true, false] := 1234.01234;
+	while (5 && false) do
+		write "";
+		write "\n";
+		#write "
+		#      "; # Fail - no newline characters allowed in write statements
+		if "true" then
+			call func (1.0, 2.3, x, y, z);
+		else
+			#read (x + 1); # Fail - parentheses not allowed in read statements
+			read d[7.5, x];
+			e[1, 2, 3] := true # Fail - dimensions limited to two AND SEMICOLON
+			#b[2] := c[1, 2] * d[3, 4] / c[5, 6] + 002.05234E-17;
+	 fi od end # do # Fail - fi required at end of if statement
+# proc f () begin end
+proc func (val int i) # Fail - end required at the end of a procedure
+begin i := i + 1; end
+
+proc func (
+           ref int i
+           , val
+             int
+             i
+           )
+begin
+	i:=i
+	;end # Fail - two semicolons are not allowed together
+
+proc func2 () # Fail - requires keyword proc
+begin
+	while i = 1 do # Fail - i := 1 is a statement, not an expression
+		# i := 1+-1; # should be okay? # Harald says not to worry about these
+		# i := 1 +- 1; # should be okay?
+		# i := 1*-1; # should be okay?
+		# i := 1--1; # should be okay?
+		i := 1- -1; # should be okay?
+		i := 1<=1; # should be okay?
+		i := 1 < 1;
+		# i := 1+*1; # Fail - 
+	od
+	#if a != !b then # Fail?
+	#	#a := b := c; # Fail - Cannot repeat assign statements
+	#fi
+end
+		

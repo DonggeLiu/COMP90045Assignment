@@ -1,0 +1,3 @@
+Parse error at (line 5, column 10):
+unexpected "4"
+expecting "[", operator or "then"
