@@ -114,10 +114,10 @@ pDim
         Just [n,m] -> return (Dim2 n m)
 
 
--- STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
+-- STMT        -> ASGN | READ | WRITE_OR_STR | CALL | IF_OPT_ELSE | WHILE
 pStmt :: Parser Stmt
 pStmt
-  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile]
+  = choice [pAsg, pRead, pWriteOrStr, pCall, pIfOptElse, pWhile]
   <?> "statement (or, possibly, end-of-block keyword)"
 -- NOTE: Unfortunately, due to the way 'identifier' is implemented and some
 -- weird things about the internals of Parsecs, the "expected <end-of-block
@@ -132,32 +132,35 @@ pStmt
 -- "expecting statement".
 
 -- Each of these statement helper parsers also return Stmts:
-pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
+pAsg, pRead, pWriteOrStr, pCall, pIfOptElse, pWhile :: Parser Stmt
 
--- ASGN        -> VAR ":=" EXPR ";"
+-- ASGN        -> SCALAR ":=" EXPR ";"
 pAsg
   = do
-      var <- pVar
+      scalar <- pScalar
       reservedOp ":="
       expr <- pExpr
       semi
-      return (Asg var expr)
+      return (Asg scalar expr)
 
--- READ        -> "read" VAR ";"
+-- READ        -> "read" SCALAR ";"
 pRead
   = do
       reserved "read"
-      var <- pVar
+      scalar <- pScalar
       semi
-      return (Read var)
+      return (Read scalar)
 
--- WRITE       -> "write" EXPR ";"
-pWrite
+-- WRITE_OR_STR -> "write" EXPR_OR_STR ";"
+-- EXPR_OR_STR  -> EXPR | string
+pWriteOrStr
   = do
       reserved "write"
-      expr <- pExpr
+      exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
       semi
-      return (Write expr)
+      case exprOrStr of
+        Left  expr   -> return (WriteExpr   expr)
+        Right string -> return (WriteString string)
 
 -- CALL        -> "call" id "(" EXPRS ")" ";"
 -- EXPRS       -> (EXPR ",")* EXPR | ε
@@ -194,19 +197,19 @@ pWhile
       return (While cond doStmts)
 
 
--- VAR         -> id SUBSCRIPT
+-- SCALAR      -> id SUBSCRIPT
 -- SUBSCRIPT   -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
-pVar :: Parser Var
-pVar
+pScalar :: Parser Scalar
+pScalar
   = do
       name <- identifier
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Var0 name)
-        Just [i]   -> return (Var1 name i)
-        Just [i,j] -> return (Var2 name i j)
-    <?> "variable"
+        Nothing    -> return (Single name)
+        Just [i]   -> return (Array  name i)
+        Just [i,j] -> return (Matrix name i j)
+    <?> "scalar (variable element)"
 
 
 -- Now, for capturing the similarity that exists between the SUBSCRIPT and DIM
@@ -249,7 +252,7 @@ suffixMaybe parser
 -- NOTE: precedence and associativity rules not encoded in grammar; see spec.
 -- in fact this grammar was left ambiguous (for brevity)
 --
--- EXPR        -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
+-- EXPR        -> SCALAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
 -- CONST       -> int | float | BOOL | string
 -- BINOP       -> "+"  | "-"  | "*"  | "/"
 --              | "="  | "!=" | "<=" | "<"  | ">"  | ">="
@@ -272,21 +275,20 @@ pExpr
 -- parse an expression 'term' (non-operation)
 pTerm :: Parser Expr
 pTerm =   parens pExpr
-      <|> fmap VarExpr pVar
+      <|> fmap ScalarExpr pScalar
       <|> pIntOrFloatConst  -- integers and floats share a common prefix!
-      <|> pStrConst
       <|> pBoolConst
       <?> "term (variable, literal, or parenthesised expression)"
 
-pIntOrFloatConst, pStrConst, pBoolConst :: Parser Expr
+pIntOrFloatConst :: Parser Expr
 pIntOrFloatConst
   = do
       numberLiteral <- integerOrFloat
       case numberLiteral of
         Left int  -> return $ IntConst int
         Right flt -> return $ FloatConst flt
-pStrConst
-  = fmap StrConst stringLiteral
+
+pBoolConst :: Parser Expr
 pBoolConst
   =   (reserved "true"  >> return (BoolConst True ))
   <|> (reserved "false" >> return (BoolConst False))

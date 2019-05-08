@@ -58,45 +58,47 @@ data Decl
     deriving (Show, Eq)
 
 -- A dimensionality indicator has a constructor of the form DimN (N Ints)
--- representing the 'shape' of the variable---or collection or variables---being
--- declared.
+-- representing the 'shape' of the variable (single scalar, array of scalars,
+-- or matrix of scalars) being declared.
 data Dim
-  = Dim0             -- a single variable
-  | Dim1 Int         -- an array of variables, with integer 'length'
-  | Dim2 Int Int     -- a matrix of variables, with integer 'length' and 'width'
+  = Dim0             -- a single scalar
+  | Dim1 Int         -- an array of scalars, with integer 'length'
+  | Dim2 Int Int     -- a matrix of scalars, with integer 'length' and 'width'
     deriving (Show, Eq)
 
--- Statements can take 6 different forms, as indicated below.
+-- Statements can take 7 different forms, as indicated below.
 data Stmt
-  = Asg Var Expr                -- assignment of an expression to a variable
-  | Read Var                    -- assignment of user input to a variable
-  | Write Expr                  -- printing of the result of an expression
+  = Asg Scalar Expr             -- assignment of an expression to a scalar
+  | Read Scalar                 -- assignment of user input to a scalar
+  | WriteExpr Expr              -- printing of the result of an expression
+  | WriteString String          -- printing of a literal string
   | Call Id [Expr]              -- invocation of a procedure
   | If Expr [Stmt]              -- conditional statement (without alternative)
   | IfElse Expr [Stmt] [Stmt]   -- conditional statement (with alternative)
   | While Expr [Stmt]           -- conditional loop
     deriving (Show, Eq)
 
--- A variable (:: Var) is distinct from an identifier (:: Id). A variable is
--- an identifier used in conjunction with 0, 1 or 2 expressions (depending on
--- dimensionality) to denote a specific memory location which can hold a value.
--- The Var type is analagous to the mathematical notion of a (possibly)
--- subscripted 'variable' (e.g. y, x_1, or A_ij) whereas the Id type is simply
--- a name given to a singular variable (e.g. y), array of variables (e.g. x,
--- the vector) or matrix of variables (e.g. A, the matrix), or to a procedure.
-data Var
-  = Var0 Id              -- a 'direct identifier' (no subscript necessary)
-  | Var1 Id Expr         -- an array element (identifier plus one subscript)
-  | Var2 Id Expr Expr    -- a matrix element (identifier plus two subscripts)
+-- A scalar is an object that contains a single value. This may be the value of
+-- a singleton variable, or a single element of an array or matrix variable.
+--
+-- Thus a scalar (:: Scalar) is distinct from an identifier (:: Id): While an
+-- identifier refers to a particular variable, which variable may comprise
+-- multiple scalars (if it is a container for multiple values, e.g. an array).
+-- Thus a scalar is an identifier in conjunction with 0, 1 or 2 expressions
+-- (depending on the identified variable's dimensionality) to denote a specific
+-- element within that variable:
+data Scalar
+  = Single Id              -- a singleton variable's element (no subscript)
+  | Array  Id Expr         -- an array element (identifier plus one subscript)
+  | Matrix Id Expr Expr    -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
 
--- Expressions can take 7 different forms, as indicated below.
+-- Expressions can take 6 different forms, as indicated below.
 data Expr
-  = VarExpr Var               -- variable
+  = ScalarExpr Scalar         -- the value inside a scalar (variable element)
   | BoolConst Bool            -- boolean constant
   | FloatConst Float          -- floating point constant
   | IntConst Int              -- integer constant
-  | StrConst String           -- string constant (only be used for writing)
   | BinExpr BinOp Expr Expr   -- binary expression
   | UnExpr UnOp Expr          -- unary expression
     deriving (Show, Eq)

@@ -120,16 +120,19 @@ writeStmtWith :: StringBuilder -> Stmt -> StringBuilder
 
 -- For atomic statements, building will involve writing a single line
 -- with the current level of indentation
-writeStmtWith indentation (Asg var expr)
+writeStmtWith indentation (Asg scalar expr)
   = do
-      indentation >> writeVar var >> spaces (write ":=")
+      indentation >> writeScalar scalar >> spaces (write ":=")
       writeExpr expr >> endLine
 
-writeStmtWith indentation (Read var)
-  = indentation >> write "read" >> space >> writeVar var >> endLine
+writeStmtWith indentation (Read scalar)
+  = indentation >> write "read" >> space >> writeScalar scalar >> endLine
 
-writeStmtWith indentation (Write expr)
+writeStmtWith indentation (WriteExpr expr)
   = indentation >> write "write" >> space >> writeExpr expr >> endLine
+
+writeStmtWith indentation (WriteString str)
+  = indentation >> write "write" >> space >> writeStr str >> endLine
 
 writeStmtWith indentation (Call name args)
   = do
@@ -163,16 +166,23 @@ writeStmtWith indentation (While cond doStmts)
       indentation >> writeLn "od"
 
 
--- writeVar
--- Create an action to represent a variable as a String
-writeVar :: Var -> StringBuilder
-writeVar (Var0 name)
+-- writeScalar
+-- Create an action to represent a scalar (variable element) as a String
+writeScalar :: Scalar -> StringBuilder
+writeScalar (Single name)
   = write name
-writeVar (Var1 name index)
+writeScalar (Array name index)
   = write name >> brackets (writeExpr index)
-writeVar (Var2 name index1 index2)
+writeScalar (Matrix name index1 index2)
   = write name >> brackets (commaSep (map writeExpr [index1, index2]))
 
+-- writeStr
+-- Create an action to represent a string literal as a String
+-- Note: we have to 'unparse' the string from our internal representation
+-- (which uses real newline characters). See: `instance Display Char` below.
+writeStr :: String -> StringBuilder
+writeStr str
+  = quote $ mapM_ writeF str
 
 -- writeExpr
 -- Create an action to represent an expression as a String
@@ -189,11 +199,8 @@ writeExpr (IntConst int)
 writeExpr (FloatConst float)
   -- but we always need to show floats without exponentials and with `.`
   = write $ showFFloatAlt Nothing float ""
-writeExpr (StrConst str)
-  -- we must also 'un-parse' string literals incl. recreating newline combos
-  = quote $ mapM_ writeF str
-writeExpr (VarExpr var)
-  = writeVar var
+writeExpr (ScalarExpr scalar)
+  = writeScalar scalar
 
 -- But for complex expressions, the string may also involve parenthesed
 -- subexpressions (if they are binary expressions themselves).
@@ -232,7 +239,6 @@ writeExprParens expr
 writeF :: (Display a) => a -> StringBuilder
 writeF d
   = write $ format d
-
 
 -- A Display type implements the format function, for converting
 -- values to strings for pretty-printing.
