@@ -1,8 +1,4 @@
 proc main ()
-    int a;
-    int b[50];
-    float c[100, 2];
-    bool d[23];
 begin
     newstates := something[ab[cd, ef]];
     new[hello, hey[some[(1 + 1) = 2], thing]] := ((6 * i) + 4) - i;
@@ -12,8 +8,12 @@ begin
             read ss;
             read ff;
         else
-            call a(else', 1234);
-            write "if then                                  else";
+            call a("if then else", x = y, b || c, d && e);
         fi
     od
+end
+
+proc seco_'nd (val bool a, ref float b, ref int c)
+begin
+    newstates := something[ab[cd, ef]];
 end

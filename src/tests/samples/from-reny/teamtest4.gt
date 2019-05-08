@@ -12,7 +12,10 @@ begin
       else
         # call a ("if then else", x=y=z, b||c, d&&e);  #nice
         # EDIT: relational operators are not meant to be associative:
-        call a ("if then else", x=y, b||c, d&&e);  #nice
+        # EDIT: We intentionally decided that we should not allow
+        # strings as part of expressions.
+        call a (if', x=y, b||c, d&&e);  #nice
+        write "if then else";
       fi
 
     od
