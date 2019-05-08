@@ -43,7 +43,7 @@ clean_utests:
 SAMPLE_ROOT = tests/samples
 SAMPLE_DIRS = $(shell find $(SAMPLE_ROOT) -type d)
 ALL_SAMPLES = $(shell find $(SAMPLE_ROOT) -type f -name '*.gt.*')
-itests: tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
+itests: Goat tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
 	# ** RUN INTEGRATION TESTS **
 	bash tests/testall.sh
 clean_itests:
