@@ -92,7 +92,8 @@ commaSep   = Token.commaSep   lexer -- parse a comma-separated list
 -- lexeme parser for non-negative decimal integers
 integer :: Parser Int
 integer
-  = lexeme $ fmap read (many1 digit)
+  = (lexeme $ fmap read $ many1 digit)
+  <?> "integer"
 
 
 -- float
@@ -100,18 +101,20 @@ integer
 -- NOTE: actually this parser is not used, but is included for completeness
 float :: Parser Float
 float
-  = lexeme $ fmap read (many1 digit <++> (char '.' <:> many1 digit))
+  = (lexeme $ fmap read $ many1 digit <++> (char '.' <:> many1 digit))
+  <?> "float"
 
 
 -- stringLiteral
 -- lexeme parser for a string literal without internal newlines or tabs
 stringLiteral :: Parser String
 stringLiteral
-  = lexeme $ do
+  = lexeme (do
       char '"'
       contents <- many stringChar
-      char '"'
-      return contents
+      char '"' <?> "end-of-string quote"
+      return contents)
+  <?> "string literal"
 
 -- stringChar
 -- parser for a single string character, including possibly an escaped newline
@@ -126,6 +129,7 @@ stringChar
       case nextChar of
         '\\' -> escapedChar
         _    -> return nextChar
+  <?> "string character"
 
 -- escapedChar
 -- parser for a single string character after we have just seen a `\`.
@@ -146,12 +150,13 @@ escapedChar
 -- lexeme parser for either an integer literal (left) or float literal (right)
 integerOrFloat :: Parser (Either Int Float)
 integerOrFloat
-  = lexeme $ do
+  = (lexeme $ do
       whole <- many1 digit
       maybeDotFrac <- optionMaybe (char '.' <:> many1 digit)
       case maybeDotFrac of
         Nothing      -> return $ Left  $ read whole
-        Just dotFrac -> return $ Right $ read (whole ++ dotFrac)
+        Just dotFrac -> return $ Right $ read (whole ++ dotFrac))
+  <?> "integer or float"
 
 
 -- ----------------------------------------------------------------------------

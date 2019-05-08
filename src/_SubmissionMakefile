@@ -1,4 +1,5 @@
-Goat: *.hs */*.hs
+Goat: src.tar
+	tar -xvf src.tar
 	ghc Goat.hs
 
 clean:

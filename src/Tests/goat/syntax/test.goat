@@ -1,0 +1,122 @@
+proc zeroParams ()
+    # many local variables - atleast one of each type
+    int var;            # alpha lowercase
+    int Var;            # alpha uppercase
+    float var1;         # alphanum
+    bool var_2;         # underscrore
+    bool v'ar;          # apostrophe
+
+    begin
+        # boolean values
+        var_2 := false;
+        var_2 := true;
+
+        # int values
+        var := 0;
+        var := 12345678910;
+
+        # float values
+        var1 := 0.1;
+        var1 := 0.12345678910;
+        var1 := 123456.78910;
+
+        # string values
+        write "";
+        write "hello world! 1234 $%^ \n () [] -+";
+        write "begin end write call if while fi do";
+        write "var := 0";
+    end
+
+proc oneParam (val int var1)
+    # zero local variables
+    int array1[10];      # Array - 1 D
+    int array2[10, 10];  # Array - 2 D
+    
+    begin
+        # populating 1D array
+        while i<10 do
+            array1[i] := i;
+        od
+
+        # populating 2D array
+        while i<10 do
+            while j<10 do
+                array2[i, j] := var1;
+            od
+        od
+
+        read var1;
+        read array[0];
+        read array[0, 0];
+
+
+    end
+
+proc twoParams(ref int var1, val bool var2, ref float var3)
+    # one local variable
+    float var4;
+
+    int something;
+
+    begin
+        # if else statements
+        if var4 then
+            write "hello";
+        fi
+
+        if (!var4) then
+            write "hello";
+        else
+            write "world";
+        fi
+        
+    end
+
+proc callFunctions()
+    int val1;
+    float val2;
+
+    begin
+        val1 := 1;
+        val2 := 1.1;
+
+        call zeroParams();
+        call oneParam(2);
+        call twoParams(val1, true, val2);
+    end
+
+proc booleanExpressions()
+    bool val1;
+    bool val2;
+    bool val3;
+    
+    begin
+        val1 := true;
+        val2 := true;
+
+        val1 := ! val2;
+
+        val3 := val1 && val2;
+        val3 := val1 || val2;
+        val3 := val1 = val2;
+        val3 := val1 > val2;
+        val3 := val1 < val2;
+        val3 := val1 <= val2;
+        val3 := val1 >= val2;
+        val3 := val1 != val2;
+
+        val3 := val1 && val2 || !val1;
+    end
+
+proc binaryExpressions()
+    int val1;
+
+    begin
+        val1 := 10 + 20;
+        val1 := 10 * 20;
+        val1 := 10 / 20;
+        val1 := 10 - 20;
+
+        val1 := 10 - 20 + 30 / 10 * 2;
+        val1 := (10 - 20 + 30) / 10 * 2;
+    end

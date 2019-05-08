@@ -1,0 +1,137 @@
+proc main ()
+# min spaces
+int no_spaces;
+float no_spaces[1];
+bool no_spaces[1,1];
+ int spaces ; 
+ float spaces [ 0 ] ; 
+ bool spaces [ 0 , 0 ] ; 
+	int	actual_tabs	;	
+	float	actual_tabs	[	0	]	;	
+	bool	actual_tabs	[	0	,	0	]	;	
+
+int
+newlines
+;
+
+
+float
+newlines
+[
+0
+]
+;
+
+
+bool
+newlines
+[
+0
+,
+0
+]
+;
+# commanets on each line
+int# commanets on each line
+comments# commanets on each line
+;# commanets on each line
+# commanets on each line
+# commanets on each line
+float# commanets on each line
+comments# commanets on each line
+[# commanets on each line
+0# commanets on each line
+]# commanets on each line
+;# commanets on each line
+# commanets on each line
+# commanets on each line
+bool# commanets on each line
+comments# commanets on each line
+[# commanets on each line
+0# commanets on each line
+,# commanets on each line
+0# commanets on each line
+]# commanets on each line
+;# commanets on each line
+# commanets on each line?begin
+begin
+# no spaces
+a:=1;
+a[1]:=1;
+a[1,1]:=1;
+# spaces
+ a := 1 ; 
+ a [ 1 ] := 1 ; 
+ a [ 1 , 1 ] := 1 ; 
+# tabs
+	a	:=	1	;	
+	a	[	1	]	:=	1	;	
+	a	[	1	,	1	]	:=	1	;	
+# newlines
+
+a
+:=
+1
+;
+
+
+a
+[
+1
+]
+:=
+1
+;
+
+
+a
+[
+1
+,
+1
+]
+:=
+1
+;
+
+# newlines with comments
+#comments
+a#comments
+:=#comments
+1#comments
+;#comments
+#comments
+#comments
+a#comments
+[#comments
+1#comments
+]#comments
+:=#comments
+1#comments
+;#comments
+#comments
+#comments
+a#comments
+[#comments
+1#comments
+,#comments
+1#comments
+]#comments
+:=#comments
+1#comments
+;#comments
+end
+proc
+name
+( val bool a ,
+	ref	float	b	,	
+val
+int
+n
+
+)
+begin	#???
+    write
+    "at least one statement, right?"
+    ;
+end

@@ -18,44 +18,41 @@ Here's a map (:: (a -> b) -> [a] -> [b]) of the repository:
 COMP90045Assignment/
 ├── README.md                       # <-- YOU ARE HERE
 ├── Members.txt                     # list of well-chosen team members
-├── code/                           # code, organised by project stage:
-│   ├── kid/...                       # provided starter code
-│   └── stage1/                       # STAGE 1 CODE
-│       ├── Goat.cabal, Setup.hs        # This is a cabal project (see below)
-│       └── src/                        # code goes in here:
-│           ├── Goat.hs                   # main module; compiler entry-point
-|           ├── GoatLang/                 # parser, pretty-printer, ast
-|           |   ├── grammar.txt             # describes Goat program syntax
-|           |   ├── AST.hs                  # language structure definitions
-|           |   ├── Token.hs                # lexeme parsers
-|           |   ├── Parser.hs               # program, statement, expr parsers
-|           |   ├── PrettyPrint.hs          # converting programs to strings
-|           |   └── ...                     # (we may need to create more)
-|           ├── Util/...                  # non-Goat-specific utilities
-|           |   ├── Combinators.hs          # additional parser combinators
-|           |   ├── StringBuilder.hs        # efficient monadic string building
-|           |   └── ...                     # (we may need to create more)
-│           └── Makefile                  # submission requires a Makefile
-└── spec/...                        # project specifications
+├── spec/...                        # project specifications
+├── oz/...                          # provided C code for an Oz emulator
+└── src/                            # our project code!
+    ├── Makefile                    # run `make` to build Goat compiler
+    ├── _SubmissionMakefile         # submission requires a makefile too
+    ├── Goat.hs                     # main module; compiler entry-point
+    ├── GoatLang/                   # Goat syntax: parser, pretty-printer, ast
+    │   ├── grammar.txt               # describes Goat program syntax
+    │   ├── AST.hs                    # language structure definitions
+    │   ├── Token.hs                  # lexeme parsers for
+    │   ├── Parser.hs                 # program, statement, expr parsers
+    │   ├── PrettyPrint.hs            # converting programs to strings
+    │   └── ...                       # (we may need to create more)
+    ├── OzLang/...                 # Code for targeting Oz, in another module?
+    ├── Util/                      # non-Goat-specific utilities
+    │   ├── Combinators.hs           # additional parser combinators
+    │   ├── DiffList.hs              # difference list implementation
+    │   ├── StringBuilder.hs         # efficient monadic string building
+    |   └── ...                      # (we may need to create more)
+    └── Tests/                     # TODO: Move tests to a Haskell module
+        ├── goat/...                 # contains Goat programs
+        └── testgen.py               # input/output lists for unit tests
 ```
 
 ### Building
 
-Development can be done with cabal:
-
-* `cabal build` compiles source code and places executable in (ignored) directory `dist/`.
-* `cabal run -- <arguments>` runs `Goat` executable with command-line arguments `<arguments>`.
-* `cabal repl` fires up GHCi.
-* `cabal help` for more.
+We cut out cabal; just build using `make` inside `src/` or use `ghc`/`ghci` directly.
 
 ### Testing
 
-TODO!
+For now:
 
-* Set up test framework
-    * HUnit?
-    * Automatically running tests with `cabal test`?
-
+* `cd` to `src/`.
+* Add tests to `gentests.py`.
+* Run `make tests`.
 
 ## Stage 1 - Goat parser and pretty-printer
 
@@ -89,12 +86,19 @@ We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it
   - [x] Lexeme parsers (string, int, float)
   - [x] Language parsers (still TODO (if time): manyMN etc. to use count)
   - [x] Expression parser
-- [ ] Testing
-- [ ] Error reporting
+- [x] Testing (we didn't get time to unit test ALL of the parsers and printers, but got the main ones and also ran lots of ad-hoc black box tests of the whole parser/pretty-printer combo comparing our output with other teams').
+- [x] Error reporting
 - [ ] Experiment with bonus-worthy ideas
-- [ ] Review Submission
-- [ ] Submit
+- [x] Review Submission
+- [x] Submit
 
 ## Stage 3 - Goat compiler
 
-(Specification to be released around Easter/mid-semester break...)
+#### Preparation week: Thursday 2nd-Monday 6th
+
+TODO: Meet and decide on how to approach the project
+
+#### Week 1: Tuesday 7th-Monday 13th
+#### Week 2: Tuesday 14th-Monday 20th
+#### Week 3: Tuesday 21st-Monday 27th
+#### Submission: Tuesday 28th, Wednesday 29th.
