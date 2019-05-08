@@ -12,4 +12,4 @@ tests: testgen.py
 	./Tests
 
 clean:
-	rm -rf *.o *.hi */*.o */*.hi Goat submission Tests Tests.hs
+	rm -rf *.o *.hi */*.o */*.hi Goat submission Tests.hs
