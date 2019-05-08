@@ -1,0 +1,5 @@
+proc main()
+    int a;
+begin
+    a[] := 12;
+end

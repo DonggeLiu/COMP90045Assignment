@@ -1,0 +1,5 @@
+proc main(val int b2)
+    int a3;
+begin
+    a3 := 12;
+end

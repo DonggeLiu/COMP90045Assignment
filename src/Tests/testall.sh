@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# 1. hook up your Goat executable (e.g. "./Goat") and sample dir:
+GOAT="./Goat"
+SAMPLE_ROOT="Tests/samples"
+
+# Run GOAT to prettify all the goat programs (*.gt) under SAMPLE_ROOT,
+# and compare your pretty output to the existing pretty output (*.gt.pp)
+FAIL='\033[0;31mFAIL\033[0m'
+WARN='\033[0;35mWARN\033[0m'
+shopt -s globstar
+for testin in "$SAMPLE_ROOT"/**/*.gt; do
+    # running goat:
+    "$GOAT" -p "$testin" > ".temp.gt" 2>&1
+    
+    if [ $? == 0 ]; then
+        # if it succeeded, compare the output:
+        if [ -f "$testin.pp" ]; then
+            diff "$testin.pp" ".temp.gt" > /dev/null
+            if [ $? == 1 ]; then
+                echo -e "${FAIL}: $testin output different:"
+                diff -y "$testin.pp" ".temp.gt" | sed 's/^/  /'
+            fi
+        else
+            echo -e "${WARN}: $testin.pp does not exist!"
+        fi
+    else
+        # if it failed, probably there was a parse error
+        echo -e "${FAIL}: $testin caused us a parse error:"
+        cat ".temp.gt" | sed 's/^/  /'
+    fi
+done
+rm ".temp.gt"
+
+echo "DONE: see output above; no output = all tests passed."

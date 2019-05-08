@@ -1,0 +1,20 @@
+proc main()
+    int a;
+    int b[50];
+    float c[100,2];
+    bool d[23];
+begin
+    newstates := something [ab [cd, ef]];
+    new[hello] := ((6 * i) + 4) - i;
+    read yes [May [the, force]];
+    while a+a/b
+    do
+      if newew[false]
+        then read ss;
+        read ff;
+      else
+        call a ("if then' else", "1234", (2||3*4/(5+6)-7), -1, 7>=2, !True, hey[yes]);
+      fi
+
+    od
+end

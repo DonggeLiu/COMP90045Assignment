@@ -1,3 +1,18 @@
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#     COMP90045 Programming Language Implementation, Programming Project      #
+#                                                                             #
+#                               GOAT - MAKEFILE                               #
+#                                                                             #
+# Well-chosen team name:              pli-dream-team-twentee-nineteen         #
+# Well-chosen team members:                                                   #
+# * Alan Ung                          alanu                                   #
+# * David Stern                       dibstern                                #
+# * Dongge Liu                        donggel                                 #
+# * Mariam Shahid                     mariams                                 #
+# * Matthew Farrugia-Roberts          farrugiam                               #
+#                                                                             #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 Goat: *.hs GoatLang/*.hs Util/*.hs
 	ghc Goat.hs
 
@@ -6,10 +21,38 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 	tar -cvf submission/src.tar Goat.hs GoatLang/*.hs Util/*.hs
 	cp _SubmissionMakefile submission/Makefile
 
-tests: testgen.py
-	python3 testgen.py > Tests.hs
-	ghc Tests.hs
-	./Tests
+tests: Goat unit_tests integration_tests
 
-clean:
-	rm -rf *.o *.hi */*.o */*.hi Goat submission Tests.hs
+# Unit tests with HUnit:
+tests/UnitTests: tests/testgen.py
+	# generate HUnit test script from Python test spec:
+	python3 tests/testgen.py > tests/UnitTests.hs
+	# compile unit tests script
+	ghc tests/UnitTests.hs
+
+unit_tests: Goat tests/UnitTests
+	# ** RUN UNIT TESTS **
+	tests/UnitTests
+clean_unit_tests:
+	rm -rf tests/*.hi tests/*.o tests/UnitTests tests/UnitTests.hs
+
+# Integration tests:
+
+# Recursive directory dependencies:
+# (adapted from https://stackoverflow.com/a/25043823)
+SAMPLE_ROOT = tests/samples
+SAMPLE_DIRS = $(shell find $(SAMPLE_ROOT) -type d)
+ALL_SAMPLES = $(shell find $(SAMPLE_ROOT) -type f -name '*.gt.*')
+integration_tests: tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
+	# ** RUN INTEGRATION TESTS **
+	bash tests/testall.sh
+clean_integration_tests:
+
+
+# codegen: ../../assets/ $(ASSET_DIRS) $(ASSET_FILES)
+#      generate-my-code
+
+clean: clean_unit_tests clean_integration_tests
+	rm -rf *.o *.hi */*.o */*.hi Goat submission
+
+.PHONY: clean tests integration_tests unit_tests submission
