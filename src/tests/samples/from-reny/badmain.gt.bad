@@ -1,4 +1,8 @@
 proc main(val int b2)
+# EDIT: paramaters in main is a semantic error, not a syntactic one. This
+# file SHOULD parse correctly.
+# Adding a problem to cause it to fail:
+end
     int a3;
 begin
     a3 := 12;
