@@ -21,7 +21,7 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 	tar -cvf submission/src.tar Goat.hs GoatLang/*.hs Util/*.hs
 	cp _SubmissionMakefile submission/Makefile
 
-tests: Goat unit_tests integration_tests
+tests: Goat utests itests
 
 # Unit tests with HUnit:
 tests/UnitTests: tests/testgen.py
@@ -30,10 +30,10 @@ tests/UnitTests: tests/testgen.py
 	# compile unit tests script
 	ghc tests/UnitTests.hs
 
-unit_tests: Goat tests/UnitTests
+utests: Goat tests/UnitTests
 	# ** RUN UNIT TESTS **
 	tests/UnitTests
-clean_unit_tests:
+clean_utests:
 	rm -rf tests/*.hi tests/*.o tests/UnitTests tests/UnitTests.hs
 
 # Integration tests:
@@ -43,16 +43,14 @@ clean_unit_tests:
 SAMPLE_ROOT = tests/samples
 SAMPLE_DIRS = $(shell find $(SAMPLE_ROOT) -type d)
 ALL_SAMPLES = $(shell find $(SAMPLE_ROOT) -type f -name '*.gt.*')
-integration_tests: tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
+itests: tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
 	# ** RUN INTEGRATION TESTS **
 	bash tests/testall.sh
-clean_integration_tests:
+clean_itests:
+	# rm -rf # (nothing to clean for integration tests)
 
 
-# codegen: ../../assets/ $(ASSET_DIRS) $(ASSET_FILES)
-#      generate-my-code
-
-clean: clean_unit_tests clean_integration_tests
+clean: clean_utests clean_itests
 	rm -rf *.o *.hi */*.o */*.hi Goat submission
 
-.PHONY: clean tests integration_tests unit_tests submission
+.PHONY: clean tests itests clean_itests utests clean_utests submission
