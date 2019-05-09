@@ -81,12 +81,11 @@ data Stmt
 -- A scalar is an object that contains a single value. This may be the value of
 -- a singleton variable, or a single element of an array or matrix variable.
 --
--- Thus a scalar (:: Scalar) is distinct from an identifier (:: Id): While an
--- identifier refers to a particular variable, which variable may comprise
--- multiple scalars (if it is a container for multiple values, e.g. an array).
--- Thus a scalar is an identifier in conjunction with 0, 1 or 2 expressions
--- (depending on the identified variable's dimensionality) to denote a specific
--- element within that variable:
+-- A scalar (:: Scalar) is distinct from an identifier (:: Id): An identifier
+-- refers to a particular variable, which may comprise multiple scalars (if it
+-- is a container for multiple values, e.g. an array). A scalar is an identifier
+-- in conjunction with 0, 1 or 2 expressions (depending on the identified
+-- variable's dimensionality) to denote a specific element within that variable:
 data Scalar
   = Single Id              -- a singleton variable's element (no subscript)
   | Array  Id Expr         -- an array element (identifier plus one subscript)

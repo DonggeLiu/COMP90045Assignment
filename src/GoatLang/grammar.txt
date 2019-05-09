@@ -1,39 +1,39 @@
 A 'grammar' for Goat Programs:
 
-GOAT         -> PROC+
+GOAT        -> PROC+
 
-PROC         -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
-PARAMS       -> (PARAM ",")* PARAM | ε
+PROC        -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
+PARAMS      -> (PARAM ",")* PARAM | ε
 
-PARAM        -> PASSBY TYPE id
+PARAM       -> PASSBY TYPE id
 
-PASSBY       -> "val" | "ref"
+PASSBY      -> "val" | "ref"
 
-TYPE         -> "bool" | "float" | "int"
+TYPE        -> "bool" | "float" | "int"
 
-DECL         -> TYPE id DIM ";"
-DIM          -> ε | "[" int "]" | "[" int "," int "]"
+DECL        -> TYPE id DIM ";"
+DIM         -> ε | "[" int "]" | "[" int "," int "]"
 
-SCALAR       -> id SUBSCRIPT
-SUBSCRIPT    -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
+SCALAR      -> id SUBSCRIPT
+SUBSCRIPT   -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
 
-STMT         -> ASGN | READ | WRITE_OR_STR | CALL | IF_OPT_ELSE | WHILE
-ASGN         -> SCALAR ":=" EXPR ";"
-READ         -> "read" SCALAR ";"
-WRITE_OR_STR -> "write" EXPR_OR_STR ";"
-EXPR_OR_STR  -> EXPR | string
-CALL         -> "call" id "(" EXPRS ")" ";"
-EXPRS        -> (EXPR ",")* EXPR | ε
-IF_OPT_ELSE  -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
-OPT_ELSE     -> "else" STMT+ | ε
-WHILE        -> "while" EXPR "do" STMT+ "od"
+STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
+ASGN        -> SCALAR ":=" EXPR ";"
+READ        -> "read" SCALAR ";"
+WRITE       -> "write" EXPR_OR_STR ";"
+EXPR_OR_STR -> EXPR | string
+CALL        -> "call" id "(" EXPRS ")" ";"
+EXPRS       -> (EXPR ",")* EXPR | ε
+IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
+OPT_ELSE    -> "else" STMT+ | ε
+WHILE       -> "while" EXPR "do" STMT+ "od"
 
-EXPR         -> SCALAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
-CONST        -> int | float | bool
-BINOP        -> "+"  | "-"  | "*"  | "/"
+EXPR        -> SCALAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
+CONST       -> int | float | bool
+BINOP       -> "+"  | "-"  | "*"  | "/"
               | "<=" | "<"  | "="  | "!=" | ">"  | ">="
               | "&&" | "||"
-UNOP         -> "!"  | "-"
+UNOP        -> "!"  | "-"
 
 
 Key:
@@ -51,7 +51,7 @@ lowercase strings w/o quotes     terminals representing tokens (so an example
                                  for token definitions.
 
 non-grammar symbols              shortcuts that map easily to parsec combinators
-(e.g. *, +, (, etc.)             (e.g. * --> `many`, + --> `many1`). The parens
+(e.g. *, +, (, etc.)             (e.g. * -> `many`, + -> `many1`). The parens
                                  and * in PARAMS and EXPRS can be captured by
                                  the commaSep / sepBy combinators
 
@@ -72,11 +72,11 @@ Other notes:
 
 Tokens:
 
-id      -> [a-zA-Z][a-zA-Z0-9_']*
-int     -> [0-9]+
-float   -> [0-9]+\.[0-9]+
-bool    -> true|false
-string  -> "[^"\n\t]*" -- To clarify, you ARE allowed to have the character '\'
+id     -> [a-zA-Z][a-zA-Z0-9_']*
+int    -> [0-9]+
+float  -> [0-9]+\.[0-9]+
+bool   -> true|false
+string -> "[^"\n\t]*" -- To clarify, you ARE allowed to have the character '\'
                           followed by the character 'n' but not the single
                           character '\n' (newline).
 

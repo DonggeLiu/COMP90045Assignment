@@ -114,10 +114,10 @@ pDim
         Just [n,m] -> return (Dim2 n m)
 
 
--- STMT        -> ASGN | READ | WRITE_OR_STR | CALL | IF_OPT_ELSE | WHILE
+-- STMT        -> ASGN | READ | WRITE | CALL | IF_OPT_ELSE | WHILE
 pStmt :: Parser Stmt
 pStmt
-  = choice [pAsg, pRead, pWriteOrStr, pCall, pIfOptElse, pWhile]
+  = choice [pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile]
   <?> "statement (or, possibly, end-of-block keyword)"
 -- NOTE: Unfortunately, due to the way 'identifier' is implemented and some
 -- weird things about the internals of Parsecs, the "expected <end-of-block
@@ -132,7 +132,7 @@ pStmt
 -- "expecting statement".
 
 -- Each of these statement helper parsers also return Stmts:
-pAsg, pRead, pWriteOrStr, pCall, pIfOptElse, pWhile :: Parser Stmt
+pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
 
 -- ASGN        -> SCALAR ":=" EXPR ";"
 pAsg
@@ -151,9 +151,9 @@ pRead
       semi
       return (Read scalar)
 
--- WRITE_OR_STR -> "write" EXPR_OR_STR ";"
--- EXPR_OR_STR  -> EXPR | string
-pWriteOrStr
+-- WRITE       -> "write" EXPR_OR_STR ";"
+-- EXPR_OR_STR -> EXPR | string
+pWrite
   = do
       reserved "write"
       exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
