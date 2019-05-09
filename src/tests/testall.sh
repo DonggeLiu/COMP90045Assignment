@@ -8,8 +8,13 @@ SAMPLE_ROOT="Tests/samples"
 
 # Script constants and settings:
 
-FAIL='\033[0;31mFAIL\033[0m'
-WARN='\033[0;35mWARN\033[0m'
+if [ -t 1 ]; then
+    FAIL='\033[0;31mFAIL\033[0m'
+    WARN='\033[0;35mWARN\033[0m'
+else
+    FAIL="FAIL"
+    WARN="WARN"
+fi
 shopt -s globstar
 
 # RUN THE TESTS!
