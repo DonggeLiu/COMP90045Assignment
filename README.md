@@ -37,8 +37,9 @@ COMP90045Assignment/
     │   ├── DiffList.hs              # difference list implementation
     │   ├── StringBuilder.hs         # efficient monadic string building
     |   └── ...                      # (we may need to create more)
-    └── Tests/                     # TODO: Move tests to a Haskell module
-        ├── goat/...                 # contains Goat programs
+    └── tests/                     # unit and integration tests
+        ├── samples/...              # various sample Goat programs
+        ├── testall.sh               # script to test with all samples/*.gt
         └── testgen.py               # input/output lists for unit tests
 ```
 
@@ -51,8 +52,12 @@ We cut out cabal; just build using `make` inside `src/` or use `ghc`/`ghci` dire
 For now:
 
 * `cd` to `src/`.
-* Add tests to `gentests.py`.
-* Run `make tests`.
+* Add unit tests to `tests/testgen.py`.
+* Add integration tests:
+  - For pretty-printing tests, add `TEST.gt` and `TEST.gt.pp` somewhere inside `tests/samples`
+  - For syntax error tests, add `TEST.gt.bad` (and, optionally, `TEST.gt.bad.out`) somewhere inside `tests/samples`.
+* Run `make tests` (or just `make utests` or `make itests`).
+* Probably run `make clean` afterwards :)
 
 ## Stage 1 - Goat parser and pretty-printer
 
