@@ -149,6 +149,65 @@ pAsgTest
       ]
     ]
 
+
+
+writeFTest :: Display f => WriterUnitTest f
+writeFTest
+  = WriterUnitTest writeF
+    [ WriterTestCase "" Dim0
+    , WriterTestCase "[0]" (Dim1 0)
+    , WriterTestCase "[1]" (Dim1 1)
+    , WriterTestCase "[1, 0]" (Dim2 1 0)
+    , WriterTestCase "[10, 20]" (Dim2 10 20)
+    , WriterTestCase "[1, 0]" (Dim2 1 0)
+    , WriterTestCase "[10, 20]" (Dim2 10 20)
+    , WriterTestCase "val bool a" (Param Val BoolType "a")
+    , WriterTestCase "ref bool alt" (Param Ref BoolType "alt")
+    , WriterTestCase "val int bc'" (Param Val IntType "bc'")
+    , WriterTestCase "ref float ___aleph" (Param Ref FloatType "___aleph")
+    ]
+
+writeDeclWithTest :: WriterUnitTest Decl
+writeDeclWithTest
+  = WriterUnitTestCase (writeDeclWith $ return ()) -- no indentation
+    [ WriterTestCase "bool i[1, 2];\n"  (Decl BoolType "i" (Dim2 1 2))
+    , WriterTestCase "int action[1];\n" (Decl IntType "action" (Dim1 1))
+    , WriterTestCase "float boolean;\n" (Decl FloatType "boolean" (Dim0))
+    ]
+
+writeVarTest :: WriterUnitTest Var
+writeVarTest
+  = WriterUnitTestCase writeVar
+    [ WriterTestCase "x" (Var0 "x")
+    , WriterTestCase "x[1]" (Var1 "x" (IntConst 1))
+    , WriterTestCase "x[2, 3.0]" (Var2 "x" (IntConst 2) (FloatConst 3.0))
+    ]
+
+writeStmtWithTest :: WriterUnitTest Stmt
+writeStmtWithTest
+  = WriterUnitTestCase (writeStmtWith $ return ()) -- no indentation
+    [ WriterTestCase "call f();\n" (Call "f" [])
+    , WriterTestCase "call f(1);\n" (Call "f" [IntConst 1])
+    , WriterTestCase "call f(1, 2);\n" (Call "f" [IntConst 1, IntConst 2])
+    , WriterTestCase "x := 42;\n" (Asg (Var0 "x") (IntConst 42))
+    , WriterTestCase "x[1] := 42;\n" (Asg (Var1 "x" (IntConst 1)) (IntConst 42))
+    , WriterTestCase "x[1, 2] := 42;\n" (Asg (Var2 "x" (IntConst 1) (IntConst 2)) (IntConst 42))
+    , WriterTestCase "read x;\n" (Read (Var0 "x"))
+    , WriterTestCase "read x[1];\n" (Read (Var1 "x" (IntConst 1)))
+    , WriterTestCase "read x[1, 2];\n" (Read (Var2 "x" (IntConst 1) (IntConst 2)))
+    , WriterTestCase "write x;\n" (Write $ VarExpr (Var0 "x"))
+    , WriterTestCase "write x[1];\n" (Write $ VarExpr (Var1 "x" (IntConst 1)))
+    , WriterTestCase "write x[1, 2];\n" (Write $ VarExpr (Var2 "x" (IntConst 1) (IntConst 2)))
+    -- TODO: Test compound statement writing
+    ]
+
+writeExprTest :: WriterUnitTest Expr
+writeExprTest
+  = WriterUnitTestCase writeExpr
+    [ WriterTestCase "\"hello, world!\\n\"" (StrConst "hello, world!\n")
+    -- TODO: Test expression writing
+    ]
+
 main
   = runTestTT $ TestList [
       generateParserUnitTest integerTest
@@ -158,4 +217,10 @@ main
     , generateParserUnitTest pDimTest
     , generateParserUnitTest pExprTest
     , generateParserUnitTest pAsgTest
+
+    , generateWriterUnitTest writeFTest
+    , generateWriterUnitTest writeDeclWithTest
+    , generateWriterUnitTest writeVarTest
+    , generateWriterUnitTest writeStmtWithTest
+    , generateWriterUnitTest writeExprTest
     ]

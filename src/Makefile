@@ -24,13 +24,13 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 tests: Goat utests itests
 
 # Unit tests with HUnit:
-tests/TestGen: tests/TestGen.hs
-	ghc tests/TestGen.hs
-utests: Goat tests/TestGen
+tests/UnitTests: tests/UnitTests.hs
+	ghc tests/UnitTests.hs
+utests: Goat tests/UnitTests
 	# ** RUN UNIT TESTS **
-	tests/TestGen
+	tests/UnitTests
 clean_utests:
-	rm -rf tests/*.hi tests/*.o tests/UnitTests tests/UnitTests.hs
+	rm -rf tests/*.hi tests/*.o tests/UnitTests
 
 # Integration tests:
 
