@@ -24,15 +24,11 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 tests: Goat utests itests
 
 # Unit tests with HUnit:
-tests/UnitTests: tests/testgen.py
-	# generate HUnit test script from Python test spec:
-	python3 tests/testgen.py > tests/UnitTests.hs
-	# compile unit tests script
-	ghc tests/UnitTests.hs
-
-utests: Goat tests/UnitTests
+tests/TestGen: tests/TestGen.hs
+	ghc tests/TestGen.hs
+utests: Goat tests/TestGen
 	# ** RUN UNIT TESTS **
-	tests/UnitTests
+	tests/TestGen
 clean_utests:
 	rm -rf tests/*.hi tests/*.o tests/UnitTests tests/UnitTests.hs
 

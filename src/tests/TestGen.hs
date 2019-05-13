@@ -66,8 +66,20 @@ integerOrFloatTest
         ]
     ]
 
+stringLiteralTest :: ParserUnitTest String
+stringLiteralTest
+  = ParserUnitTest stringLiteral
+    [ ParserTestCase (ParseSuccess "hello") ["\"hello\""]
+    , ParserTestCase (ParseSuccess "hello\n") ["\"hello\\n\""]
+    , ParserTestCase (ParseSuccess "hello\\t") ["\"hello\\t\""]
+    , ParserTestCase (ParseSuccess "hello\\") ["\"hello\\\""]
+    , ParserTestCase (ParseSuccess "hello\\world") ["\"hello\\world\""]
+    , ParserTestCase ParseFailure
+      ["\"hello\n\"", "\"hello\t\"", "\"hello", "hello\"", "\"hello\"\""]
+    ]
 main
   = runTestTT $ TestList [
       generateParserUnitTest integerTest
     , generateParserUnitTest integerOrFloatTest
+    , generateParserUnitTest stringLiteralTest
     ]
