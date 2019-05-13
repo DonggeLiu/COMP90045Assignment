@@ -53,6 +53,10 @@ integerTest
   = ParserUnitTest integer [
       ParserTestCase (ParseSuccess 42)
         ["42", "042", "0042", "00042"]
+    , ParserTestCase (ParseSuccess 0)
+        ["0", "00", "000"]
+    , ParserTestCase (ParseSuccess 1234567890)
+        ["01234567890"]
     , ParserTestCase ParseFailure
         ["", "4 2", "4,2", "0x42", "0xff", "4.2", "4."]
     ]
@@ -60,7 +64,17 @@ integerTest
 integerOrFloatTest :: ParserUnitTest (Either Int Float)
 integerOrFloatTest
   = ParserUnitTest integerOrFloat [
-      ParserTestCase ParseFailure
+      ParserTestCase (ParseSuccess $ Left 1234567890)
+        ["01234567890"]
+    , ParserTestCase (ParseSuccess $ Left 42)
+        ["42", "042", "0042", "00042"]
+    , ParserTestCase (ParseSuccess $ Left 0)
+        ["0", "00", "000"]
+    , ParserTestCase (ParseSuccess $ Right 12345.06789)
+        ["12345.06789", "0012345.06789000"]
+    , ParserTestCase (ParseSuccess $ Right 0.0)
+        ["0.0", "00.00", "000.000"]
+    , ParserTestCase ParseFailure
         [ "", "4 2", "4,2", "0x42", "0xff", ".0", "4.", "4.2.", "4.2.3"
         , "0.", "0. 0", "1e3", "1E3", "1E-3", "1E+4", "0x42"
         ]
