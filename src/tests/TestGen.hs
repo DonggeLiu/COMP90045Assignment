@@ -91,9 +91,44 @@ stringLiteralTest
     , ParserTestCase ParseFailure
       ["\"hello\n\"", "\"hello\t\"", "\"hello", "hello\"", "\"hello\"\""]
     ]
+
+pParamTest :: ParserUnitTest Param
+pParamTest
+  = ParserUnitTest pParam
+    [ ParserTestCase (ParseSuccess $ Param Val BoolType (Id "a"))
+      ["val bool a", "val  bool  a", "val\tbool\ta", "val\nbool\na"]
+    , ParserTestCase ParseFailure
+      [ "val val var", "val ref var", "ref val var", "ref ref var"
+      , "bool val var", "bool ref var", "float val var", "float ref var"
+      , "int val var", "int ref var  ", "VAL bool var", "REF bool var"
+      , "Val bool var", "Ref bool var", "vAL bool var", "rEF bool var"
+      , "bool bool var", "val' bool var", "ref' bool var", "val _ var"
+      , "val bool _", "val _ _", "val bool true", "val bool \"hello\""
+      , "val bool 42", "val bool 3.14"
+      ]
+    ]
+
+pDimTest :: ParserUnitTest Dim
+pDimTest
+  = ParserUnitTest pDim
+    [ ParserTestCase ParseFailure
+      ["[]", "[][]", "[,]", "[ , ]", "[42][]", "[42,]", "[42, ]", "[][42]"
+      , "[,42]", "[ ,42]", "[[]]", "[[]][[]]", "[[],[]]", "[][[]]", "[,[]]"
+      , "[ ,[]]", "[[]][]", "[[],]", "[[], ]", "[[42]]", "[[42]][[42]]"
+      , "[[42],[42]]", "[42][[42]]", "[42,[42]]", "[[42]][42]", "[[42],42]"
+      , "[\"hello\"]", "[\"hello\"][\"harald\"]"
+      , "[\"hello\",\"harald\"]", "[yarra][trams]", "[yarra,trams]"
+      , "[\"COMP\"][90045]", "[\"COMP\",90045]", "[90045][\"COMP\"]"
+      , "[90045,\"COMP\"]", "[1][2][3]", "[1,2,3]", "[3.14]", "[3.14][42]"
+      , "[3.14,42]", "[42][3.14]", "[42,3.14]", "[3.14][2.72]", "[3.14,[2.72]"
+      , "[42.]", "[.42]", "[42hello]", "[42_]", "[42+]"]
+    ]
+
 main
   = runTestTT $ TestList [
       generateParserUnitTest integerTest
     , generateParserUnitTest integerOrFloatTest
     , generateParserUnitTest stringLiteralTest
+    , generateParserUnitTest pParamTest
+    , generateParserUnitTest pDimTest
     ]
