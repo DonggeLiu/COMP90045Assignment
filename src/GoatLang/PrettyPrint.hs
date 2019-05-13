@@ -71,7 +71,7 @@ writeGoatProgram (GoatProgram procs)
 -- writeProc
 -- Create an action for building a String representing a procedure
 writeProc :: Proc -> StringBuilder
-writeProc (Proc name params decls stmts)
+writeProc (Proc (Id name) params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
       write "proc" >> space >> write name >> space
@@ -109,7 +109,7 @@ endLine
 -- provided action for indenting each line
 -- (actually, there is only one line in this case)
 writeDeclWith :: StringBuilder -> Decl -> StringBuilder
-writeDeclWith indentn (Decl baseType name dim)
+writeDeclWith indentn (Decl baseType (Id name) dim)
   = indentn >> writeF baseType >> space >> write name >> writeF dim >> endLine
 
 
@@ -131,13 +131,13 @@ writeStmtWith indentation (Read var)
 writeStmtWith indentation (Write expr)
   = indentation >> write "write" >> space >> writeExpr expr >> endLine
 
-writeStmtWith indentation (Call name args)
+writeStmtWith indentation (Call (Id name) args)
   = do
       indentation >> write "call" >> space >> write name
       parens (commaSep (map writeExpr args)) >> endLine
 
 -- For composite statements, we will have to write some lines at the current
--- level of indentation, and also some statements at the next level of 
+-- level of indentation, and also some statements at the next level of
 -- indentation (using nextLevelIndentation = indentation >> softTab).
 writeStmtWith indentation (If cond thenStmts)
   = do
@@ -166,11 +166,11 @@ writeStmtWith indentation (While cond doStmts)
 -- writeVar
 -- Create an action to represent a variable as a String
 writeVar :: Var -> StringBuilder
-writeVar (Var0 name)
+writeVar (Var0 (Id name))
   = write name
-writeVar (Var1 name index)
+writeVar (Var1 (Id name) index)
   = write name >> brackets (writeExpr index)
-writeVar (Var2 name index1 index2)
+writeVar (Var2 (Id name) index1 index2)
   = write name >> brackets (commaSep (map writeExpr [index1, index2]))
 
 
@@ -241,7 +241,7 @@ class Display displayable where
 
 -- Represent a formal paramater as a string
 instance Display Param where
-  format (Param passBy baseType name)
+  format (Param passBy baseType (Id name))
     = format passBy ++ " " ++ format baseType ++ " " ++ name
 
 -- Represent a paramater passing mechanism as a String
