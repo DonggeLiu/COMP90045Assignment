@@ -96,7 +96,7 @@ pExprTest :: ParserUnitTest Expr
 pExprTest
   = ParserUnitTest pExpr
     [ ParserTestCase ParseFailure
-      ["+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
+      [ "+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
       , "1 2", "3.14 2.72", "1 +", "1 -", "1 *", "1 /", "1 =", "1 >", "1 >="
       , "1 <", "1 <=", "1 &&", "1 ||", "1 !", "true 2", "true false", "true +"
       , "true -", "true *", "true /", "true =", "true >", "true >=", "true <"
@@ -106,6 +106,17 @@ pExprTest
       , "true 1"]
     ]
 
+pAsgTest :: ParserUnitTest Stmt
+pAsgTest
+  = ParserUnitTest pAsg
+    [ ParserTestCase ParseFailure
+      [ "var = 1;", "var :=;", ":= 42;", "var := read;"
+      , "foo < bar := true;", "var +:= 1;", "\"var\" := true;", "true := var;"
+      , "[] := 42;", "[var] := 42;", "var[] := 42;", "var[][] := 42;"
+      , "var[[0]] := 42;", "var := call factorial(n);", "var := factorial(n);"
+      , "var := main();", "var := +;", "-var := 42;", "!var := false;"
+      ]
+    ]
 
 main
   = runTestTT $ TestList [
@@ -113,4 +124,5 @@ main
     , generateParserUnitTest integerOrFloatTest
     , generateParserUnitTest stringLiteralTest
     , generateParserUnitTest pExprTest
+    , generateParserUnitTest pAsgTest
     ]
