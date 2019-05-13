@@ -122,6 +122,31 @@ pDimTest
       , "[90045,\"COMP\"]", "[1][2][3]", "[1,2,3]", "[3.14]", "[3.14][42]"
       , "[3.14,42]", "[42][3.14]", "[42,3.14]", "[3.14][2.72]", "[3.14,[2.72]"
       , "[42.]", "[.42]", "[42hello]", "[42_]", "[42+]"]
+
+pExprTest :: ParserUnitTest Expr
+pExprTest
+  = ParserUnitTest pExpr
+    [ ParserTestCase ParseFailure
+      [ "+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
+      , "1 2", "3.14 2.72", "1 +", "1 -", "1 *", "1 /", "1 =", "1 >", "1 >="
+      , "1 <", "1 <=", "1 &&", "1 ||", "1 !", "true 2", "true false", "true +"
+      , "true -", "true *", "true /", "true =", "true >", "true >=", "true <"
+      , "true <=", "true &&", "true ||", "true !", "1 = 2 = 3", "1 < 2 < 3"
+      , "1 < 2 = 3", "1 = 2 < 3", "1 <= 2 <= 3", "1 >= 2 >= 3", "1 + + 3"
+      , "true && && false", "true || || false", "true || && false", "1 true"
+      , "true 1"]
+    ]
+
+pAsgTest :: ParserUnitTest Stmt
+pAsgTest
+  = ParserUnitTest pAsg
+    [ ParserTestCase ParseFailure
+      [ "var = 1;", "var :=;", ":= 42;", "var := read;"
+      , "foo < bar := true;", "var +:= 1;", "\"var\" := true;", "true := var;"
+      , "[] := 42;", "[var] := 42;", "var[] := 42;", "var[][] := 42;"
+      , "var[[0]] := 42;", "var := call factorial(n);", "var := factorial(n);"
+      , "var := main();", "var := +;", "-var := 42;", "!var := false;"
+      ]
     ]
 
 main
@@ -131,4 +156,6 @@ main
     , generateParserUnitTest stringLiteralTest
     , generateParserUnitTest pParamTest
     , generateParserUnitTest pDimTest
+    , generateParserUnitTest pExprTest
+    , generateParserUnitTest pAsgTest
     ]
