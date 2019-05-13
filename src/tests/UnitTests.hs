@@ -9,7 +9,9 @@ import GoatLang.Parser
 import GoatLang.PrettyPrint
 import GoatLang.Token
 
--- A ParserUnitTest is a collection of test cases assocated with a single parser.
+import Util.StringBuilder
+
+-- A ParserUnitTest is a list of test cases assocated with a single parser.
 data ParserUnitTest node
   = ParserUnitTest (Parser node) [ParserTestCase node]
 
@@ -24,18 +26,28 @@ data ParseResult node
 
 type GoatInput = String
 
+-- A WriterUnitTest is a list of test cases assocated with a single writer.
+data WriterUnitTest node
+  = WriterUnitTest (node -> StringBuilder) [WriterTestCase node]
+
+-- A ParserTestCase is an expected pretty output corresponding to an AST node.
+data WriterTestCase node
+  = WriterTestCase GoatOutput node
+
+type GoatOutput = String
+
 generateParserUnitTest :: (Eq node, Show node) => ParserUnitTest node -> Test
 generateParserUnitTest (ParserUnitTest parser cases)
-  = TestList (map (generateTestCase parser) cases)
+  = TestList (map (generateParserTestCase parser) cases)
 
-generateTestCase :: (Eq node, Show node) => Parser node -> ParserTestCase node
-  -> Test
-generateTestCase parser (ParserTestCase result inputs)
-  = TestList (map (generateAssertion parser result) inputs)
+generateParserTestCase :: (Eq node, Show node) => Parser node
+  -> ParserTestCase node -> Test
+generateParserTestCase parser (ParserTestCase result inputs)
+  = TestList (map (generateParserAssertion parser result) inputs)
 
-generateAssertion :: (Eq node, Show node) => Parser node -> ParseResult node
-  -> GoatInput -> Test
-generateAssertion parser result input
+generateParserAssertion :: (Eq node, Show node) => Parser node
+  -> ParseResult node -> GoatInput -> Test
+generateParserAssertion parser result input
   = case result of
       ParseFailure -> TestCase $
         assertBool "" $ isLeft $ getParseResult parser input
@@ -46,12 +58,21 @@ getParseResult :: Parser node -> GoatInput -> Either ParseError node
 getParseResult parser input
   = parse (do {result <- parser; eof; return result}) "" input
 
+generateWriterUnitTest :: (Eq node, Show node) => WriterUnitTest node -> Test
+generateWriterUnitTest (WriterUnitTest writer cases)
+  = TestList (map (generateWriterTestCase writer) cases)
+
+generateWriterTestCase :: (Eq node, Show node) => (node -> StringBuilder)
+  -> WriterTestCase node -> Test
+generateWriterTestCase writer (WriterTestCase expected node)
+  = TestCase (assertEqual "" expected (buildString $ writer node))
+
 --------------------------------------------------------------------------------
 
 integerTest :: ParserUnitTest Int
 integerTest
-  = ParserUnitTest integer [
-      ParserTestCase (ParseSuccess 42)
+  = ParserUnitTest integer
+    [ ParserTestCase (ParseSuccess 42)
         ["42", "042", "0042", "00042"]
     , ParserTestCase (ParseSuccess 0)
         ["0", "00", "000"]
@@ -63,8 +84,8 @@ integerTest
 
 integerOrFloatTest :: ParserUnitTest (Either Int Float)
 integerOrFloatTest
-  = ParserUnitTest integerOrFloat [
-      ParserTestCase (ParseSuccess $ Left 1234567890)
+  = ParserUnitTest integerOrFloat
+    [ ParserTestCase (ParseSuccess $ Left 1234567890)
         ["01234567890"]
     , ParserTestCase (ParseSuccess $ Left 42)
         ["42", "042", "0042", "00042"]
@@ -155,8 +176,8 @@ pExprTest
 
 pDeclTest :: ParserUnitTest Decl
 pDeclTest
-  = ParserUnitTest pDecl [
-    ParserTestCase ParseFailure
+  = ParserUnitTest pDecl
+    [ ParserTestCase ParseFailure
       [ "bool;", "bool _;", "bool ';", "bool (;", "bool );"
       , "bool [;", "bool ];", "bool +;", "bool -;", "bool *;", "bool /;"
       , "bool !;", "bool ||;", "bool &&;", "bool =;", "bool !=;", "bool <;"
@@ -181,12 +202,13 @@ pDeclTest
       , "float write;", "int begin;", "int bool;", "int call;", "int do;"
       , "int else;", "int end;", "int false;", "int fi;", "int float;"
       , "int if;", "int int;", "int od;", "int proc;", "int read;", "int ref;"
-      , "int then;", "int true;", "int val;", "int while;", "int write;" ]
-  ]
+      , "int then;", "int true;", "int val;", "int while;", "int write;"
+      ]
+    ]
 
 
-writeFTest :: Display f => WriterUnitTest f
-writeFTest
+writeFDimTest :: WriterUnitTest Dim
+writeFDimTest
   = WriterUnitTest writeF
     [ WriterTestCase "" Dim0
     , WriterTestCase "[0]" (Dim1 0)
@@ -195,58 +217,61 @@ writeFTest
     , WriterTestCase "[10, 20]" (Dim2 10 20)
     , WriterTestCase "[1, 0]" (Dim2 1 0)
     , WriterTestCase "[10, 20]" (Dim2 10 20)
-    , WriterTestCase "val bool a" (Param Val BoolType "a")
-    , WriterTestCase "ref bool alt" (Param Ref BoolType "alt")
-    , WriterTestCase "val int bc'" (Param Val IntType "bc'")
-    , WriterTestCase "ref float ___aleph" (Param Ref FloatType "___aleph")
+    ]
+
+writeFParamTest :: WriterUnitTest Param
+writeFParamTest
+  = WriterUnitTest writeF
+    [ WriterTestCase "val bool a" (Param Val BoolType (Id "a"))
+    , WriterTestCase "ref bool alt" (Param Ref BoolType (Id "alt"))
+    , WriterTestCase "val int bc'" (Param Val IntType (Id "bc'"))
+    , WriterTestCase "ref float ___aleph" (Param Ref FloatType (Id "___aleph"))
     ]
 
 writeDeclWithTest :: WriterUnitTest Decl
 writeDeclWithTest
-  = WriterUnitTestCase (writeDeclWith $ return ()) -- no indentation
-    [ WriterTestCase "bool i[1, 2];\n"  (Decl BoolType "i" (Dim2 1 2))
-    , WriterTestCase "int action[1];\n" (Decl IntType "action" (Dim1 1))
-    , WriterTestCase "float boolean;\n" (Decl FloatType "boolean" (Dim0))
+  = WriterUnitTest (writeDeclWith $ return ()) -- no indentation
+    [ WriterTestCase "bool i[1, 2];\n"  (Decl BoolType (Id "i") (Dim2 1 2))
+    , WriterTestCase "int action[1];\n" (Decl IntType (Id "action") (Dim1 1))
+    , WriterTestCase "float boolean;\n" (Decl FloatType (Id "boolean") (Dim0))
     ]
 
 writeVarTest :: WriterUnitTest Var
 writeVarTest
-  = WriterUnitTestCase writeVar
-    [ WriterTestCase "x" (Var0 "x")
-    , WriterTestCase "x[1]" (Var1 "x" (IntConst 1))
-    , WriterTestCase "x[2, 3.0]" (Var2 "x" (IntConst 2) (FloatConst 3.0))
+  = WriterUnitTest writeVar
+    [ WriterTestCase "x" (Var0 (Id "x"))
+    , WriterTestCase "x[1]" (Var1 (Id "x") (IntConst 1))
+    , WriterTestCase "x[2, 3.0]" (Var2 (Id "x") (IntConst 2) (FloatConst 3.0))
     ]
 
 writeStmtWithTest :: WriterUnitTest Stmt
 writeStmtWithTest
-  = WriterUnitTestCase (writeStmtWith $ return ()) -- no indentation
-    [ WriterTestCase "call f();\n" (Call "f" [])
-    , WriterTestCase "call f(1);\n" (Call "f" [IntConst 1])
-    , WriterTestCase "call f(1, 2);\n" (Call "f" [IntConst 1, IntConst 2])
-    , WriterTestCase "x := 42;\n" (Asg (Var0 "x") (IntConst 42))
-    , WriterTestCase "x[1] := 42;\n" (Asg (Var1 "x" (IntConst 1)) (IntConst 42))
-    , WriterTestCase "x[1, 2] := 42;\n" (Asg (Var2 "x" (IntConst 1) (IntConst 2)) (IntConst 42))
-    , WriterTestCase "read x;\n" (Read (Var0 "x"))
-    , WriterTestCase "read x[1];\n" (Read (Var1 "x" (IntConst 1)))
-    , WriterTestCase "read x[1, 2];\n" (Read (Var2 "x" (IntConst 1) (IntConst 2)))
-    , WriterTestCase "write x;\n" (Write $ VarExpr (Var0 "x"))
-    , WriterTestCase "write x[1];\n" (Write $ VarExpr (Var1 "x" (IntConst 1)))
-    , WriterTestCase "write x[1, 2];\n" (Write $ VarExpr (Var2 "x" (IntConst 1) (IntConst 2)))
+  = WriterUnitTest (writeStmtWith $ return ()) -- no indentation
+    [ WriterTestCase "call f();\n" (Call (Id "f") [])
+    , WriterTestCase "call f(1);\n" (Call (Id "f") [IntConst 1])
+    , WriterTestCase "call f(1, 2);\n" (Call (Id "f") [IntConst 1, IntConst 2])
+    , WriterTestCase "x := 42;\n" (Asg (Var0 (Id "x")) (IntConst 42))
+    , WriterTestCase "x[1] := 42;\n" (Asg (Var1 (Id "x") (IntConst 1)) (IntConst 42))
+    , WriterTestCase "x[1, 2] := 42;\n" (Asg (Var2 (Id "x") (IntConst 1) (IntConst 2)) (IntConst 42))
+    , WriterTestCase "read x;\n" (Read (Var0 (Id "x")))
+    , WriterTestCase "read x[1];\n" (Read (Var1 (Id "x") (IntConst 1)))
+    , WriterTestCase "read x[1, 2];\n" (Read (Var2 (Id "x") (IntConst 1) (IntConst 2)))
+    , WriterTestCase "write x;\n" (Write $ VarExpr (Var0 (Id "x")))
+    , WriterTestCase "write x[1];\n" (Write $ VarExpr (Var1 (Id "x") (IntConst 1)))
+    , WriterTestCase "write x[1, 2];\n" (Write $ VarExpr (Var2 (Id "x") (IntConst 1) (IntConst 2)))
     -- TODO: Test compound statement writing
     ]
 
 writeExprTest :: WriterUnitTest Expr
 writeExprTest
-  = WriterUnitTestCase writeExpr
+  = WriterUnitTest writeExpr
     [ WriterTestCase "\"hello, world!\\n\"" (StrConst "hello, world!\n")
     -- TODO: Test expression writing
     ]
 
-
-
 main
-  = runTestTT $ TestList [
-      generateParserUnitTest integerTest
+  = runTestTT $ TestList
+    [ generateParserUnitTest integerTest
     , generateParserUnitTest integerOrFloatTest
     , generateParserUnitTest stringLiteralTest
     , generateParserUnitTest pParamTest
@@ -255,7 +280,8 @@ main
     , generateParserUnitTest pExprTest
     , generateParserUnitTest pDeclTest
 
-    , generateWriterUnitTest writeFTest
+    , generateWriterUnitTest writeFDimTest
+    , generateWriterUnitTest writeFParamTest
     , generateWriterUnitTest writeDeclWithTest
     , generateWriterUnitTest writeVarTest
     , generateWriterUnitTest writeStmtWithTest
