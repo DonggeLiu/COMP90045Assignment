@@ -91,9 +91,26 @@ stringLiteralTest
     , ParserTestCase ParseFailure
       ["\"hello\n\"", "\"hello\t\"", "\"hello", "hello\"", "\"hello\"\""]
     ]
+
+pExprTest :: ParserUnitTest Expr
+pExprTest
+  = ParserUnitTest pExpr
+    [ ParserTestCase ParseFailure
+      ["+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
+      , "1 2", "3.14 2.72", "1 +", "1 -", "1 *", "1 /", "1 =", "1 >", "1 >="
+      , "1 <", "1 <=", "1 &&", "1 ||", "1 !", "true 2", "true false", "true +"
+      , "true -", "true *", "true /", "true =", "true >", "true >=", "true <"
+      , "true <=", "true &&", "true ||", "true !", "1 = 2 = 3", "1 < 2 < 3"
+      , "1 < 2 = 3", "1 = 2 < 3", "1 <= 2 <= 3", "1 >= 2 >= 3", "1 + + 3"
+      , "true && && false", "true || || false", "true || && false", "1 true"
+      , "true 1"]
+    ]
+
+
 main
   = runTestTT $ TestList [
       generateParserUnitTest integerTest
     , generateParserUnitTest integerOrFloatTest
     , generateParserUnitTest stringLiteralTest
+    , generateParserUnitTest pExprTest
     ]
