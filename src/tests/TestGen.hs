@@ -121,20 +121,8 @@ pDimTest
       , "[\"COMP\"][90045]", "[\"COMP\",90045]", "[90045][\"COMP\"]"
       , "[90045,\"COMP\"]", "[1][2][3]", "[1,2,3]", "[3.14]", "[3.14][42]"
       , "[3.14,42]", "[42][3.14]", "[42,3.14]", "[3.14][2.72]", "[3.14,[2.72]"
-      , "[42.]", "[.42]", "[42hello]", "[42_]", "[42+]"]
-
-pExprTest :: ParserUnitTest Expr
-pExprTest
-  = ParserUnitTest pExpr
-    [ ParserTestCase ParseFailure
-      [ "+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
-      , "1 2", "3.14 2.72", "1 +", "1 -", "1 *", "1 /", "1 =", "1 >", "1 >="
-      , "1 <", "1 <=", "1 &&", "1 ||", "1 !", "true 2", "true false", "true +"
-      , "true -", "true *", "true /", "true =", "true >", "true >=", "true <"
-      , "true <=", "true &&", "true ||", "true !", "1 = 2 = 3", "1 < 2 < 3"
-      , "1 < 2 = 3", "1 = 2 < 3", "1 <= 2 <= 3", "1 >= 2 >= 3", "1 + + 3"
-      , "true && && false", "true || || false", "true || && false", "1 true"
-      , "true 1"]
+      , "[42.]", "[.42]", "[42hello]", "[42_]", "[42+]"
+      ]
     ]
 
 pAsgTest :: ParserUnitTest Stmt
@@ -149,6 +137,52 @@ pAsgTest
       ]
     ]
 
+pExprTest :: ParserUnitTest Expr
+pExprTest
+  = ParserUnitTest pExpr
+    [ ParserTestCase ParseFailure
+      [ "+", "-", "*", "/", "=", ">", ">=", "<", "<=", "&&", "||", "!"
+      , "1 2", "3.14 2.72", "1 +", "1 -", "1 *", "1 /", "1 =", "1 >", "1 >="
+      , "1 <", "1 <=", "1 &&", "1 ||", "1 !", "true 2", "true false", "true +"
+      , "true -", "true *", "true /", "true =", "true >", "true >=", "true <"
+      , "true <=", "true &&", "true ||", "true !", "1 = 2 = 3", "1 < 2 < 3"
+      , "1 < 2 = 3", "1 = 2 < 3", "1 <= 2 <= 3", "1 >= 2 >= 3", "1 + + 3"
+      , "true && && false", "true || || false", "true || && false", "1 true"
+      , "true 1"
+      ]
+    ]
+
+pDeclTest :: ParserUnitTest Decl
+pDeclTest
+  = ParserUnitTest pDecl [
+    ParserTestCase ParseFailure
+      [ "bool;", "bool _;", "bool ';", "bool (;", "bool );"
+      , "bool [;", "bool ];", "bool +;", "bool -;", "bool *;", "bool /;"
+      , "bool !;", "bool ||;", "bool &&;", "bool =;", "bool !=;", "bool <;"
+      , "bool <=;", "bool >;", "bool >=;", "bool \"var\";", "bool _var;"
+      , "bool 'var;", "bool 0var;", "bool var", "float;", "float _;", "float ';"
+      , "float (;", "float );", "float [;", "float ];", "float +;", "float -;"
+      , "float *;", "float /;", "float !;", "float ||;", "float &&;", "float =;"
+      , "float !=;", "float <;", "float <=;", "float >;", "float >=;"
+      , "float \"var\";", "float _var;", "float 'var;", "float 0var;"
+      , "float var", "int;", "int _;", "int ';", "int (;", "int );"
+      , "int [;", "int ];", "int +;", "int -;", "int *;", "int /;", "int !;"
+      , "int ||;", "int &&;", "int =;", "int !=;", "int <;", "int <=;", "int >;"
+      , "int >=;", "int \"var\";", "int _var;", "int 'var;", "int 0var;"
+      , "int var", "bool begin;", "bool bool;", "bool call;", "bool do;"
+      , "bool else;", "bool end;", "bool false;", "bool fi;", "bool float;"
+      , "bool if;", "bool int;", "bool od;", "bool proc;", "bool read;"
+      , "bool ref;", "bool then;", "bool true;", "bool val;", "bool while;"
+      , "bool write;", "float begin;", "float bool;", "float call;", "float do;"
+      , "float else;", "float end;", "float false;", "float fi;", "float float;"
+      , "float if;", "float int;", "float od;", "float proc;", "float read;"
+      , "float ref;", "float then;", "float true;", "float val;", "float while;"
+      , "float write;", "int begin;", "int bool;", "int call;", "int do;"
+      , "int else;", "int end;", "int false;", "int fi;", "int float;"
+      , "int if;", "int int;", "int od;", "int proc;", "int read;", "int ref;"
+      , "int then;", "int true;", "int val;", "int while;", "int write;" ]
+  ]
+
 main
   = runTestTT $ TestList [
       generateParserUnitTest integerTest
@@ -156,6 +190,7 @@ main
     , generateParserUnitTest stringLiteralTest
     , generateParserUnitTest pParamTest
     , generateParserUnitTest pDimTest
-    , generateParserUnitTest pExprTest
     , generateParserUnitTest pAsgTest
+    , generateParserUnitTest pExprTest
+    , generateParserUnitTest pDeclTest
     ]
