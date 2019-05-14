@@ -102,6 +102,37 @@ data Expr
   | UnExpr UnOp Expr          -- unary expression
     deriving (Show, Eq)
 
+
+-- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
+data AExpr
+  = AScalarExpr ExprAttr Scalar         -- the value inside a scalar (variable element)
+  | ABoolConst ExprAttr Bool            -- boolean constant
+  | AFloatConst ExprAttr Float          -- floating point constant
+  | AIntConst ExprAttr Int              -- integer constant
+  | ABinExpr ExprAttr BinOp AExpr AExpr -- binary expression
+  | AUnExpr ExprAttr UnOp AExpr         -- unary expression
+    deriving (Show, Eq)
+
+-- type AExpr = (Expr, Attr)
+-- data Expr
+--   = ScalarExpr Scalar         -- the value inside a scalar (variable element)
+--   | BoolConst Bool            -- boolean constant
+--   | FloatConst Float          -- floating point constant
+--   | IntConst Int              -- integer constant
+--   | BinExpr BinOp AExpr AExpr   -- binary expression
+--   | UnExpr UnOp AExpr          -- unary expression
+--     deriving (Show, Eq)
+--
+-- data AExpr = Node Attr Expr
+
+
+-- (BinExpr Add (IntConst 1, attr) (IntConst 2, attr), attr)
+-- (attr, BinExpr Add (attr, IntConst 1) (attr, IntConst 2))
+-- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
+-- Node attr (BinExpr Add (Node attr (IntConst 1)) (Node attr (IntConst 2)))
+
+
+
 -- Binary operators
 data BinOp
  = Add | Sub | Mul | Div              -- arithmetic
