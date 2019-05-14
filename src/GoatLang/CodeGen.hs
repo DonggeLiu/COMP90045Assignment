@@ -17,16 +17,76 @@ module GoatLang.CodeGen where
 
 import GoatLang.AST
 
+type FrameSize = Int
 type Register = Int
+type Slot = Int
+
+data Label
+  = Label String
+
+data BuiltInFunc
+  = ReadBool
+  | ReadFloat
+  | ReadInt
+  | PrintBool
+  | PrintFloat
+  | PrintInt
+  | PrintStr
 
 data InstrTree
   = InstrList [InstrTree]
   | InstrLeaf Instruction
 
 data Instruction
-  = IntConstInstr Register Int
-  | FloatConstInstr Register Float
+  = PushStackFrameInstr FrameSize
+  | PopStackFrameInstr FrameSize
+  | StoreInstr Slot Register
+  | LoadInstr Register Slot
+  | LoadAddressInstr Register Slot
+  | LoadIndirectInstr Register Register
+  | StoreIndirectInstr Register Register
+  | IntConstInstr Register Int
+  | RealConstInstr Register Float
+  | StringConstInstr Register String
   | AddIntInstr Register Register Register
+  | AddRealInstr Register Register Register
+  | AddOffsetInstr Register Register Register
+  | SubIntInstr Register Register Register
+  | SubRealInstr Register Register Register
+  | SubOffsetInstr Register Register Register
+  | MulIntInstr Register Register Register
+  | MulRealInstr Register Register Register
+  | DivIntInstr Register Register Register
+  | DivRealInstr Register Register Register
+  | NegIntInstr Register Register
+  | NegRealInstr Register Register
+  | EquIntInstr Register Register Register
+  | NEqIntInstr Register Register Register
+  | GThIntInstr Register Register Register
+  | GEqIntInstr Register Register Register
+  | LThIntInstr Register Register Register
+  | LEqIntInstr Register Register Register
+  | EquRealInstr Register Register Register
+  | NEqRealInstr Register Register Register
+  | GThRealInstr Register Register Register
+  | GEqRealInstr Register Register Register
+  | LThRealInstr Register Register Register
+  | LEqRealInstr Register Register Register
+  | AndInstr Register Register Register
+  | OrInstr Register Register Register
+  | NotInstr Register Register
+  | IntToRealInstr Register Register
+  | MoveInstr Register Register
+  | BranchOnTrueInstr Register Label
+  | BranchOnFalseInstr Register Label
+  | BrachUncondInstr Label
+  | CallInstr Label
+  | CallBuiltinInstr BuiltInFunc
+  | ReturnInstr
+  | HaltInstr
+  | DebugRegInstr Register
+  | DebugSlotInstr Slot
+  | DebugStackInstr
 
 -- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
 genCodeExprInto :: Register -> Expr -> InstrTree
