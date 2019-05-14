@@ -12,60 +12,60 @@ import GoatLang.Token
 import Util.StringBuilder
 
 -- A ParserUnitTest is a list of test cases assocated with a single parser.
-data ParserUnitTest node
-  = ParserUnitTest (Parser node) [ParserTestCase node]
+data ParserUnitTest a
+  = ParserUnitTest (Parser a) [ParserTestCase a]
 
 -- A ParserTestCase is an expected output corresponding to a list of inputs.
-data ParserTestCase node
-  = ParserTestCase (ParseResult node) [GoatInput]
+data ParserTestCase a
+  = ParserTestCase (ParseResult a) [GoatInput]
 
 -- A ParseResult corresponds to either a parsing error or an ASTNode.
-data ParseResult node
+data ParseResult a
   = ParseFailure
-  | ParseSuccess node
+  | ParseSuccess a
 
 type GoatInput = String
 
 -- A WriterUnitTest is a list of test cases assocated with a single writer.
-data WriterUnitTest node
-  = WriterUnitTest (node -> StringBuilder) [WriterTestCase node]
+data WriterUnitTest a
+  = WriterUnitTest (a -> StringBuilder) [WriterTestCase a]
 
 -- A ParserTestCase is an expected pretty output corresponding to an AST node.
-data WriterTestCase node
-  = WriterTestCase GoatOutput node
+data WriterTestCase a
+  = WriterTestCase GoatOutput a
 
 type GoatOutput = String
 
-generateParserUnitTest :: (Eq node, Show node) => ParserUnitTest node -> Test
+generateParserUnitTest :: (Eq a, Show a) => ParserUnitTest a -> Test
 generateParserUnitTest (ParserUnitTest parser cases)
   = TestList (map (generateParserTestCase parser) cases)
 
-generateParserTestCase :: (Eq node, Show node) => Parser node
-  -> ParserTestCase node -> Test
+generateParserTestCase :: (Eq a, Show a) => Parser a
+  -> ParserTestCase a -> Test
 generateParserTestCase parser (ParserTestCase result inputs)
   = TestList (map (generateParserAssertion parser result) inputs)
 
-generateParserAssertion :: (Eq node, Show node) => Parser node
-  -> ParseResult node -> GoatInput -> Test
+generateParserAssertion :: (Eq a, Show a) => Parser a
+  -> ParseResult a -> GoatInput -> Test
 generateParserAssertion parser result input
   = case result of
       ParseFailure -> TestCase $
         assertBool "" $ isLeft $ getParseResult parser input
-      ParseSuccess node -> TestCase $ assertEqual "" (Right node) $
+      ParseSuccess result -> TestCase $ assertEqual "" (Right result) $
         getParseResult parser input
 
-getParseResult :: Parser node -> GoatInput -> Either ParseError node
+getParseResult :: Parser a -> GoatInput -> Either ParseError a
 getParseResult parser input
   = parse (do {result <- parser; eof; return result}) "" input
 
-generateWriterUnitTest :: (Eq node, Show node) => WriterUnitTest node -> Test
+generateWriterUnitTest :: (Eq a, Show a) => WriterUnitTest a -> Test
 generateWriterUnitTest (WriterUnitTest writer cases)
   = TestList (map (generateWriterTestCase writer) cases)
 
-generateWriterTestCase :: (Eq node, Show node) => (node -> StringBuilder)
-  -> WriterTestCase node -> Test
-generateWriterTestCase writer (WriterTestCase expected node)
-  = TestCase (assertEqual "" expected (buildString $ writer node))
+generateWriterTestCase :: (Eq a, Show a) => (a -> StringBuilder)
+  -> WriterTestCase a -> Test
+generateWriterTestCase writer (WriterTestCase expected input)
+  = TestCase (assertEqual "" expected (buildString $ writer input))
 
 --------------------------------------------------------------------------------
 
