@@ -17,16 +17,75 @@ module GoatLang.CodeGen where
 
 import GoatLang.AST
 
-type Register = Int
-
 data InstrTree
   = InstrList [InstrTree]
   | InstrLeaf Instruction
 
-data Instruction
-  = IntConstInstr Register Int
-  | FloatConstInstr Register Float
-  | AddIntInstr Register Register Register
+-- newtype StackSlot = Slot Int
+-- type LabelCounter = Int
+newtype Reg = Reg Int
+type FuncName = String
+
+data Instruction 
+  = IntConstrInstr Reg Int
+  | RealConstInstr Reg Float
+  | StringConstInstr Reg String
+  | CallBuiltinInstr FuncName
+
+  -- | StoreInstr StackSlot Reg
+  -- | LoadInstr Reg StackSlot
+  -- | LoadAddrInstr Reg StackSlot
+  -- | LoadIndr Reg Reg
+  -- | StoreIndr Reg Reg
+
+  -- | AddIntInstr Reg Reg Reg
+  -- | AddRealInstr Reg Reg Reg
+  -- | AddOffsetInstr Reg Reg Reg
+  -- | SubIntInstr Reg Reg Reg
+  -- | SubRealInstr Reg Reg Reg
+  -- | SubOffsetInstr Reg Reg Reg
+  -- | MulIntInstr Reg Reg Reg
+  -- | MulRealInstr Reg Reg Reg
+  -- | DivIntInstr Reg Reg Reg
+  -- | DivRealInstr Reg Reg Reg
+  -- | NegIntInstr Reg Reg
+  -- | NegRealInstr Reg Reg
+
+  -- | CmpEqInInstr Reg Reg Reg
+  -- | CmpNeIntInst Reg Reg Reg
+  -- | CmpGtIntInstr Reg Reg Reg
+  -- | CmpGeIntInstr Reg Reg Reg
+  -- | CmpLtIntInstr Reg Reg Reg
+  -- | CmpLeIntInstr Reg Reg Reg
+
+  -- | CmpEqRealInstr Reg Reg Reg
+  -- | CmpNeRealInstr Reg Reg Reg
+  -- | CmpGtRealInstr Reg Reg Reg
+  -- | CmpGeRealInstr Reg Reg Reg
+  -- | CmpLtRealInstr Reg Reg Reg
+  -- | CmpLeRealInstr Reg Reg Reg
+
+  -- | AndInstr Reg Reg Reg
+  -- | OrInstr Reg Reg Reg
+  -- | NotInstr Reg Reg
+
+  -- | IntToRealInstr Reg Reg
+  -- | MoveInstr Reg Reg
+
+  -- | BranchOnTrueInstr Reg LabelCounter??
+  -- | BranchOnFalseInstr Reg LabelCounter??
+  -- | BranchUncondInstr LabelCounter??
+
+  -- | CallInstr 
+  -- | CallBuiltinInstr String?? FuncName??
+  -- | Return 
+  -- | Halt
+
+  -- | DebugReg Reg
+  -- | DebugSlot StackSlot
+  -- | DebugStack
+
+
 
 -- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
 genCodeExprInto :: Register -> Expr -> InstrTree
