@@ -20,22 +20,25 @@ import GoatLang.AST
 newtype FrameSize = FrameSize Int
 newtype Reg = Reg Int
 newtype Slot = Slot Int
+newtype Comment = Comment String
 
 data Label
   = Label String
 
 data BuiltInFunc
   = ReadBool
-  | ReadFloat
+  | ReadReal
   | ReadInt
   | PrintBool
-  | PrintFloat
+  | PrintReal
   | PrintInt
   | PrintStr
 
 data InstrTree
   = InstrList [InstrTree]
   | InstrLeaf Instruction
+  | InstrLabel Label
+  | InstrComment Comment
 
 data Instruction
   = PushStackFrameInstr FrameSize
@@ -97,8 +100,7 @@ data Instruction
   | DebugSlotInstr Slot
   | DebugStackInstr
 
--- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
-genCodeExprInto :: Register -> Expr -> InstrTree
+genCodeExprInto :: Register -> AExpr -> InstrTree
 genCodeExprInto register (AIntConst attr i)
   = InstrLeaf $ IntConstInstr register i
 genCodeExprInto register (AFloatConst attr f)
@@ -107,21 +109,104 @@ genCodeExprInto register (ABoolConst attr b)
   = case b of
       True -> InstrLeaf $ IntConstInstr register 1
       False -> InstrLeaf $ IntConstInstr register 0
-genCodeExprInto register (ABinExpr attr Add l r)
+genCodeExprInto register (ABinExpr attr op l r)
   = InstrList
     [ genCodeExprInto register l
     , genCodeExprInto (register + 1) r
-    , instr register register (register + 1)
+    , generateBinOpInstrTree register register (register + 1) op lType rType
     ]
     where
-      instr = lookupInstrBinOp Add l r
-lookupInstrBinOp :: BinOp -> AExpr -> AExpr
-  -> (Register -> Register -> Register -> Instruction)
-lookupInstrBinOp
+      lType = getExprType l
+      rType = getExprType r
 
-genCodeExprInto register (ABinExpr t Add (FloatConst l) (IntConst r))
-  = InstrList
-    [ genCodeExprInto register l
-    , genCodeExprInto (register + 1) r
-    , AddIntInstr register register (register + 1)
-    ]
+generateBinOpInstrTree :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType
+  -> InstrTree
+generateBinOpInstrTree destReg lReg rReg op lType rType
+  = case (lType, rType) of
+      (IntType, IntType) -> InstrLeaf intInstruction
+      otherwise -> InstrList [ realify lReg lType
+                             , realify rReg rType
+                             , InstrLeaf floatInstruction
+                             ]
+      where
+        floatInstruction = (lookupOpFloat op) destReg lReg rReg
+        intInstruction = (lookupOpInt op) destReg lReg rReg
+
+realify :: Reg -> BaseType -> InstrTree
+realify _ FloatType
+  = InstrList []
+realify reg IntType
+  = InstrLeaf $ IntToRealInstr reg reg
+
+lookupOpFloat :: BinOp -> Reg -> Reg -> Reg -> Instruction
+lookupOpFloat Add
+  = AddRealInstr
+lookupOpFloat Sub
+  = SubRealInstr
+lookupOpFloat Mul
+  = MulRealInstr
+lookupOpFloat Div
+  = DivRealInstr
+
+lookupOpInt :: BinOp -> Reg -> Reg -> Reg -> Instruction
+lookupOpInt Add
+  = AddIntInstr
+lookupOpInt Sub
+  = SubIntInstr
+lookupOpInt Mul
+  = MulIntInstr
+lookupOpInt Div
+  = DivIntInstr
+
+getExprType :: AExpr -> BaseType
+getExprType (ABoolConst _ _)
+  = BoolType
+getExprType (AFloatConst _ _)
+  = FloatType
+getExprType (AIntConst _ _)
+  = IntType
+getExprType (ABinExpr _ operator left right)
+  = case operator of
+      Add -> case getExprType left of
+        FloatType -> FloatType
+        otherwise -> case getExprType right of
+          FloatType -> FloatType
+          otherwise -> IntType
+      Sub -> case getExprType left of
+        FloatType -> FloatType
+        otherwise -> case getExprType right of
+          FloatType -> FloatType
+          otherwise -> IntType
+      Mul -> case getExprType left of
+        FloatType -> FloatType
+        otherwise -> case getExprType right of
+          FloatType -> FloatType
+          otherwise -> IntType
+      Div -> case getExprType left of
+        FloatType -> FloatType
+        otherwise -> case getExprType right of
+          FloatType -> FloatType
+          otherwise -> IntType
+      otherwise -> BoolType
+getExprType (AUnExpr _ operator operand)
+  = getExprType operand
+getExprType (AScalarExpr _ scalar)
+  = getScalarType scalar
+
+-- getScalarType :: Scalar -> BaseType
+-- TODO: implement (using symbol table?)
+
+genCodeStmt :: Stmt -> InstrTree
+genCodeStmt (WriteExpr expr)
+  = InstrList [ genCodeExprInto (Reg 0) expr
+              , InstrLeaf $ CallBuiltinInstr builtin
+              ]
+    where
+      builtin = case getExprType expr of
+        BoolType -> PrintBool
+        FloatType -> PrintReal
+        IntType -> PrintInt
+genCodeStmt (WriteString str)
+  = InstrList [ InstrLeaf $ StringConstInstr (Reg 0) str
+              , InstrLeaf $ CallBuiltinInstr PrintStr
+              ]
