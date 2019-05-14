@@ -102,6 +102,10 @@ data Expr
   | UnExpr UnOp Expr          -- unary expression
     deriving (Show, Eq)
 
+data ExprAttr = ExprAttr { lineNum :: Int
+                         , value :: a
+                         , id :: String
+                         } deriving (Show) 
 
 -- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
 data AExpr

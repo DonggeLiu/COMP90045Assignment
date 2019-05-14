@@ -17,9 +17,9 @@ module GoatLang.CodeGen where
 
 import GoatLang.AST
 
-type FrameSize = Int
-type Register = Int
-type Slot = Int
+newtype FrameSize = FrameSize Int
+newtype Reg = Reg Int
+newtype Slot = Slot Int
 
 data Label
   = Label String
@@ -40,51 +40,60 @@ data InstrTree
 data Instruction
   = PushStackFrameInstr FrameSize
   | PopStackFrameInstr FrameSize
-  | StoreInstr Slot Register
-  | LoadInstr Register Slot
-  | LoadAddressInstr Register Slot
-  | LoadIndirectInstr Register Register
-  | StoreIndirectInstr Register Register
-  | IntConstInstr Register Int
-  | RealConstInstr Register Float
-  | StringConstInstr Register String
-  | AddIntInstr Register Register Register
-  | AddRealInstr Register Register Register
-  | AddOffsetInstr Register Register Register
-  | SubIntInstr Register Register Register
-  | SubRealInstr Register Register Register
-  | SubOffsetInstr Register Register Register
-  | MulIntInstr Register Register Register
-  | MulRealInstr Register Register Register
-  | DivIntInstr Register Register Register
-  | DivRealInstr Register Register Register
-  | NegIntInstr Register Register
-  | NegRealInstr Register Register
-  | EquIntInstr Register Register Register
-  | NEqIntInstr Register Register Register
-  | GThIntInstr Register Register Register
-  | GEqIntInstr Register Register Register
-  | LThIntInstr Register Register Register
-  | LEqIntInstr Register Register Register
-  | EquRealInstr Register Register Register
-  | NEqRealInstr Register Register Register
-  | GThRealInstr Register Register Register
-  | GEqRealInstr Register Register Register
-  | LThRealInstr Register Register Register
-  | LEqRealInstr Register Register Register
-  | AndInstr Register Register Register
-  | OrInstr Register Register Register
-  | NotInstr Register Register
-  | IntToRealInstr Register Register
-  | MoveInstr Register Register
-  | BranchOnTrueInstr Register Label
-  | BranchOnFalseInstr Register Label
+
+  | StoreInstr Slot Reg
+  | LoadInstr Reg Slot
+  | LoadAddressInstr Reg Slot
+  | LoadIndirectInstr Reg Reg
+  | StoreIndirectInstr Reg Reg
+
+  | IntConstInstr Reg Int
+  | RealConstInstr Reg Float
+  | StringConstInstr Reg String
+
+  | AddIntInstr Reg Reg Reg
+  | AddRealInstr Reg Reg Reg
+  | AddOffsetInstr Reg Reg Reg
+  | SubIntInstr Reg Reg Reg
+  | SubRealInstr Reg Reg Reg
+  | SubOffsetInstr Reg Reg Reg
+  | MulIntInstr Reg Reg Reg
+  | MulRealInstr Reg Reg Reg
+  | DivIntInstr Reg Reg Reg
+  | DivRealInstr Reg Reg Reg
+  | NegIntInstr Reg Reg
+  | NegRealInstr Reg Reg
+
+  | EquIntInstr Reg Reg Reg
+  | NEqIntInstr Reg Reg Reg
+  | GThIntInstr Reg Reg Reg
+  | GEqIntInstr Reg Reg Reg
+  | LThIntInstr Reg Reg Reg
+  | LEqIntInstr Reg Reg Reg
+  | EquRealInstr Reg Reg Reg
+  | NEqRealInstr Reg Reg Reg
+  | GThRealInstr Reg Reg Reg
+  | GEqRealInstr Reg Reg Reg
+  | LThRealInstr Reg Reg Reg
+  | LEqRealInstr Reg Reg Reg
+
+  | AndInstr Reg Reg Reg
+  | OrInstr Reg Reg Reg
+  | NotInstr Reg Reg
+
+  | IntToRealInstr Reg Reg
+  | MoveInstr Reg Reg
+
+  | BranchOnTrueInstr Reg Label
+  | BranchOnFalseInstr Reg Label
   | BrachUncondInstr Label
+
   | CallInstr Label
   | CallBuiltinInstr BuiltInFunc
   | ReturnInstr
   | HaltInstr
-  | DebugRegInstr Register
+
+  | DebugRegInstr Reg
   | DebugSlotInstr Slot
   | DebugStackInstr
 
