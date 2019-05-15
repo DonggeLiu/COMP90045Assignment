@@ -25,6 +25,10 @@ newtype FrameSize
   = FrameSize Int
 newtype Reg
   = Reg Int
+instance Enum Reg where
+  fromEnum (Reg r) = r
+  toEnum r = Reg r
+
 newtype Slot
   = Slot Int
 

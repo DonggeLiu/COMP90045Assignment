@@ -206,9 +206,9 @@ pScalar
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Single name)
-        Just [i]   -> return (Array  name i)
-        Just [i,j] -> return (Matrix name i j)
+        Nothing    -> return (Single (Id name))
+        Just [i]   -> return (Array  (Id name) i)
+        Just [i,j] -> return (Matrix (Id name) i j)
     <?> "scalar (variable element)"
 
 

@@ -21,7 +21,7 @@ import GoatLang.OzCode
 
 genCode :: GoatProgram -> InstrTree
 genCode (GoatProgram [main])
-  = InstrList [ InstrLeaf $ CallInstr (Label "proc_main")
+  = InstrList [ InstrLeaf $ CallInstr (ProcLabel "main")
               , InstrLeaf HaltInstr
               , genCodeProc main
               ] 
@@ -29,10 +29,15 @@ genCode (GoatProgram [main])
 genCodeProc :: Proc -> InstrTree
 genCodeProc (Proc (Id "main") [] [] stmts) -- TODO: allow declarations in main
   = InstrList [ InstrLabel $ ProcLabel "main"
-              , InstrComment "prologue"
+              -- , InstrComment "prologue"
               -- TODO: annotate to figure out the required frame size
               -- , InstrLeaf $ PushStackFrameInstr (FrameSize ???)
+              -- TODO: Copy parameters from registers to stack slots
+              -- TODO: Initialise all local variables to 0.
+              , InstrComment "procedure body"
               , InstrList $ map genCodeStmt stmts
+              -- , InstrComment "epilogue"
+              -- , InstrLeaf $ PopStackFrameInstr (FrameSize ???)
               , InstrLeaf ReturnInstr
               ]
 
@@ -56,20 +61,20 @@ lookupPrintBuiltin expr
       FloatType -> PrintReal
       IntType -> PrintInt
 
-genCodeExprInto :: Register -> Expr -> InstrTree
-genCodeExprInto register (AIntConst attr i)
-  = InstrLeaf $ IntConstInstr register i
-genCodeExprInto register (AFloatConst attr f)
-  = InstrLeaf $ FloatConstInstr register f
-genCodeExprInto register (ABoolConst attr b)
-  = case b of
+genCodeExprInto :: Reg -> Expr -> InstrTree
+genCodeExprInto register (IntConst int)
+  = InstrLeaf $ IntConstInstr register int
+genCodeExprInto register (FloatConst float)
+  = InstrLeaf $ RealConstInstr register float
+genCodeExprInto register (BoolConst bool)
+  = case bool of
       True -> InstrLeaf $ IntConstInstr register 1
       False -> InstrLeaf $ IntConstInstr register 0
-genCodeExprInto register (ABinExpr attr op l r)
+genCodeExprInto register (BinExpr op l r)
   = InstrList
     [ genCodeExprInto register l
-    , genCodeExprInto (register + 1) r
-    , generateBinOpInstrTree register register (register + 1) op lType rType
+    , genCodeExprInto (succ register) r
+    , generateBinOpInstrTree register register (succ register) op lType rType
     ]
     where
       lType = getExprType l
@@ -80,13 +85,15 @@ generateBinOpInstrTree :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType
 generateBinOpInstrTree destReg lReg rReg op lType rType
   = case (lType, rType) of
       (IntType, IntType) -> InstrLeaf intInstruction
+      (BoolType, BoolType) -> InstrLeaf boolInstruction
       otherwise -> InstrList [ realify lReg lType
                              , realify rReg rType
                              , InstrLeaf floatInstruction
                              ]
       where
-        floatInstruction = (lookupOpFloat op) destReg lReg rReg
+        floatInstruction = (lookupOpReal op) destReg lReg rReg
         intInstruction = (lookupOpInt op) destReg lReg rReg
+        boolInstruction = (lookupOpBool op) destReg lReg rReg
 
 realify :: Reg -> BaseType -> InstrTree
 realify _ FloatType
@@ -94,17 +101,29 @@ realify _ FloatType
 realify reg IntType
   = InstrLeaf $ IntToRealInstr reg reg
 
-lookupOpFloat :: BinOp -> Reg -> Reg -> Reg -> Instruction
-lookupOpFloat Add
+lookupOpReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
+lookupOpReal Add
   = AddRealInstr
-lookupOpFloat Sub
+lookupOpReal Sub
   = SubRealInstr
-lookupOpFloat Mul
+lookupOpReal Mul
   = MulRealInstr
-lookupOpFloat Div
+lookupOpReal Div
   = DivRealInstr
+lookupOpReal Equ
+  = EquRealInstr
+lookupOpReal NEq
+  = NEqRealInstr
+lookupOpReal LTh
+  = LThRealInstr
+lookupOpReal LEq
+  = LEqRealInstr
+lookupOpReal GTh
+  = GThRealInstr
+lookupOpReal GEq
+  = GEqRealInstr
 
-lookupOpInt :: BinOp -> Reg -> Reg -> Reg -> Instruction
+lookupOpInt :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
 lookupOpInt Add
   = AddIntInstr
 lookupOpInt Sub
@@ -113,6 +132,36 @@ lookupOpInt Mul
   = MulIntInstr
 lookupOpInt Div
   = DivIntInstr
+lookupOpInt Equ
+  = EquIntInstr
+lookupOpInt NEq
+  = NEqIntInstr
+lookupOpInt LTh
+  = LThIntInstr
+lookupOpInt LEq
+  = LEqIntInstr
+lookupOpInt GTh
+  = GThIntInstr
+lookupOpInt GEq
+  = GEqIntInstr
+
+lookupOpBool :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
+lookupOpBool And
+  = AndInstr
+lookupOpBool Or
+  = OrInstr
+lookupOpBool Equ
+  = EquIntInstr
+lookupOpBool NEq
+  = NEqIntInstr
+lookupOpBool LTh
+  = LThIntInstr
+lookupOpBool LEq
+  = LEqIntInstr
+lookupOpBool GTh
+  = GThIntInstr
+lookupOpBool GEq
+  = GEqIntInstr
 
 getExprType :: Expr -> BaseType
 getExprType (BoolConst _)
@@ -146,8 +195,8 @@ getExprType (BinExpr operator left right)
       otherwise -> BoolType
 getExprType (UnExpr operator operand)
   = getExprType operand
-getExprType (ScalarExpr scalar)
-  = getScalarType scalar
+-- getExprType (ScalarExpr scalar)
+--   = getScalarType scalar
 
 -- getScalarType :: Scalar -> BaseType
 -- TODO: implement (using symbol table?)

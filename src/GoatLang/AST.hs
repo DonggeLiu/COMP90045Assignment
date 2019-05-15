@@ -15,7 +15,7 @@ module GoatLang.AST where
 --
 -- ----------------------------------------------------------------------------
 
-class ASTNode node
+class ASTNode node 
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram
@@ -104,7 +104,7 @@ data Scalar
   | Array  Id Expr         -- an array element (identifier plus one subscript)
   | Matrix Id Expr Expr    -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
-instance ASTNode Var
+instance ASTNode Scalar
 
 -- Expressions can take 6 different forms, as indicated below.
 data Expr
