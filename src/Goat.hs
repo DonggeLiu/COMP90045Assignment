@@ -22,6 +22,9 @@ import Data.List (nub, intersperse, intercalate, (\\))
 
 import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (prettify)
+import GoatLang.CodeGen (genCode)
+import GoatLang.OzCode (printInstructions)
+
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -54,7 +57,8 @@ main
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          putStrLn "Sorry, can't generate code yet!"
+          printInstructions (genCode ast)
+
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options

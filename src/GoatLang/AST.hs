@@ -102,20 +102,24 @@ data Expr
   | UnExpr UnOp Expr          -- unary expression
     deriving (Show, Eq)
 
-data ExprAttr = ExprAttr { lineNum :: Int
-                         , value :: a
-                         , id :: String
-                         } deriving (Show) 
+-- data ExprAttr = ExprAttr { lineNum :: Int
+--                          , value :: a
+--                          , id :: String
+--                          } deriving (Show) 
 
--- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
-data AExpr
-  = AScalarExpr ExprAttr Scalar         -- the value inside a scalar (variable element)
-  | ABoolConst ExprAttr Bool            -- boolean constant
-  | AFloatConst ExprAttr Float          -- floating point constant
-  | AIntConst ExprAttr Int              -- integer constant
-  | ABinExpr ExprAttr BinOp AExpr AExpr -- binary expression
-  | AUnExpr ExprAttr UnOp AExpr         -- unary expression
-    deriving (Show, Eq)
+-- We're thinking of going with THIS ONE:
+
+-- -- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
+-- data AExpr
+--   = AScalarExpr ExprAttr Scalar         -- the value inside a scalar (variable element)
+--   | ABoolConst ExprAttr Bool            -- boolean constant
+--   | AFloatConst ExprAttr Float          -- floating point constant
+--   | AIntConst ExprAttr Int              -- integer constant
+--   | ABinExpr ExprAttr BinOp AExpr AExpr -- binary expression
+--   | AUnExpr ExprAttr UnOp AExpr         -- unary expression
+--     deriving (Show, Eq)
+
+-- Alternatives:
 
 -- type AExpr = (Expr, Attr)
 -- data Expr

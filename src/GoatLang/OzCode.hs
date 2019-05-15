@@ -18,10 +18,6 @@ module GoatLang.OzCode where
 import Control.Monad (mapM_)
 import Numeric (showFFloatAlt)
 
--- Our custom StringBuilder utility module provides us a monadic interface for
--- efficiently constructing strings (using a specialised Writer Monad powered
--- by difference lists).
---
 import Util.StringBuilder
 
 
@@ -33,8 +29,8 @@ newtype Slot
   = Slot Int
 
 data Label
-  = Label String
-
+  = ProcLabel String
+  | BlockLabel Int
 
 data InstrTree
   = InstrList [InstrTree]
@@ -94,7 +90,7 @@ data Instruction
   | BrachUncondInstr Label
 
   | CallInstr Label
-  | CallBuiltinInstr BuiltInFunc
+  | CallBuiltinInstr BuiltinFunc
   | ReturnInstr
   | HaltInstr
 
@@ -102,7 +98,7 @@ data Instruction
   | DebugSlotInstr Slot
   | DebugStackInstr
 
-data BuiltInFunc
+data BuiltinFunc
   = ReadBool
   | ReadReal
   | ReadInt
@@ -110,7 +106,6 @@ data BuiltInFunc
   | PrintReal
   | PrintInt
   | PrintStr
-
 
 
 
@@ -139,23 +134,25 @@ writeInstructions :: InstrTree -> StringBuilder
 writeInstructions (InstrLeaf instr)
   = space >> space >> space >> space >> writeInstruction instr >> newline
 writeInstructions (InstrLabel label)
-  = writeLabel label >> newline
-writeInstructions (InstrComment comment)
-  = space >> space >> writeComment comment >> newline
+  = writeLabelName label >> write ":" >> newline
+writeInstructions (InstrComment text)
+  = space >> space >> writeComment text >> newline
 writeInstructions (InstrList instrs)
   = mapM_ writeInstructions instrs
 
 -- writeComment
 -- A comment is just a string starting with "# ".
 writeComment :: String -> StringBuilder
-writeComment comment
-  = write "#" >> space >> write comment
+writeComment text
+  = write "#" >> space >> write text
 
--- writeLabel
+-- writeLabelName
 -- A label is just a string with ":" appended.
-writeLabel :: Label -> StringBuilder
-writeLabel (Label label)
-  = write label >> write ":"
+writeLabelName :: Label -> StringBuilder
+writeLabelName (ProcLabel procname)
+  = write "proc_" >> write procname
+writeLabelName (BlockLabel labelnum)
+  = write "label_" >> showWrite labelnum
 
 -- writeInstruction
 -- Format an Instruction as the corresponding Oz code, including the Oz name
@@ -169,7 +166,7 @@ writeInstruction (PopStackFrameInstr  framesize)
 
 writeInstruction (StoreInstr slot rI)
   = write "store" >> space >> commaSep [writeSlot slot, writeReg rI]
-writeInstruction (LoadInstr  rI slot)
+writeInstruction (LoadInstr rI slot)
   = write "load" >> space >> commaSep [writeReg rI, writeSlot slot]
 writeInstruction (LoadAddressInstr rI slot)
   = write "load_address" >> space >> commaSep [writeReg rI, writeSlot slot]
@@ -248,16 +245,20 @@ writeInstruction (MoveInstr rI rJ)
   = write "move" >> space >> registers [rI, rJ]
 
 writeInstruction (BranchOnTrueInstr rI label)
-  = write "branch_on_true" >> space >> commaSep [writeReg rI, writeLabel label]
+  = do
+      write "branch_on_true" >> space
+      commaSep [writeReg rI, writeLabelName label]
 writeInstruction (BranchOnFalseInstr rI label)
-  = write "branch_on_false" >> space >> commaSep [writeReg rI, writeLabel label]
+  = do
+      write "branch_on_false" >> space
+      commaSep [writeReg rI, writeLabelName label]
 writeInstruction (BrachUncondInstr label)
-  = write "branch_uncond" >> space >> writeLabel label
+  = write "branch_uncond" >> space >> writeLabelName label
 
 writeInstruction (CallInstr label)
-  = write "call" >> space >> writeLabel label
+  = write "call" >> space >> writeLabelName label
 writeInstruction (CallBuiltinInstr builtin)
-  = write "call_builtin" >> space >> writeBuiltInFunc builtin
+  = write "call_builtin" >> space >> writeBuiltinFunc builtin
 writeInstruction ReturnInstr
   = write "return"
 writeInstruction HaltInstr
@@ -296,22 +297,22 @@ writeSlot :: Slot -> StringBuilder
 writeSlot (Slot slotnumber)
   = showWrite slotnumber
 
--- writeBuiltInFunc
--- Create action to write the Oz name for a BuiltInFunc
-writeBuiltInFunc :: BuiltInFunc -> StringBuilder
-writeBuiltInFunc ReadBool
+-- writeBuiltinFunc
+-- Create action to write the Oz name for a BuiltinFunc
+writeBuiltinFunc :: BuiltinFunc -> StringBuilder
+writeBuiltinFunc ReadBool
   = write "read_bool"
-writeBuiltInFunc ReadReal
+writeBuiltinFunc ReadReal
   = write "read_real"
-writeBuiltInFunc ReadInt
+writeBuiltinFunc ReadInt
   = write "read_int"
-writeBuiltInFunc PrintBool
+writeBuiltinFunc PrintBool
   = write "print_bool"
-writeBuiltInFunc PrintReal
+writeBuiltinFunc PrintReal
   = write "print_real"
-writeBuiltInFunc PrintInt
+writeBuiltinFunc PrintInt
   = write "print_int"
-writeBuiltInFunc PrintStr
+writeBuiltinFunc PrintStr
   = write "print_string"
 
 

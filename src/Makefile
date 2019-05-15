@@ -50,7 +50,28 @@ clean_itests:
 	# rm -rf # (nothing to clean for integration tests)
 
 
-clean: clean_utests clean_itests
+# # Stage 3 milestones:
+
+# MILES_DIR = tests/samples/stage3-miles
+# miles: Goat mile1 # TODO: mile2 mile3 mile4 mile5 mile6
+# mile1:
+# 	# First milestone!
+# 	mkdir -p temp
+# 	./Goat $(MILES_DIR)/mile1.gt > temp/mile1.oz
+# 	tests/oz temp/mile1.oz > temp/mile1.out
+# 	diff $(MILES_DIR)/mile1.out temp/mile1.out 
+
+# clean_miles:
+# 	-rm temp/mile*.out temp/mile*.oz
+# 	-rmdir temp
+
+
+
+clean: clean_utests clean_itests # clean_miles
 	rm -rf *.o *.hi */*.o */*.hi Goat submission
 
-.PHONY: clean tests itests clean_itests utests clean_utests submission
+.PHONY: clean \
+	tests itests clean_itests utests clean_utests \
+	submission \
+# 	miles clean_miles
+	

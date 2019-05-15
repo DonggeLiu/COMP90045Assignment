@@ -19,7 +19,44 @@ import GoatLang.AST
 import GoatLang.OzCode
 
 
-genCodeExprInto :: Register -> AExpr -> InstrTree
+genCode :: GoatProgram -> InstrTree
+genCode (GoatProgram [main])
+  = InstrList [ InstrLeaf $ CallInstr (Label "proc_main")
+              , InstrLeaf HaltInstr
+              , genCodeProc main
+              ] 
+
+genCodeProc :: Proc -> InstrTree
+genCodeProc (Proc (Id "main") [] [] stmts) -- TODO: allow declarations in main
+  = InstrList [ InstrLabel $ ProcLabel "main"
+              , InstrComment "prologue"
+              -- TODO: annotate to figure out the required frame size
+              -- , InstrLeaf $ PushStackFrameInstr (FrameSize ???)
+              , InstrList $ map genCodeStmt stmts
+              , InstrLeaf ReturnInstr
+              ]
+
+
+genCodeStmt :: Stmt -> InstrTree
+genCodeStmt (WriteExpr expr)
+  = InstrList [ InstrComment "write <expr>"
+              , genCodeExprInto (Reg 0) expr
+              , InstrLeaf $ CallBuiltinInstr $ lookupPrintBuiltin expr
+              ]
+genCodeStmt (WriteString str)
+  = InstrList [ InstrComment "write <string>"
+              , InstrLeaf $ StringConstInstr (Reg 0) str
+              , InstrLeaf $ CallBuiltinInstr PrintStr
+              ]
+
+lookupPrintBuiltin :: Expr -> BuiltinFunc
+lookupPrintBuiltin expr
+  = case getExprType expr of
+      BoolType -> PrintBool
+      FloatType -> PrintReal
+      IntType -> PrintInt
+
+genCodeExprInto :: Register -> Expr -> InstrTree
 genCodeExprInto register (AIntConst attr i)
   = InstrLeaf $ IntConstInstr register i
 genCodeExprInto register (AFloatConst attr f)
@@ -77,14 +114,14 @@ lookupOpInt Mul
 lookupOpInt Div
   = DivIntInstr
 
-getExprType :: AExpr -> BaseType
-getExprType (ABoolConst _ _)
+getExprType :: Expr -> BaseType
+getExprType (BoolConst _)
   = BoolType
-getExprType (AFloatConst _ _)
+getExprType (FloatConst _)
   = FloatType
-getExprType (AIntConst _ _)
+getExprType (IntConst _)
   = IntType
-getExprType (ABinExpr _ operator left right)
+getExprType (BinExpr operator left right)
   = case operator of
       Add -> case getExprType left of
         FloatType -> FloatType
@@ -107,25 +144,10 @@ getExprType (ABinExpr _ operator left right)
           FloatType -> FloatType
           otherwise -> IntType
       otherwise -> BoolType
-getExprType (AUnExpr _ operator operand)
+getExprType (UnExpr operator operand)
   = getExprType operand
-getExprType (AScalarExpr _ scalar)
+getExprType (ScalarExpr scalar)
   = getScalarType scalar
 
 -- getScalarType :: Scalar -> BaseType
 -- TODO: implement (using symbol table?)
-
-genCodeStmt :: Stmt -> InstrTree
-genCodeStmt (WriteExpr expr)
-  = InstrList [ genCodeExprInto (Reg 0) expr
-              , InstrLeaf $ CallBuiltinInstr builtin
-              ]
-    where
-      builtin = case getExprType expr of
-        BoolType -> PrintBool
-        FloatType -> PrintReal
-        IntType -> PrintInt
-genCodeStmt (WriteString str)
-  = InstrList [ InstrLeaf $ StringConstInstr (Reg 0) str
-              , InstrLeaf $ CallBuiltinInstr PrintStr
-              ]
