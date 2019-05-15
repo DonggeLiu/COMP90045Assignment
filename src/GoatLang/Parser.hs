@@ -62,7 +62,7 @@ pProc
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc name params decls stmts)
+      return (Proc (Id name) params decls stmts)
   <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at least
@@ -75,7 +75,7 @@ pParam
       passBy <- pPassBy
       baseType <- pBaseType
       name <- identifier
-      return (Param passBy baseType name)
+      return (Param passBy baseType (Id name))
   <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
@@ -99,7 +99,7 @@ pDecl
       name <- identifier
       dim <- pDim
       semi
-      return (Decl baseType name dim)
+      return (Decl baseType (Id name) dim)
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -170,7 +170,7 @@ pCall
       name <- identifier
       args <- parens (commaSep pExpr)
       semi
-      return (Call name args)
+      return (Call (Id name) args)
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε

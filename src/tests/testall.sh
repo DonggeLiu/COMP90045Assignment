@@ -43,7 +43,7 @@ for testin in "$SAMPLE_ROOT"/**/*.gt; do
         cat ".temp.gt" | sed 's/^/  /'
     fi
 done
-printf "DONE! num tests:"; ls -1 "$SAMPLE_ROOT"/**/*.gt | wc -l
+printf "DONE! num tests: "; ls -1 "$SAMPLE_ROOT"/**/*.gt | wc -l
 
 # Run GOAT to parse all the baad goat programs (*.gt.bad) under SAMPLE_ROOT,
 # and ensure your parser rejects them (and sends the right error code)
@@ -64,7 +64,7 @@ for testin in "$SAMPLE_ROOT"/**/*.gt.bad; do
     # if it failed, that's good! the error message is not specified, though, so
     # we need not compare it.
 done
-printf "DONE! num tests:"; ls -1 "$SAMPLE_ROOT"/**/*.gt.bad | wc -l
+printf "DONE! num tests: "; ls -1 "$SAMPLE_ROOT"/**/*.gt.bad | wc -l
 
 # clean up temporary files:
 rm ".temp.gt"
