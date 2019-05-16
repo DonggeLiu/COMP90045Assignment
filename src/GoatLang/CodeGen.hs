@@ -15,47 +15,135 @@ module GoatLang.CodeGen where
 --
 -- ----------------------------------------------------------------------------
 
+import Control.Monad (mapM_)
+import Control.Monad.State
+
 import GoatLang.AST
 import GoatLang.OzCode
 
 
+-- Summary of TODO items from throughout file:
+
+-- Some time, if we have time:
+-- - Switch to using a difflist instead of instruction tree
+
+-- When we do semantic analysis:
+-- - Of course, we will want to change from using a recursive function to
+--   calculate expression types to precomputing these types and embedding them
+--   within the Expression AST nodes themselves.
+-- - Idea: Annotate the AST with additional 'float cast' nodes to avoid having
+--   a separate case for every operation when the arguments might be float and
+--   int? E.g.: `Add FloatType (FloatCast (IntConst 4)) (FloatConst 4.0)`.
+
+
+-- ----------------------------------------------------------------------------
+-- CodeGen State Monad
+-- ----------------------------------------------------------------------------
+
+type LabelCounter
+  = Int
+data CodeGenState
+  = CodeGenState LabelCounter InstrTree
+type CodeGen a
+  = State CodeGenState a
+
+
+-- genCode
+-- Using the code generators, convert a Goat Program into a list of Oz
+-- Instructions.
 genCode :: GoatProgram -> InstrTree
-genCode (GoatProgram [main])
-  = InstrList [ InstrLeaf $ CallInstr (ProcLabel "main")
-              , InstrLeaf HaltInstr
-              , genCodeProc main
-              ] 
+genCode prog
+  = instrs
+  where
+    (_, CodeGenState _ instrs)
+      = runState (genCodeGoatProgram prog) (CodeGenState 0 (InstrList []))
 
--- TODO:
--- 3. Follow instructions in slack about starting milestone 2.
 
-genCodeProc :: Proc -> InstrTree
+-- Internal helper functions for interfacing with the CodeGen state:
+
+getLabelCounter :: CodeGen LabelCounter
+getLabelCounter
+  = do
+      CodeGenState labelCounter _ <- get
+      return labelCounter
+incLabelCounter :: CodeGen ()
+incLabelCounter
+  = do
+      CodeGenState labelCounter instrs <- get
+      put $ CodeGenState (labelCounter + 1) instrs
+
+appendInstr :: InstrTree -> CodeGen ()
+appendInstr instrTree
+  = do
+      CodeGenState labelCounter (InstrList instrs) <- get
+      put $ CodeGenState labelCounter (InstrList (instrs ++ [instrTree]))
+
+
+-- Helper functions for accessing state of CodeGen monad
+
+getNewBlockLabel :: CodeGen Label
+getNewBlockLabel
+  = do
+      labelCounter <- getLabelCounter
+      incLabelCounter
+      return (BlockLabel labelCounter)
+
+instr :: Instruction -> CodeGen ()
+instr instruction
+  = appendInstr $ InstrLeaf instruction
+
+label :: Label -> CodeGen ()
+label lab
+  = appendInstr $ InstrLabel lab
+
+comment :: String -> CodeGen ()
+comment text
+  = appendInstr $ InstrComment text
+
+
+
+
+-- ----------------------------------------------------------------------------
+-- Code generators
+-- ----------------------------------------------------------------------------
+
+genCodeGoatProgram :: GoatProgram -> CodeGen ()
+genCodeGoatProgram (GoatProgram [main])
+  = do
+      instr $ CallInstr (ProcLabel "main")
+      instr $ HaltInstr
+      genCodeProc main
+
+
+
+genCodeProc :: Proc -> CodeGen ()
 genCodeProc (Proc (Id "main") [] [] stmts) -- TODO: allow declarations in main
-  = InstrList [ InstrLabel $ ProcLabel "main"
-              -- , InstrComment "prologue"
-              -- TODO: annotate to figure out the required frame size
-              -- , InstrLeaf $ PushStackFrameInstr (FrameSize ???)
-              -- TODO: Copy parameters from registers to stack slots
-              -- TODO: Initialise all local variables to 0.
-              , InstrComment "procedure body"
-              , InstrList $ map genCodeStmt stmts
-              -- , InstrComment "epilogue"
-              -- , InstrLeaf $ PopStackFrameInstr (FrameSize ???)
-              , InstrLeaf ReturnInstr
-              ]
+  = do
+      label $ ProcLabel "main"
+      -- comment "prologue"
+      -- TODO: annotate to figure out the required frame size
+      -- instr $ PushStackFrameInstr (FrameSize ???)
+      -- TODO: Copy parameters from registers to stack slots
+      -- TODO: Initialise all local variables to 0.
+      comment "procedure body"
+      mapM_ genCodeStmt stmts
+      -- comment "epilogue"
+      -- instr $ PopStackFrameInstr (FrameSize ???)
+      instr ReturnInstr
 
 
-genCodeStmt :: Stmt -> InstrTree
+genCodeStmt :: Stmt -> CodeGen ()
 genCodeStmt (WriteExpr expr)
-  = InstrList [ InstrComment "write <expr>"
-              , genCodeExprInto (Reg 0) expr
-              , InstrLeaf $ CallBuiltinInstr $ lookupPrintBuiltin expr
-              ]
+  = do
+      comment "write <expr>"
+      genCodeExprInto (Reg 0) expr
+      instr $ CallBuiltinInstr $ lookupPrintBuiltin expr
+
 genCodeStmt (WriteString str)
-  = InstrList [ InstrComment "write <string>"
-              , InstrLeaf $ StringConstInstr (Reg 0) str
-              , InstrLeaf $ CallBuiltinInstr PrintStr
-              ]
+  = do
+      comment "write <string>"
+      instr $ StringConstInstr (Reg 0) str
+      instr $ CallBuiltinInstr PrintStr
 
 lookupPrintBuiltin :: Expr -> BuiltinFunc
 lookupPrintBuiltin expr
@@ -65,97 +153,94 @@ lookupPrintBuiltin expr
       IntType -> PrintInt
 
 
-genCodeExprInto :: Reg -> Expr -> InstrTree
+genCodeExprInto :: Reg -> Expr -> CodeGen ()
 genCodeExprInto register (IntConst int)
-  = InstrLeaf $ IntConstInstr register int
+  = instr $ IntConstInstr register int
 genCodeExprInto register (FloatConst float)
-  = InstrLeaf $ RealConstInstr register float
+  = instr $ RealConstInstr register float
 genCodeExprInto register (BoolConst True)
-  = InstrLeaf $ IntConstInstr register 1
+  = instr $ IntConstInstr register 1
 genCodeExprInto register (BoolConst False)
-  = InstrLeaf $ IntConstInstr register 0
+  = instr $ IntConstInstr register 0
 
 -- Treat non-strict operations specially:
 
 -- 'And' will not actually use oz's 'and' instruction (which is strict).
 -- Instead, we'll:
--- * Load the first operand into the target register.
--- * If false (0), we are done! Skip evaluating the second operand, and leave
+-- - Load the first operand into the target register.
+-- - If false (0), we are done! Skip evaluating the second operand, and leave
 --   the 0 in the target register.
--- * If true (1), we need to check the second operand. Load into target
+-- - If true (1), we need to check the second operand. Load into target
 --   register.
--- * Whatever the result, leave it in the target register (that's the result of
+-- - Whatever the result, leave it in the target register (that's the result of
 --   the And operation).
 genCodeExprInto register (BinExpr And l r)
-  = InstrList [ genCodeExprInto register l
-              , InstrLeaf $ BranchOnFalseInstr register afterLabel
-              , genCodeExprInto register r
-              , InstrLabel afterLabel
-              ]
-  where
-    afterLabel = BlockLabel 0 -- TODO: Get an actual new label
+  = do
+      afterLabel <- getNewBlockLabel
+      genCodeExprInto register l
+      instr $ BranchOnFalseInstr register afterLabel
+      genCodeExprInto register r
+      label afterLabel
 
 -- Or is similar (but we skip the second operand when the first is True,
 -- rather than False).
 genCodeExprInto register (BinExpr Or l r)
-  = InstrList [ genCodeExprInto register l
-              , InstrLeaf $ BranchOnTrueInstr register afterLabel
-              , genCodeExprInto register r
-              , InstrLabel afterLabel
-              ]
-  where
-    afterLabel = BlockLabel 0 -- TODO: Get an actual new label
+  = do
+      afterLabel <- getNewBlockLabel
+      genCodeExprInto register l
+      instr $ BranchOnTrueInstr register afterLabel
+      genCodeExprInto register r
+      label afterLabel
 
 genCodeExprInto register (BinExpr op l r)
-  = InstrList [ genCodeExprInto register l
-              , genCodeExprInto (succ register) r
-              , generateBinOpInstrTree register register (succ register) op lType rType
-              ]
+  = do
+      genCodeExprInto register l
+      genCodeExprInto (succ register) r
+      genCodeBinOp register register (succ register) op lType rType
   where
     lType = getExprType l
     rType = getExprType r
 
 genCodeExprInto register (UnExpr Not expr)
-  = InstrList [ genCodeExprInto register expr
-              , InstrLeaf $ NotInstr register register
-              ]
+  = do
+      genCodeExprInto register expr
+      instr $ NotInstr register register
 
 genCodeExprInto register (UnExpr Neg expr)
-  = InstrList [ genCodeExprInto register expr
-              , InstrLeaf $ instruction register register
-              ]
+  = do
+      genCodeExprInto register expr
+      instr $ instruction register register
   where
     instruction = case getExprType expr of
       FloatType -> NegRealInstr
       IntType -> NegIntInstr
 
-generateBinOpInstrTree :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType
-  -> InstrTree
+genCodeBinOp :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType -> CodeGen ()
 
-generateBinOpInstrTree destReg lReg rReg op IntType IntType
-  = InstrLeaf $ (lookupOpInt op) destReg lReg rReg
+genCodeBinOp destReg lReg rReg op IntType IntType
+  = instr $ (lookupOpInt op) destReg lReg rReg
 
-generateBinOpInstrTree destReg lReg rReg op BoolType BoolType
-  = InstrLeaf $ (lookupOpBool op) destReg lReg rReg
+genCodeBinOp destReg lReg rReg op BoolType BoolType
+  = instr $ (lookupOpBool op) destReg lReg rReg
 
-generateBinOpInstrTree destReg lReg rReg op FloatType FloatType
-  = InstrLeaf $ (lookupOpReal op) destReg lReg rReg
+genCodeBinOp destReg lReg rReg op FloatType FloatType
+  = instr $ (lookupOpReal op) destReg lReg rReg
 
 -- maybe we have an int and a real
--- TODO: 
+-- TODO (semantic analysis): 
 -- Annotate the AST with additional 'float cast' nodes to avoid this case
 -- E.g.: `Add FloatType (FloatCast (IntConst 4)) (FloatConst 4.0)`.
-generateBinOpInstrTree destReg lReg rReg op lType rType
-  = InstrList [ realify lReg lType
-              , realify rReg rType
-              , InstrLeaf $ (lookupOpIntOrReal op) destReg lReg rReg
-              ]
+genCodeBinOp destReg lReg rReg op lType rType
+  = do
+      realify lReg lType
+      realify rReg rType
+      instr $ (lookupOpIntOrReal op) destReg lReg rReg
 
-realify :: Reg -> BaseType -> InstrTree
+realify :: Reg -> BaseType -> CodeGen ()
 realify _ FloatType
-  = InstrList []
+  = return ()
 realify reg IntType
-  = InstrLeaf $ IntToRealInstr reg reg
+  = instr $ IntToRealInstr reg reg
 
 lookupOpReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
 lookupOpReal Add
