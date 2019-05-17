@@ -34,21 +34,25 @@ data ColourScheme
                  , identColour   :: Colour
                  }
 
-getColourScheme :: ColourSchemeName -> ColourScheme
-getColourScheme NoColours
+defaultColourScheme :: ColourScheme
+defaultColourScheme
   = ColourScheme id id id id
-getColourScheme LightColours
-  = ColourScheme { keywordColour = dMgn
-                 , stringColour  = dGrn
-                 , numberColour  = dBlu
-                 , identColour   = dCyn
-                 }
-getColourScheme DarkColours
-  = ColourScheme { keywordColour = bMgn
-                 , stringColour  = bGrn
-                 , numberColour  = bYel
-                 , identColour   = bCyn
-                 }
+
+getColourSchemeByName :: ColourSchemeName -> ColourScheme
+getColourSchemeByName NoColours
+  = defaultColourScheme
+getColourSchemeByName LightColours
+  = defaultColourScheme { keywordColour = dMgn
+                        , stringColour  = dGrn
+                        , numberColour  = dBlu
+                        , identColour   = dCyn
+                        }
+getColourSchemeByName DarkColours
+  = defaultColourScheme { keywordColour = bMgn
+                        , stringColour  = bGrn
+                        , numberColour  = bYel
+                        , identColour   = bCyn
+                        }
 
 
 
@@ -59,7 +63,7 @@ getColourScheme DarkColours
 -- This approach is inspired by Chapter 13/14 of "Learn You a Haskell", "For A
 -- Few Monads More" (http://www.learnyouahaskell.com/for-a-few-monads-more)
 -- (but uses an original implementation of difference lists, and adds syntax 
--- highlighting).
+-- highlighting, switching to using the State monad).
 -- ----------------------------------------------------------------------------
 
 -- A CodeWriter is a State Monad that stores an accumulated program output
@@ -147,33 +151,33 @@ semi
 -- Syntax-highlighting CodeWriters
 -- ----------------------------------------------------------------------------
 
+getColourScheme :: CodeWriter ColourScheme
+getColourScheme
+  = do
+      state <- get
+      return (scheme state)
+
+highlight :: (ColourScheme -> Colour) -> String -> CodeWriter ()
+highlight colour string
+  = do
+      scheme <- getColourScheme
+      write $ (colour scheme) string
+
 writeKeyword :: String -> CodeWriter ()
 writeKeyword word
-  = do
-      state <- get
-      let highlighter = keywordColour $ scheme $ state
-      write $ highlighter word
+  = highlight keywordColour word
 
-writeStrLit :: String -> CodeWriter ()
-writeStrLit unparsedString
-  = do
-      state <- get
-      let highlighter = stringLiteralColour $ scheme $ state
-      write $ highlighter unparsedString
+writeString :: String -> CodeWriter ()
+writeString unparsedString
+  = highlight stringColour unparsedString
 
+writeNumber :: String -> CodeWriter ()
+writeNumber stringNumber
+  = highlight numberColour stringNumber
 
-
-
--- writeCharEsc
--- Write a single character, taking care to 'unparse' escaped characters back
--- into escape sequences (namely `\n` --> `\` followed by `n`).
-writeCharEsc :: Char -> StringBuilder
-writeCharEsc '\n'
-    -- a `\` (slash) followed by `n`.
-    = write "\\" >> write "n"
-writeCharEsc c
-    -- just the character itself (as a string)
-    = write (c:"")
+writeIdent :: String -> CodeWriter ()
+writeIdent stringName
+  = highlight identColour stringName
 
 
 -- ----------------------------------------------------------------------------
