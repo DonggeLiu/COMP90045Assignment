@@ -21,10 +21,12 @@ import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
 import Util.ColourParTTY
+import GoatLang.Highlight (ColourSchemeName(..), getColours)
 
 import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (prettify)
-import GoatLang.Highlight (ColourTheme(..), getColours)
+import GoatLang.PrettyPrint (printGoatProgramColours)
+import GoatLang.CodeGen (genCode)
+import GoatLang.OzCode (printOzProgram)
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -51,20 +53,21 @@ main
       when (flagIsSet 'a' flags) $ do
           print ast
       when (flagIsSet 'p' flags) $ do
-          let colourTheme = detectColourTheme flags
-          putStr $ prettify (getColours colourTheme) ast
+          let colourSchemeName = detectColourSchemeName flags
+          printGoatProgramColours (getColours colourSchemeName) ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          putStrLn "Sorry, can't generate code yet!"
+          printOzProgram (genCode ast)
 
-detectColourTheme :: [Flag] -> ColourTheme
-detectColourTheme flags
-  | flagIsSet 'l' flags = LightTheme
-  | flagIsSet 'd' flags = DarkTheme
-  | otherwise           = NoTheme
+
+detectColourSchemeName :: [Flag] -> ColourSchemeName
+detectColourSchemeName flags
+  | flagIsSet 'l' flags = LightColours
+  | flagIsSet 'd' flags = DarkColours
+  | otherwise           = NoColours
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options

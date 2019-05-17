@@ -1,0 +1,3 @@
+Parse error at (line 2, column 18):
+unexpected ";"
+Unsupported id dimention of 3 with a[IntConst 1,IntConst 2,IntConst 3]

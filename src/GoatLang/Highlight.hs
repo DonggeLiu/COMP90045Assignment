@@ -1,28 +1,45 @@
 module GoatLang.Highlight where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 1
+--
+--                     UTILITY - MONADIC STRING BUILDER
+--
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
+
+
 import Util.ColourParTTY
 
-data ColourTheme = NoTheme | LightTheme | DarkTheme
+data ColourSchemeName = NoColours | LightColours | DarkColours
 
-data Colours
-  = Colours { keyword :: Colour
-            , string  :: Colour
-            , literal :: Colour
-            , ident   :: Colour
-            }
+data ColourScheme
+  = ColourScheme { keyword :: Colour
+                 , string  :: Colour
+                 , literal :: Colour
+                 , ident   :: Colour
+                 }
 
-getColours :: ColourTheme -> Colours
-getColours NoTheme
-  = Colours id id id id
-getColours LightTheme
-  = Colours { keyword = dMgn
-            , string  = dGrn
-            , literal = dBlu
-            , ident   = dCyn
-            }
-getColours DarkTheme
-  = Colours { keyword = bMgn
-            , string  = bGrn
-            , literal = bYel
-            , ident   = bCyn
-            }
+getColours :: ColourSchemeName -> ColourScheme
+getColours NoColours
+  = ColourScheme id id id id
+getColours LightColours
+  = ColourScheme { keyword = dMgn
+                 , string  = dGrn
+                 , literal = dBlu
+                 , ident   = dCyn
+                 }
+getColours DarkColours
+  = ColourScheme { keyword = bMgn
+                 , string  = bGrn
+                 , literal = bYel
+                 , ident   = bCyn
+                 }
+

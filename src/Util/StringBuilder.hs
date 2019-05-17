@@ -59,6 +59,12 @@ write = tell . dlistify
 writeLn :: String -> StringBuilder
 writeLn s = write s >> write "\n"
 
+-- showWrite
+-- Create an action to add any Showable thing as a string to a String Builder
+showWrite :: Show a => a -> StringBuilder
+showWrite showable
+  = write $ show showable
+
 
 -- ----------------------------------------------------------------------------
 -- Generally helpful StringBuilders

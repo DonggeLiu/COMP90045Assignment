@@ -62,7 +62,7 @@ pProc
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc name params decls stmts)
+      return (Proc (Id name) params decls stmts)
   <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at least
@@ -75,7 +75,7 @@ pParam
       passBy <- pPassBy
       baseType <- pBaseType
       name <- identifier
-      return (Param passBy baseType name)
+      return (Param passBy baseType (Id name))
   <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
@@ -99,7 +99,7 @@ pDecl
       name <- identifier
       dim <- pDim
       semi
-      return (Decl baseType name dim)
+      return (Decl baseType (Id name) dim)
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -134,30 +134,33 @@ pStmt
 -- Each of these statement helper parsers also return Stmts:
 pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
 
--- ASGN        -> VAR ":=" EXPR ";"
+-- ASGN        -> SCALAR ":=" EXPR ";"
 pAsg
   = do
-      var <- pVar
+      scalar <- pScalar
       reservedOp ":="
       expr <- pExpr
       semi
-      return (Asg var expr)
+      return (Asg scalar expr)
 
--- READ        -> "read" VAR ";"
+-- READ        -> "read" SCALAR ";"
 pRead
   = do
       reserved "read"
-      var <- pVar
+      scalar <- pScalar
       semi
-      return (Read var)
+      return (Read scalar)
 
--- WRITE       -> "write" EXPR ";"
+-- WRITE       -> "write" EXPR_OR_STR ";"
+-- EXPR_OR_STR -> EXPR | string
 pWrite
   = do
       reserved "write"
-      expr <- pExpr
+      exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
       semi
-      return (Write expr)
+      case exprOrStr of
+        Left  expr   -> return (WriteExpr   expr)
+        Right string -> return (WriteString string)
 
 -- CALL        -> "call" id "(" EXPRS ")" ";"
 -- EXPRS       -> (EXPR ",")* EXPR | ε
@@ -167,7 +170,7 @@ pCall
       name <- identifier
       args <- parens (commaSep pExpr)
       semi
-      return (Call name args)
+      return (Call (Id name) args)
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε
@@ -194,19 +197,19 @@ pWhile
       return (While cond doStmts)
 
 
--- VAR         -> id SUBSCRIPT
+-- SCALAR      -> id SUBSCRIPT
 -- SUBSCRIPT   -> ε | "[" EXPR "]" | "[" EXPR "," EXPR "]"
-pVar :: Parser Var
-pVar
+pScalar :: Parser Scalar
+pScalar
   = do
       name <- identifier
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Var0 name)
-        Just [i]   -> return (Var1 name i)
-        Just [i,j] -> return (Var2 name i j)
-    <?> "variable"
+        Nothing    -> return (Single (Id name))
+        Just [i]   -> return (Array  (Id name) i)
+        Just [i,j] -> return (Matrix (Id name) i j)
+    <?> "scalar (variable element)"
 
 
 -- Now, for capturing the similarity that exists between the SUBSCRIPT and DIM
@@ -249,7 +252,7 @@ suffixMaybe parser
 -- NOTE: precedence and associativity rules not encoded in grammar; see spec.
 -- in fact this grammar was left ambiguous (for brevity)
 --
--- EXPR        -> VAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
+-- EXPR        -> SCALAR | CONST | "(" EXPR ")" | EXPR BINOP EXPR | UNOP EXPR
 -- CONST       -> int | float | BOOL | string
 -- BINOP       -> "+"  | "-"  | "*"  | "/"
 --              | "="  | "!=" | "<=" | "<"  | ">"  | ">="
@@ -272,21 +275,20 @@ pExpr
 -- parse an expression 'term' (non-operation)
 pTerm :: Parser Expr
 pTerm =   parens pExpr
-      <|> fmap VarExpr pVar
+      <|> fmap ScalarExpr pScalar
       <|> pIntOrFloatConst  -- integers and floats share a common prefix!
-      <|> pStrConst
       <|> pBoolConst
       <?> "term (variable, literal, or parenthesised expression)"
 
-pIntOrFloatConst, pStrConst, pBoolConst :: Parser Expr
+pIntOrFloatConst :: Parser Expr
 pIntOrFloatConst
   = do
       numberLiteral <- integerOrFloat
       case numberLiteral of
         Left int  -> return $ IntConst int
         Right flt -> return $ FloatConst flt
-pStrConst
-  = fmap StrConst stringLiteral
+
+pBoolConst :: Parser Expr
 pBoolConst
   =   (reserved "true"  >> return (BoolConst True ))
   <|> (reserved "false" >> return (BoolConst False))

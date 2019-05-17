@@ -38,20 +38,22 @@ import Util.StringBuilder
 
 
 
--- printProgram
+-- printGoatProgram
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a string and print it directly to stdout.
-printProgram :: GoatProgram -> IO ()
-printProgram gp
-  = putStr $ prettify (getColours NoTheme) gp
-
+printGoatProgram :: GoatProgram -> IO ()
+printGoatProgram gp
+  = putStr $ prettify (getColours NoColours) gp
+printGoatProgramColours :: ColourScheme -> GoatProgram -> IO ()
+printGoatProgramColours cs gp
+  = putStr $ prettify cs gp
 
 -- prettify
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a String, using an efficient String Builder approach.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn. Or just use `printProgram'.
-prettify :: Colours -> GoatProgram -> String
+prettify :: ColourScheme -> GoatProgram -> String
 prettify cs gp
   = buildString $ writeGoatProgram cs gp
 
@@ -64,19 +66,19 @@ prettify cs gp
 -- writeGoatProgram
 -- Create an action for building a String representing an entire
 -- Goat Program
-writeGoatProgram :: Colours -> GoatProgram -> StringBuilder
+writeGoatProgram :: ColourScheme -> GoatProgram -> StringBuilder
 writeGoatProgram cs (GoatProgram procs)
   = sepBy newline (map (writeProc cs) procs)
 
 
 -- writeProc
 -- Create an action for building a String representing a procedure
-writeProc :: Colours -> Proc -> StringBuilder
-writeProc cs (Proc name params decls stmts)
+writeProc :: ColourScheme -> Proc -> StringBuilder
+writeProc cs (Proc (Id name) params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
-      wKeyword cs "proc"
-      write ((keyword cs) "proc") >> space >> write name >> space
+      write $ keyword cs "proc"
+      space >> write name >> space
       parens (commaSep (map writeF params)) >> newline
 
       -- then proceed to write lines for each decl and stmt (indented 1 level)
@@ -111,7 +113,7 @@ endLine
 -- provided action for indenting each line
 -- (actually, there is only one line in this case)
 writeDeclWith :: StringBuilder -> Decl -> StringBuilder
-writeDeclWith indentn (Decl baseType name dim)
+writeDeclWith indentn (Decl baseType (Id name) dim)
   = indentn >> writeF baseType >> space >> write name >> writeF dim >> endLine
 
 
@@ -122,24 +124,27 @@ writeStmtWith :: StringBuilder -> Stmt -> StringBuilder
 
 -- For atomic statements, building will involve writing a single line
 -- with the current level of indentation
-writeStmtWith indentation (Asg var expr)
+writeStmtWith indentation (Asg scalar expr)
   = do
-      indentation >> writeVar var >> spaces (write ":=")
+      indentation >> writeScalar scalar >> spaces (write ":=")
       writeExpr expr >> endLine
 
-writeStmtWith indentation (Read var)
-  = indentation >> write "read" >> space >> writeVar var >> endLine
+writeStmtWith indentation (Read scalar)
+  = indentation >> write "read" >> space >> writeScalar scalar >> endLine
 
-writeStmtWith indentation (Write expr)
+writeStmtWith indentation (WriteExpr expr)
   = indentation >> write "write" >> space >> writeExpr expr >> endLine
 
-writeStmtWith indentation (Call name args)
+writeStmtWith indentation (WriteString str)
+  = indentation >> write "write" >> space >> writeStr str >> endLine
+
+writeStmtWith indentation (Call (Id name) args)
   = do
       indentation >> write "call" >> space >> write name
       parens (commaSep (map writeExpr args)) >> endLine
 
 -- For composite statements, we will have to write some lines at the current
--- level of indentation, and also some statements at the next level of 
+-- level of indentation, and also some statements at the next level of
 -- indentation (using nextLevelIndentation = indentation >> softTab).
 writeStmtWith indentation (If cond thenStmts)
   = do
@@ -165,16 +170,23 @@ writeStmtWith indentation (While cond doStmts)
       indentation >> writeLn "od"
 
 
--- writeVar
--- Create an action to represent a variable as a String
-writeVar :: Var -> StringBuilder
-writeVar (Var0 name)
+-- writeScalar
+-- Create an action to represent a scalar (variable element) as a String
+writeScalar :: Scalar -> StringBuilder
+writeScalar (Single (Id name))
   = write name
-writeVar (Var1 name index)
+writeScalar (Array (Id name) index)
   = write name >> brackets (writeExpr index)
-writeVar (Var2 name index1 index2)
+writeScalar (Matrix (Id name) index1 index2)
   = write name >> brackets (commaSep (map writeExpr [index1, index2]))
 
+-- writeStr
+-- Create an action to represent a string literal as a String
+-- Note: we have to 'unparse' the string from our internal representation
+-- (which uses real newline characters). See: `instance Display Char` below.
+writeStr :: String -> StringBuilder
+writeStr str
+  = quote $ mapM_ writeF str
 
 -- writeExpr
 -- Create an action to represent an expression as a String
@@ -191,11 +203,8 @@ writeExpr (IntConst int)
 writeExpr (FloatConst float)
   -- but we always need to show floats without exponentials and with `.`
   = write $ showFFloatAlt Nothing float ""
-writeExpr (StrConst str)
-  -- we must also 'un-parse' string literals incl. recreating newline combos
-  = quote $ mapM_ writeF str
-writeExpr (VarExpr var)
-  = writeVar var
+writeExpr (ScalarExpr scalar)
+  = writeScalar scalar
 
 -- But for complex expressions, the string may also involve parenthesed
 -- subexpressions (if they are binary expressions themselves).
@@ -235,7 +244,6 @@ writeF :: (Display a) => a -> StringBuilder
 writeF d
   = write $ format d
 
-
 -- A Display type implements the format function, for converting
 -- values to strings for pretty-printing.
 class Display displayable where
@@ -243,7 +251,7 @@ class Display displayable where
 
 -- Represent a formal paramater as a string
 instance Display Param where
-  format (Param passBy baseType name)
+  format (Param passBy baseType (Id name))
     = format passBy ++ " " ++ format baseType ++ " " ++ name
 
 -- Represent a paramater passing mechanism as a String

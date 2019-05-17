@@ -1,0 +1,6 @@
+proc main(val float c, val int d,val int e,)
+    int a;
+begin
+    newstates := something [ab [cd, ef]];
+
+end
