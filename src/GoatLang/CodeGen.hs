@@ -156,12 +156,12 @@ getNewBlockLabel
       return (BlockLabel labelCounter)
 
 -- instr
--- Append an instruction to the program's lines.
+-- Append an Instruction to the program's lines.
 instr :: Instruction -> CodeGen ()
 instr instruction
   = appendLine $ Instr instruction
 
--- instr
+-- label
 -- Append a Label to the program's lines (as a pseudo-instruction).
 label :: Label -> CodeGen ()
 label lab
