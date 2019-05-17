@@ -37,11 +37,11 @@ import Util.StringBuilder
 
 
 
--- printProgram
+-- printGoatProgram
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a string and print it directly to stdout.
-printProgram :: GoatProgram -> IO ()
-printProgram gp
+printGoatProgram :: GoatProgram -> IO ()
+printGoatProgram gp
   = putStr $ prettify gp
 
 

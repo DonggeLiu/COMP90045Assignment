@@ -23,6 +23,7 @@ import Util.StringBuilder
 
 newtype FrameSize
   = FrameSize Int
+
 newtype Reg
   = Reg Int
 instance Enum Reg where
@@ -36,11 +37,13 @@ data Label
   = ProcLabel String
   | BlockLabel Int
 
-data InstrTree
-  = InstrList [InstrTree]
-  | InstrLeaf Instruction
-  | InstrLabel Label
-  | InstrComment String
+data OzProgram
+  = OzProgram [OzLine]
+
+data OzLine
+  = Instr Instruction
+  | Label Label
+  | Comment String
 
 data Instruction
   = PushStackFrameInstr FrameSize
@@ -112,13 +115,12 @@ data BuiltinFunc
   | PrintStr
 
 
-
--- printInstructions
+-- printOzProgram
 -- Top-level function to transform an Instruction Tree into a string and print
 -- it directly to stdout.
-printInstructions :: InstrTree -> IO ()
-printInstructions instructions
-  = putStr $ stringify instructions
+printOzProgram :: OzProgram -> IO ()
+printOzProgram program
+  = putStr $ stringify program
 
 
 -- stringify
@@ -126,23 +128,23 @@ printInstructions instructions
 -- Oz code.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn. Or just use `printInstructions'.
-stringify :: InstrTree -> String
-stringify instructions
-  = buildString $ writeInstructions instructions
+stringify :: OzProgram -> String
+stringify (OzProgram lines)
+  = buildString $ mapM_ writeOzLine lines
 
--- writeInstructions
+
+-- writeOzLine
 -- Traverse an instruction tree to construct a string representation. This
 -- function handles lining up the instructions, indentation, placement
 -- of labels, etc.
-writeInstructions :: InstrTree -> StringBuilder
-writeInstructions (InstrLeaf instr)
+writeOzLine :: OzLine -> StringBuilder
+writeOzLine (Instr instr)
   = space >> space >> space >> space >> writeInstruction instr >> newline
-writeInstructions (InstrLabel label)
+writeOzLine (Label label)
   = writeLabelName label >> write ":" >> newline
-writeInstructions (InstrComment text)
+writeOzLine (Comment text)
   = space >> space >> writeComment text >> newline
-writeInstructions (InstrList instrs)
-  = mapM_ writeInstructions instrs
+
 
 -- writeComment
 -- A comment is just a string starting with "# ".
@@ -150,19 +152,24 @@ writeComment :: String -> StringBuilder
 writeComment text
   = write "#" >> space >> write text
 
+
 -- writeLabelName
--- A label is just a string with ":" appended.
+-- We need a uniform way to 'spell' labels (one for each counter and procedure,
+-- for example) when they are included in the instruction list and/or mentioned
+-- as arguments to specific instructions.
 writeLabelName :: Label -> StringBuilder
 writeLabelName (ProcLabel procname)
   = write "proc_" >> write procname
 writeLabelName (BlockLabel labelnum)
   = write "label_" >> showWrite labelnum
 
+
 -- writeInstruction
 -- Format an Instruction as the corresponding Oz code, including the Oz name
 -- for the instruction, and its (possibly empty) comma-separated list of
 -- arguments.
 writeInstruction :: Instruction -> StringBuilder
+
 writeInstruction (PushStackFrameInstr framesize)
   = write "push_stack_frame" >> space >> writeFrameSize framesize
 writeInstruction (PopStackFrameInstr  framesize)
@@ -283,11 +290,13 @@ registers :: [Reg] -> StringBuilder
 registers rs
   = commaSep $ map writeReg rs
 
+
 -- writeFrameSize
 -- Create an action to write a frame size (an integer)
 writeFrameSize :: FrameSize -> StringBuilder
 writeFrameSize (FrameSize size)
   = showWrite size
+
 
 -- writeReg
 -- Create an action to write a register (an integer, preceded by r)
@@ -295,11 +304,13 @@ writeReg :: Reg -> StringBuilder
 writeReg (Reg registernumber)
   = write "r" >> showWrite registernumber
 
+
 -- writeSlot
 -- Create an action to write a slot number (an integer)
 writeSlot :: Slot -> StringBuilder
 writeSlot (Slot slotnumber)
   = showWrite slotnumber
+
 
 -- writeBuiltinFunc
 -- Create action to write the Oz name for a BuiltinFunc
@@ -327,6 +338,7 @@ writeFloat :: Float -> StringBuilder
 writeFloat float
   = write $ showFFloatAlt Nothing float ""
 
+
 -- writeStrLit
 -- Create an action to represent a string literal as a string.
 -- Note: we have to 'unparse' the string for representation, or it will contain
@@ -334,6 +346,7 @@ writeFloat float
 writeStrLit :: String -> StringBuilder
 writeStrLit str
   = quote $ mapM_ writeCharEsc str
+
 
 -- writeCharEsc
 -- Write a single character, taking care to 'unparse' escaped characters back

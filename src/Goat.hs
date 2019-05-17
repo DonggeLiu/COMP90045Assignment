@@ -21,9 +21,9 @@ import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
 import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (prettify)
+import GoatLang.PrettyPrint (printGoatProgram)
 import GoatLang.CodeGen (genCode)
-import GoatLang.OzCode (printInstructions)
+import GoatLang.OzCode (printOzProgram)
 
 
 -- ----------------------------------------------------------------------------
@@ -51,13 +51,13 @@ main
       when (flagIsSet 'a' flags) $ do
           print ast
       when (flagIsSet 'p' flags) $ do
-          putStr $ prettify ast
+          printGoatProgram ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          printInstructions (genCode ast)
+          printOzProgram (genCode ast)
 
 
 -- ----------------------------------------------------------------------------
