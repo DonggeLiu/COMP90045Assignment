@@ -209,7 +209,7 @@ genCodeProc (Proc (Id "main") [] decls stmts)
       -- TODO: copy any parameters from registers to appropriate stack slots
       mapM_ (genCodeInitVar varSymTable) decls
       comment "procedure body"
-      mapM_ genCodeStmt stmts
+      mapM_ (genCodeStmt varSymTable) stmts
       comment "epilogue"
       instr $ PopStackFrameInstr (FrameSize $ numSlots varSymTable)
       instr ReturnInstr
@@ -232,19 +232,29 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- TODO: add Asg and Read statements
 -- TODO: add If, If Else and While statements.
 -- TODO: add Call statements
-genCodeStmt :: Stmt -> CodeGen ()
+genCodeStmt :: VarSymTable -> Stmt -> CodeGen ()
 
-genCodeStmt (WriteExpr expr)
+genCodeStmt _ (WriteExpr expr)
   = do
       comment "write <expr>" -- TODO: improve commenting: use prettyprint module
       genCodeExprInto (Reg 0) expr
       instr $ CallBuiltinInstr $ lookupPrintBuiltin expr
 
-genCodeStmt (WriteString str)
+genCodeStmt _ (WriteString str)
   = do
       comment "write <string>"
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
+
+genCodeStmt varSymTable (Read (Single ident))
+  = do
+      let record = lookupVarRecord varSymTable ident
+      comment "read"
+      case varType record of
+        BoolType -> instr $ CallBuiltinInstr ReadBool
+        IntType -> instr $ CallBuiltinInstr ReadInt
+        FloatType -> instr $ CallBuiltinInstr ReadReal
+      instr $ StoreInstr (varStackSlot record) (Reg 0)
 
 lookupPrintBuiltin :: Expr -> BuiltinFunc
 lookupPrintBuiltin expr
