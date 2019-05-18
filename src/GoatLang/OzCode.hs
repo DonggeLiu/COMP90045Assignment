@@ -263,7 +263,7 @@ writeInstruction (BranchOnFalseInstr rI label)
   = do
       write "branch_on_false" >> space
       commaSep [writeReg rI, writeLabelName label]
-writeInstruction (BrachUncondInstr label)
+writeInstruction (BranchUncondInstr label)
   = write "branch_uncond" >> space >> writeLabelName label
 
 writeInstruction (CallInstr label)
