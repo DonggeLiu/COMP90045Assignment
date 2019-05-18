@@ -4,12 +4,14 @@ import Test.HUnit
 
 import Text.Parsec (parse, eof, ParseError)
 
+import Util.CodeWriter
+
 import GoatLang.AST
 import GoatLang.Parser
 import GoatLang.PrettyPrint
 import GoatLang.Token
 
-import Util.StringBuilder
+
 
 -- A ParserUnitTest is a list of test cases assocated with a single parser.
 data ParserUnitTest a
@@ -28,7 +30,7 @@ type GoatInput = String
 
 -- A WriterUnitTest is a list of test cases assocated with a single writer.
 data WriterUnitTest a
-  = WriterUnitTest (a -> StringBuilder) [WriterTestCase a]
+  = WriterUnitTest (a -> CodeWriter ()) [WriterTestCase a]
 
 -- A ParserTestCase is an expected pretty output corresponding to an AST node.
 data WriterTestCase a
@@ -62,10 +64,10 @@ generateWriterUnitTest :: (Eq a, Show a) => WriterUnitTest a -> Test
 generateWriterUnitTest (WriterUnitTest writer cases)
   = TestList (map (generateWriterTestCase writer) cases)
 
-generateWriterTestCase :: (Eq a, Show a) => (a -> StringBuilder)
+generateWriterTestCase :: (Eq a, Show a) => (a -> CodeWriter ())
   -> WriterTestCase a -> Test
 generateWriterTestCase writer (WriterTestCase expected input)
-  = TestCase (assertEqual "" expected (buildString $ writer input))
+  = TestCase (assertEqual "" expected (writeCode $ writer input))
 
 --------------------------------------------------------------------------------
 
@@ -207,9 +209,9 @@ pDeclTest
     ]
 
 
-writeFDimTest :: WriterUnitTest Dim
-writeFDimTest
-  = WriterUnitTest writeF
+writeDimTest :: WriterUnitTest Dim
+writeDimTest
+  = WriterUnitTest writeDim
     [ WriterTestCase "" Dim0
     , WriterTestCase "[0]" (Dim1 0)
     , WriterTestCase "[1]" (Dim1 1)
@@ -219,18 +221,18 @@ writeFDimTest
     , WriterTestCase "[10, 20]" (Dim2 10 20)
     ]
 
-writeFParamTest :: WriterUnitTest Param
-writeFParamTest
-  = WriterUnitTest writeF
+writeParamTest :: WriterUnitTest Param
+writeParamTest
+  = WriterUnitTest writeParam
     [ WriterTestCase "val bool a" (Param Val BoolType (Id "a"))
     , WriterTestCase "ref bool alt" (Param Ref BoolType (Id "alt"))
     , WriterTestCase "val int bc'" (Param Val IntType (Id "bc'"))
     , WriterTestCase "ref float ___aleph" (Param Ref FloatType (Id "___aleph"))
     ]
 
-writeDeclWithTest :: WriterUnitTest Decl
-writeDeclWithTest
-  = WriterUnitTest (writeDeclWith $ return ()) -- no indentation
+writeDeclTest :: WriterUnitTest Decl
+writeDeclTest
+  = WriterUnitTest writeDecl -- no indentation
     [ WriterTestCase "bool i[1, 2];\n"  (Decl BoolType (Id "i") (Dim2 1 2))
     , WriterTestCase "int action[1];\n" (Decl IntType (Id "action") (Dim1 1))
     , WriterTestCase "float boolean;\n" (Decl FloatType (Id "boolean") (Dim0))
@@ -244,9 +246,9 @@ writeVarTest
     , WriterTestCase "x[2, 3.0]" (Var2 (Id "x") (IntConst 2) (FloatConst 3.0))
     ]
 
-writeStmtWithTest :: WriterUnitTest Stmt
-writeStmtWithTest
-  = WriterUnitTest (writeStmtWith $ return ()) -- no indentation
+writeStmtTest :: WriterUnitTest Stmt
+writeStmtTest
+  = WriterUnitTest writeStmt -- no indentation
     [ WriterTestCase "call f();\n" (Call (Id "f") [])
     , WriterTestCase "call f(1);\n" (Call (Id "f") [IntConst 1])
     , WriterTestCase "call f(1, 2);\n" (Call (Id "f") [IntConst 1, IntConst 2])
