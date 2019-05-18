@@ -106,7 +106,7 @@ getColourSchemeByName DarkTerminal
 --
 -- This approach is inspired by Chapter 13/14 of "Learn You a Haskell", "For A
 -- Few Monads More" (http://www.learnyouahaskell.com/for-a-few-monads-more)
--- (but uses an original implementation of difference lists, and adds syntax 
+-- (but uses an original implementation of difference lists, and adds syntax
 -- highlighting, switching to using the State monad).
 -- ----------------------------------------------------------------------------
 
@@ -120,7 +120,7 @@ type CodeWriter a
 -- -- list back into a normal string:
 data CodeWriterState
   = CodeWriterState { scheme :: ColourScheme    -- the provided colour scheme
-                    , output :: DiffList Char   -- the acucmulated program code
+                    , output :: DiffList Char   -- the accumulated program code
                     , istack :: [CodeWriter ()] -- indentation stack
                     }
 
@@ -216,7 +216,7 @@ increaseIndentation indenter
       put $ state { istack = indenter : indentationStack }
 
 -- decreaseIndentation
--- Remove (and return?) the previously-added indentation writer from the 
+-- Remove (and return?) the previously-added indentation writer from the
 -- indentation stack (or `return ()` if no more levels of indentation).
 decreaseIndentation :: CodeWriter (CodeWriter ())
 decreaseIndentation

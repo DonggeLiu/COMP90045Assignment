@@ -85,7 +85,7 @@ writeProc (Proc (Id name) params decls stmts)
 
       -- 'begin' separates decls from statements
       line $ writeKeyword "begin"
-      
+
       -- statements are also indented one level
       withIncreasedIndentation softTab $ mapM_ writeStmt stmts
 
@@ -117,7 +117,7 @@ writeParam (Param passBy baseType (Id name))
 -- Create an action for building a declaration as a string
 writeDecl :: Decl -> CodeWriter ()
 writeDecl (Decl baseType (Id name) dim)
-  = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >> 
+  = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >>
       writeDim dim
 
 
@@ -344,13 +344,3 @@ instance Display UnOp where
     = "-"
   format Not
     = "!"
-
-
--- Represent a string literal character as a string
-instance Display Char where
-  -- translate newline back into \ and n combo:
-  format '\n'
-    = "\\n"
-  -- all other characters are just printed as singleton strings
-  format c
-    = c:""
