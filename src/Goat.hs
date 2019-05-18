@@ -21,12 +21,12 @@ import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
 import Util.ColourParTTY
-import GoatLang.Highlight (ColourSchemeName(..), getColours)
+import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
 
 import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (printGoatProgramColours)
+import GoatLang.PrettyPrint (printGoatProgramColoured)
 import GoatLang.CodeGen (genCode)
-import GoatLang.OzCode (printOzProgram)
+import GoatLang.OzCode (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -53,21 +53,21 @@ main
       when (flagIsSet 'a' flags) $ do
           print ast
       when (flagIsSet 'p' flags) $ do
-          let colourSchemeName = detectColourSchemeName flags
-          printGoatProgramColours (getColours colourSchemeName) ast
+          printGoatProgramColoured (detectColourScheme flags) ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          printOzProgram (genCode ast)
+          let code = genCode ast
+          printOzProgramColoured (detectColourScheme flags) code
 
 
-detectColourSchemeName :: [Flag] -> ColourSchemeName
-detectColourSchemeName flags
-  | flagIsSet 'l' flags = LightColours
-  | flagIsSet 'd' flags = DarkColours
-  | otherwise           = NoColours
+detectColourScheme :: [Flag] -> ColourScheme
+detectColourScheme flags
+  | flagIsSet 'l' flags = getColourSchemeByName LightTerminal
+  | flagIsSet 'd' flags = getColourSchemeByName DarkTerminal
+  | otherwise           = getColourSchemeByName NoColours
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options
@@ -149,9 +149,9 @@ printUsage
       putStrLn "  -x    : (or no flags) compile the file, print executable code"
       putStrLn "  -a    : parse the file and print the AST"
       putStrLn "  -p    : parse the file and pretty-print its source code"
-      putStr $ "  -l    : " ++ dRainbow 0 "pretty-print WITH COLOUR! "
+      putStr $ "  -l    : " ++ rainbow1 "pretty-print WITH COLOUR! "
       putStrLn "(for light terminals)"
-      putStr $ "  -d    : " ++ bRainbow 1 "pretty-print WITH COLOUR! "
+      putStr $ "  -d    : " ++ rainbow2 "pretty-print WITH COLOUR! "
       putStrLn "(for dark terminals)"
       putStrLn "  -h    : print this help message and exit"
       putStrLn "  file  : path to goat (.gt) file containing Goat source code"
@@ -176,7 +176,7 @@ printGoatHead
       putStrLn "       |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
       putStrLn "       |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
       putStrLn "        \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
-      putStr $ "         \\______,/; ;   ;;\\ "++bGrn"@"++"|\\  | /|"++bCyn"@"
+      putStr $ "         \\______,/; ;   ;;\\ "++grn2"@"++"|\\  | /|"++cyn2"@"
       putStrLn "|;: \\__\\__\\_/"
       putStrLn "                   ;   ;;;|\\/' \\ |/ '\\/;;"
       putStrLn "                  ;   ;;;;\\  {  \\|' }/;:'"

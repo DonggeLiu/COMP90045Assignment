@@ -1,4 +1,4 @@
-module GoatLang.CodeWriter where
+module Util.CodeWriter where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -21,37 +21,40 @@ import Util.DiffList
 import Util.ColourParTTY
 
 
-
 data ColourSchemeName
   = NoColours
-  | LightColours
-  | DarkColours
+  | LightTerminal
+  | DarkTerminal
 
 data ColourScheme
   = ColourScheme { keywordColour :: Colour
                  , stringColour  :: Colour
-                 , numberColour :: Colour
+                 , numberColour  :: Colour
                  , identColour   :: Colour
+                 , commentColour :: Colour
+                 , resetColour   :: Colour
                  }
 
 defaultColourScheme :: ColourScheme
 defaultColourScheme
-  = ColourScheme id id id id
+  = ColourScheme "" "" "" "" "" reset
 
 getColourSchemeByName :: ColourSchemeName -> ColourScheme
 getColourSchemeByName NoColours
-  = defaultColourScheme
-getColourSchemeByName LightColours
-  = defaultColourScheme { keywordColour = dMgn
-                        , stringColour  = dGrn
-                        , numberColour  = dBlu
-                        , identColour   = dCyn
+  = defaultColourScheme { resetColour   = "" }
+getColourSchemeByName LightTerminal
+  = defaultColourScheme { keywordColour = setMgn1
+                        , stringColour  = setGrn1
+                        , numberColour  = setBlu1
+                        , identColour   = setCyn1
+                        , commentColour = setWht1
                         }
-getColourSchemeByName DarkColours
-  = defaultColourScheme { keywordColour = bMgn
-                        , stringColour  = bGrn
-                        , numberColour  = bYel
-                        , identColour   = bCyn
+getColourSchemeByName DarkTerminal
+  = defaultColourScheme { keywordColour = setMgn2
+                        , stringColour  = setGrn2
+                        , numberColour  = setYel2
+                        , identColour   = setCyn2
+                        , commentColour = setBlk2
                         }
 
 
@@ -75,8 +78,8 @@ type CodeWriter a
 -- -- the output (which will be ()), and transform the log from a difference
 -- -- list back into a normal string:
 data CodeWriterState
-  = CodeWriterState { output :: DiffList Char
-                    , scheme :: ColourScheme
+  = CodeWriterState { scheme :: ColourScheme
+                    , output :: DiffList Char
                     }
 
 
@@ -85,13 +88,13 @@ writeCodeColoured :: ColourScheme -> CodeWriter () -> String
 writeCodeColoured colours codeWriter
   = outputString
   where
-    start = CodeWriterState (mempty :: DiffList Char) colours
+    start = CodeWriterState colours mempty
     (_, CodeWriterState _ outputDiffString) = runState codeWriter start
     outputString = listify outputDiffString
 
 -- run the monad with no colours
 writeCode :: CodeWriter () -> String
-writeCode = writeCodeColoured (getColourScheme NoColours)
+writeCode = writeCodeColoured (getColourSchemeByName NoColours)
 
 
 
@@ -107,7 +110,7 @@ write string
   = do
       state <- get
       let code = output state
-      put $ state {output = code <> dlistify string}
+      put $ state {output = code `mappend` dlistify string}
 
 -- writeLn
 -- Create an action to add a string to a Code Writer and
@@ -157,27 +160,43 @@ getColourScheme
       state <- get
       return (scheme state)
 
-highlight :: (ColourScheme -> Colour) -> String -> CodeWriter ()
-highlight colour string
+highlight :: (ColourScheme -> Colour) -> CodeWriter () -> CodeWriter ()
+highlight colour writer
   = do
       scheme <- getColourScheme
-      write $ (colour scheme) string
+      write $ colour scheme
+      writer
+      write $ resetColour scheme
+
+asKeyword :: CodeWriter () -> CodeWriter ()
+asKeyword
+  = highlight keywordColour
+
+asString :: CodeWriter () -> CodeWriter ()
+asString
+  = highlight stringColour
+
+asNumber :: CodeWriter () -> CodeWriter ()
+asNumber
+  = highlight numberColour
+
+asIdent :: CodeWriter () -> CodeWriter ()
+asIdent
+  = highlight identColour
+
+asComment :: CodeWriter () -> CodeWriter ()
+asComment
+  = highlight commentColour
+
 
 writeKeyword :: String -> CodeWriter ()
-writeKeyword word
-  = highlight keywordColour word
-
-writeString :: String -> CodeWriter ()
-writeString unparsedString
-  = highlight stringColour unparsedString
-
-writeNumber :: String -> CodeWriter ()
-writeNumber stringNumber
-  = highlight numberColour stringNumber
+writeKeyword
+  = asKeyword . write
 
 writeIdent :: String -> CodeWriter ()
-writeIdent stringName
-  = highlight identColour stringName
+writeIdent
+  = asIdent . write
+
 
 
 -- ----------------------------------------------------------------------------

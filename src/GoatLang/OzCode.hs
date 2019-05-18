@@ -18,7 +18,7 @@ module GoatLang.OzCode where
 import Control.Monad (mapM_)
 import Numeric (showFFloatAlt)
 
-import Util.StringBuilder
+import Util.CodeWriter
 
 
 newtype FrameSize
@@ -119,25 +119,37 @@ data BuiltinFunc
 -- Top-level function to transform an Instruction Tree into a string and print
 -- it directly to stdout.
 printOzProgram :: OzProgram -> IO ()
-printOzProgram program
-  = putStr $ stringify program
+printOzProgram prog
+  = printOzProgramColoured (getColourSchemeByName NoColours) prog
 
+printOzProgramColoured :: ColourScheme -> OzProgram -> IO ()
+printOzProgramColoured cs prog
+  = putStr $ stringify cs prog
 
 -- stringify
 -- Convert an Instruction Tree to a multi-line string representing its generated
 -- Oz code.
 -- NOTE: The result includes a trailing newline! If printing, just use
 -- putStr rather than putStrLn. Or just use `printInstructions'.
-stringify :: OzProgram -> String
-stringify (OzProgram lines)
-  = buildString $ mapM_ writeOzLine lines
+stringify :: ColourScheme -> OzProgram -> String
+stringify cs prog
+  = writeCodeColoured cs $ writeOzProgram prog
 
+
+-- ----------------------------------------------------------------------------
+-- CodeWriters for the different elements of an oz program
+-- ----------------------------------------------------------------------------
+
+-- writeOzProgram
+-- Traverse an instruction list to construct a string representation.
+writeOzProgram :: OzProgram -> CodeWriter ()
+writeOzProgram (OzProgram lines)
+  = mapM_ writeOzLine lines
 
 -- writeOzLine
--- Traverse an instruction tree to construct a string representation. This
--- function handles lining up the instructions, indentation, placement
--- of labels, etc.
-writeOzLine :: OzLine -> StringBuilder
+-- Write different types of oz lines appropriately. This function handles
+-- lining up the instructions, indentation, placement of labels, etc.
+writeOzLine :: OzLine -> CodeWriter ()
 writeOzLine (Instr instr)
   = space >> space >> space >> space >> writeInstruction instr >> newline
 writeOzLine (Label label)
@@ -148,7 +160,7 @@ writeOzLine (Comment text)
 
 -- writeComment
 -- A comment is just a string starting with "# ".
-writeComment :: String -> StringBuilder
+writeComment :: String -> CodeWriter ()
 writeComment text
   = write "#" >> space >> write text
 
@@ -157,7 +169,7 @@ writeComment text
 -- We need a uniform way to 'spell' labels (one for each counter and procedure,
 -- for example) when they are included in the instruction list and/or mentioned
 -- as arguments to specific instructions.
-writeLabelName :: Label -> StringBuilder
+writeLabelName :: Label -> CodeWriter ()
 writeLabelName (ProcLabel procname)
   = write "proc_" >> write procname
 writeLabelName (BlockLabel labelnum)
@@ -168,7 +180,7 @@ writeLabelName (BlockLabel labelnum)
 -- Format an Instruction as the corresponding Oz code, including the Oz name
 -- for the instruction, and its (possibly empty) comma-separated list of
 -- arguments.
-writeInstruction :: Instruction -> StringBuilder
+writeInstruction :: Instruction -> CodeWriter ()
 
 writeInstruction (PushStackFrameInstr framesize)
   = write "push_stack_frame" >> space >> writeFrameSize framesize
@@ -286,35 +298,35 @@ writeInstruction DebugStackInstr
 -- registers
 -- Helper to create action to write a comma-separed list of registers
 -- (since this is such a common instruction argument list format).
-registers :: [Reg] -> StringBuilder
+registers :: [Reg] -> CodeWriter ()
 registers rs
   = commaSep $ map writeReg rs
 
 
 -- writeFrameSize
 -- Create an action to write a frame size (an integer)
-writeFrameSize :: FrameSize -> StringBuilder
+writeFrameSize :: FrameSize -> CodeWriter ()
 writeFrameSize (FrameSize size)
   = showWrite size
 
 
 -- writeReg
 -- Create an action to write a register (an integer, preceded by r)
-writeReg :: Reg -> StringBuilder
+writeReg :: Reg -> CodeWriter ()
 writeReg (Reg registernumber)
   = write "r" >> showWrite registernumber
 
 
 -- writeSlot
 -- Create an action to write a slot number (an integer)
-writeSlot :: Slot -> StringBuilder
+writeSlot :: Slot -> CodeWriter ()
 writeSlot (Slot slotnumber)
   = showWrite slotnumber
 
 
 -- writeBuiltinFunc
 -- Create action to write the Oz name for a BuiltinFunc
-writeBuiltinFunc :: BuiltinFunc -> StringBuilder
+writeBuiltinFunc :: BuiltinFunc -> CodeWriter ()
 writeBuiltinFunc ReadBool
   = write "read_bool"
 writeBuiltinFunc ReadReal
@@ -334,7 +346,7 @@ writeBuiltinFunc PrintStr
 -- writeFloat
 -- Create an action to represent a float in decimal notation (always with '.'
 -- and never in exponential notation). See LMS Discussion Board.
-writeFloat :: Float -> StringBuilder
+writeFloat :: Float -> CodeWriter ()
 writeFloat float
   = write $ showFFloatAlt Nothing float ""
 
@@ -343,7 +355,7 @@ writeFloat float
 -- Create an action to represent a string literal as a string.
 -- Note: we have to 'unparse' the string for representation, or it will contain
 -- actual newlines etc.
-writeStrLit :: String -> StringBuilder
+writeStrLit :: String -> CodeWriter ()
 writeStrLit str
   = quote $ mapM_ writeCharEsc str
 
@@ -351,7 +363,7 @@ writeStrLit str
 -- writeCharEsc
 -- Write a single character, taking care to 'unparse' escaped characters back
 -- into escape sequences (namely `\n` --> `\` followed by `n`).
-writeCharEsc :: Char -> StringBuilder
+writeCharEsc :: Char -> CodeWriter ()
 writeCharEsc '\n'
     -- a `\` (slash) followed by `n`.
     = write "\\" >> write "n"
