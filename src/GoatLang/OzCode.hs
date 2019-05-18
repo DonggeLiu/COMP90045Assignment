@@ -94,7 +94,7 @@ data Instruction
 
   | BranchOnTrueInstr Reg Label
   | BranchOnFalseInstr Reg Label
-  | BrachUncondInstr Label
+  | BranchUncondInstr Label
 
   | CallInstr Label
   | CallBuiltinInstr BuiltinFunc
