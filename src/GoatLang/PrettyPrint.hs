@@ -127,9 +127,9 @@ writeDim :: Dim -> CodeWriter ()
 writeDim Dim0
   = return ()
 writeDim (Dim1 n)
-  = brackets $ writeInt n
+  = brackets $ writeIntLit n
 writeDim (Dim2 n m)
-  = brackets $ commaSep $ map writeInt [n, m]
+  = brackets $ commaSep $ map writeIntLit [n, m]
 
 
 -- writeStmt
@@ -146,7 +146,7 @@ writeStmt (WriteExpr expr)
   = semiLine $ writeKeyword "write" >> space >> writeExpr expr
 
 writeStmt (WriteString str)
-  = semiLine $ writeKeyword "write" >> space >> asString (writeStrLit str)
+  = semiLine $ writeKeyword "write" >> space >> asString (writeStringLit str)
 
 writeStmt (Call (Id name) args)
   = semiLine $ writeKeyword "call" >> space >> writeIdent name >>
@@ -198,11 +198,11 @@ writeExpr :: Expr -> CodeWriter ()
 
 -- For simple expressions, we can construct the action directly:
 writeExpr (BoolConst bool)
-  = writeBool bool
+  = writeBoolLit bool
 writeExpr (IntConst int)
-  = writeInt int
+  = writeIntLit int
 writeExpr (FloatConst float)
-  = writeFloat float
+  = writeFloatLit float
 writeExpr (ScalarExpr scalar)
   = writeScalar scalar
 
@@ -225,38 +225,43 @@ writeExprParens expr
   = writeExpr expr
 
 
--- writeBool
+-- ----------------------------------------------------------------------------
+-- CodeWriters for formatting literals (bool, int, float, str) in Goat format
+-- ----------------------------------------------------------------------------
+
+
+-- writeBoolLit
 -- Create an action to represent a bool in the required format (which is
 -- to be lower-case 'true' or 'false'.
-writeBool :: Bool -> CodeWriter ()
-writeBool True
+writeBoolLit :: Bool -> CodeWriter ()
+writeBoolLit True
   = writeKeyword "true"
-writeBool False
+writeBoolLit False
   = writeKeyword "false"
 
 
--- writeInt
+-- writeIntLit
 -- Create an action to represent an int in the required format (which is just
 -- the default 'show' format).
-writeInt :: Int -> CodeWriter ()
-writeInt int
+writeIntLit :: Int -> CodeWriter ()
+writeIntLit int
   = asNumber $ showWrite int
 
 
--- writeFloat
+-- writeFloatLit
 -- Create an action to represent a float in decimal notation (always with '.'
 -- and never in exponential notation). See LMS Discussion Board.
-writeFloat :: Float -> CodeWriter ()
-writeFloat float
+writeFloatLit :: Float -> CodeWriter ()
+writeFloatLit float
   = asNumber $ write $ showFFloatAlt Nothing float ""
 
 
--- writeStrLit
+-- writeStringLit
 -- Create an action to represent a string literal as a string.
 -- Note: we have to 'unparse' the string for representation, or it will contain
 -- actual newlines etc.
-writeStrLit :: String -> CodeWriter ()
-writeStrLit str
+writeStringLit :: String -> CodeWriter ()
+writeStringLit str
   = asString $ quote $ mapM_ writeCharEsc str
 
 -- writeCharEsc
