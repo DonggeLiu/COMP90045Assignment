@@ -1,4 +1,45 @@
-module Util.CodeWriter where
+module Util.CodeWriter
+(
+-- choosing a colour scheme
+  ColourSchemeName(..)
+, ColourScheme
+, getColourSchemeByName
+-- CodeWrite monad
+, CodeWriter
+-- run the monad
+, writeCodeColoured
+, writeCode
+-- writing to the monad
+, write
+, showWrite
+-- manipulating indentation
+, indentation
+, line
+, semiLine
+, withIncreasedIndentation
+, increaseIndentation
+, decreaseIndentation
+, decreaseIndentation_
+-- syntax-highlighting writers and combinators
+, asKeyword
+, asString
+, asNumber
+, asIdent
+, asComment
+, writeKeyword
+, writeIdent
+-- generally useful code writers
+, space
+, newline
+, semi
+-- and generally useful codewriter combinators
+, parens
+, brackets
+, quote
+, spaces
+, sepBy
+, commaSep
+) where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -78,8 +119,9 @@ type CodeWriter a
 -- -- the output (which will be ()), and transform the log from a difference
 -- -- list back into a normal string:
 data CodeWriterState
-  = CodeWriterState { scheme :: ColourScheme
-                    , output :: DiffList Char
+  = CodeWriterState { scheme :: ColourScheme    -- the provided colour scheme
+                    , output :: DiffList Char   -- the acucmulated program code
+                    , istack :: [CodeWriter ()] -- indentation stack
                     }
 
 
@@ -88,15 +130,21 @@ writeCodeColoured :: ColourScheme -> CodeWriter () -> String
 writeCodeColoured colours codeWriter
   = outputString
   where
-    start = CodeWriterState colours mempty
-    (_, CodeWriterState _ outputDiffString) = runState codeWriter start
-    outputString = listify outputDiffString
+    start = CodeWriterState { scheme = colours   -- save provided colour scheme
+                            , output = mempty    -- no code yet
+                            , istack = []        -- no indentation yet
+                            }
+    (_, end) = runState codeWriter start
+    outputString = listify $ output end
 
 -- run the monad with no colours
 writeCode :: CodeWriter () -> String
 writeCode = writeCodeColoured (getColourSchemeByName NoColours)
 
 
+-- ----------------------------------------------------------------------------
+-- Writing to the CodeWriter
+-- ----------------------------------------------------------------------------
 
 -- The following functions will be useful for constructing
 -- Code Writers, one string at a time:
@@ -112,19 +160,142 @@ write string
       let code = output state
       put $ state {output = code `mappend` dlistify string}
 
--- writeLn
--- Create an action to add a string to a Code Writer and
--- follow it immediately with a newline.
-writeLn :: String -> CodeWriter ()
-writeLn s = write s >> write "\n"
-
 -- showWrite
--- Create an action to add any Showable thing as a string to a Code Writer
+-- Create an action to add any Showable thing as a string
+-- to a Code Writer
 showWrite :: Show a => a -> CodeWriter ()
 showWrite showable
   = write $ show showable
 
 
+-- ----------------------------------------------------------------------------
+-- Manipulating the level of indentation
+-- ----------------------------------------------------------------------------
+
+-- indentation
+-- Write out all of the current indenters (do this at the start of each line,
+-- or use `line`).
+indentation :: CodeWriter ()
+indentation
+  = do
+      state <- get
+      let indentationStack = istack state
+      sequence_ indentationStack
+
+-- line
+-- Surround a writer's output with the current level of indentation and a
+-- newline
+line :: CodeWriter () -> CodeWriter ()
+line lineContentWriter
+  = indentation >> lineContentWriter >> newline
+
+-- semiLine
+-- Helper action to add a semicolon before terminating a CodeWriter line
+semiLine :: CodeWriter () -> CodeWriter ()
+semiLine lineContentWriter
+  = line $ lineContentWriter >> semi
+
+
+-- withIncreasedIndentation
+-- Perform a writer action with an increased level of indentation, and restore
+-- the indentation level afterwards.
+withIncreasedIndentation :: CodeWriter () -> CodeWriter () -> CodeWriter ()
+withIncreasedIndentation indenter writer
+  = do
+      increaseIndentation indenter
+      writer
+      decreaseIndentation_
+
+-- increaseIndentation
+-- Add an indentation writer to the indentation stack
+increaseIndentation :: CodeWriter () -> CodeWriter ()
+increaseIndentation indenter
+  = do
+      state <- get
+      let indentationStack = istack state
+      put $ state { istack = indenter : indentationStack }
+
+-- decreaseIndentation
+-- Remove (and return?) the previously-added indentation writer from the 
+-- indentation stack (or `return ()` if no more levels of indentation).
+decreaseIndentation :: CodeWriter (CodeWriter ())
+decreaseIndentation
+  = do
+      state <- get
+      let indentationStack = istack state
+      case indentationStack of
+          []            -> return (return ())
+          (i:indenters) -> (put $ state { istack = indenters }) >> return i
+
+-- decreaseIndentation_
+-- Same as decreaseIndentation, but without the return value
+decreaseIndentation_ :: CodeWriter ()
+decreaseIndentation_
+  = decreaseIndentation >> return ()
+
+
+-- ----------------------------------------------------------------------------
+-- Syntax-highlighting CodeWriters
+-- ----------------------------------------------------------------------------
+
+
+-- highlight
+-- Given a colour scheme function (e.g. `commentColour` or `keywordColour`,
+-- accessors from the ColourScheme record data type) create an action to
+-- perform another action using that highlighter.
+highlight :: (ColourScheme -> Colour) -> CodeWriter () -> CodeWriter ()
+highlight colour writer
+  = do
+      state <- get
+      let colourScheme = scheme state
+      write $ colour colourScheme
+      writer
+      write $ resetColour colourScheme
+
+-- asKeyword
+-- keywordColour highlighter combinator
+asKeyword :: CodeWriter () -> CodeWriter ()
+asKeyword
+  = highlight keywordColour
+
+-- asString
+-- stringColour highlighter combinator
+asString :: CodeWriter () -> CodeWriter ()
+asString
+  = highlight stringColour
+
+-- asNumber
+-- numberColour highlighter combinator
+asNumber :: CodeWriter () -> CodeWriter ()
+asNumber
+  = highlight numberColour
+
+-- asIdent
+-- identColour highlighter combinator
+asIdent :: CodeWriter () -> CodeWriter ()
+asIdent
+  = highlight identColour
+
+-- asComment
+-- commentColour highlighter combinator
+asComment :: CodeWriter () -> CodeWriter ()
+asComment
+  = highlight commentColour
+
+
+-- writeKeyword
+-- reflecting common useage of asKeyword, this is a shortcut to
+-- `write` a keywordColour-highlighted string directly.
+writeKeyword :: String -> CodeWriter ()
+writeKeyword
+  = asKeyword . write
+
+-- writeKeyword
+-- reflecting common useage of asKeyword, this is a shortcut to
+-- `write` a keywordColour-highlighted string directly.
+writeIdent :: String -> CodeWriter ()
+writeIdent
+  = asIdent . write
 
 
 -- ----------------------------------------------------------------------------
@@ -148,55 +319,6 @@ newline
 semi :: CodeWriter ()
 semi
   = write ";"
-
-
--- ----------------------------------------------------------------------------
--- Syntax-highlighting CodeWriters
--- ----------------------------------------------------------------------------
-
-getColourScheme :: CodeWriter ColourScheme
-getColourScheme
-  = do
-      state <- get
-      return (scheme state)
-
-highlight :: (ColourScheme -> Colour) -> CodeWriter () -> CodeWriter ()
-highlight colour writer
-  = do
-      scheme <- getColourScheme
-      write $ colour scheme
-      writer
-      write $ resetColour scheme
-
-asKeyword :: CodeWriter () -> CodeWriter ()
-asKeyword
-  = highlight keywordColour
-
-asString :: CodeWriter () -> CodeWriter ()
-asString
-  = highlight stringColour
-
-asNumber :: CodeWriter () -> CodeWriter ()
-asNumber
-  = highlight numberColour
-
-asIdent :: CodeWriter () -> CodeWriter ()
-asIdent
-  = highlight identColour
-
-asComment :: CodeWriter () -> CodeWriter ()
-asComment
-  = highlight commentColour
-
-
-writeKeyword :: String -> CodeWriter ()
-writeKeyword
-  = asKeyword . write
-
-writeIdent :: String -> CodeWriter ()
-writeIdent
-  = asIdent . write
-
 
 
 -- ----------------------------------------------------------------------------
