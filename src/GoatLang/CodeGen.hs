@@ -265,6 +265,39 @@ genCodeStmt varSymTable (Asg (Single ident) expr)
         realify (Reg 0) (getExprType varSymTable expr)
       instr $ StoreInstr (varStackSlot record) (Reg 0)
 
+genCodeStmt varSymTable (If cond thenStmts)
+  = do
+      comment "if"
+      genCodeExprInto varSymTable (Reg 0) cond
+      fiLabel <- getNewBlockLabel
+      instr $ BranchOnFalseInstr (Reg 0) fiLabel
+      mapM_ (genCodeStmt varSymTable) thenStmts
+      label $ fiLabel
+
+genCodeStmt varSymTable (IfElse cond thenStmts elseStmts)
+  = do
+      comment "if-else"
+      genCodeExprInto varSymTable (Reg 0) cond
+      elseLabel <- getNewBlockLabel
+      instr $ BranchOnFalseInstr (Reg 0) elseLabel
+      mapM_ (genCodeStmt varSymTable) thenStmts
+      fiLabel <- getNewBlockLabel
+      instr $ BranchUncondInstr fiLabel
+      label $ elseLabel
+      mapM_ (genCodeStmt varSymTable) elseStmts
+      label $ fiLabel
+
+genCodeStmt varSymTable (While cond stmts)
+  = do
+      comment "do"
+      whileLabel <- getNewBlockLabel
+      label $ whileLabel
+      genCodeExprInto varSymTable (Reg 0) cond
+      odLabel <- getNewBlockLabel
+      instr $ BranchOnFalseInstr (Reg 0) odLabel
+      mapM_ (genCodeStmt varSymTable) stmts
+      label $ odLabel
+
 
 lookupPrintBuiltin :: VarSymTable -> Expr -> BuiltinFunc
 lookupPrintBuiltin varSymTable expr
@@ -407,7 +440,7 @@ realify register IntType
 -- Then all we'd need would be:
 --
 -- ```
--- genExprInto register (FloatCase expr)
+-- genCodeExprInto register (FloatCase expr)
 --   = do
 --       genCodeExprInto register expr
 --       instr $ IntToRealInstr register register
