@@ -15,7 +15,7 @@ module GoatLang.CodeGen where
 --
 -- ----------------------------------------------------------------------------
 
-import Control.Monad (mapM_)
+import Control.Monad (mapM_, when)
 import Control.Monad.State
 
 import Util.DiffList
@@ -234,11 +234,11 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- TODO: add Call statements
 genCodeStmt :: VarSymTable -> Stmt -> CodeGen ()
 
-genCodeStmt _ (WriteExpr expr)
+genCodeStmt varSymTable (WriteExpr expr)
   = do
       comment "write <expr>" -- TODO: improve commenting: use prettyprint module
-      genCodeExprInto (Reg 0) expr
-      instr $ CallBuiltinInstr $ lookupPrintBuiltin expr
+      genCodeExprInto varSymTable (Reg 0) expr
+      instr $ CallBuiltinInstr $ lookupPrintBuiltin varSymTable expr
 
 genCodeStmt _ (WriteString str)
   = do
@@ -256,9 +256,19 @@ genCodeStmt varSymTable (Read (Single ident))
         FloatType -> instr $ CallBuiltinInstr ReadReal
       instr $ StoreInstr (varStackSlot record) (Reg 0)
 
-lookupPrintBuiltin :: Expr -> BuiltinFunc
-lookupPrintBuiltin expr
-  = case getExprType expr of
+genCodeStmt varSymTable (Asg (Single ident) expr)
+  = do
+      comment "assign"
+      genCodeExprInto varSymTable (Reg 0) expr
+      let record = lookupVarRecord varSymTable ident
+      when (varType record == FloatType) $
+        realify (Reg 0) (getExprType varSymTable expr)
+      instr $ StoreInstr (varStackSlot record) (Reg 0)
+
+
+lookupPrintBuiltin :: VarSymTable -> Expr -> BuiltinFunc
+lookupPrintBuiltin varSymTable expr
+  = case getExprType varSymTable expr of
       BoolType -> PrintBool
       FloatType -> PrintReal
       IntType -> PrintInt
@@ -267,7 +277,7 @@ lookupPrintBuiltin expr
 -- genCodeExprInto register
 -- Action to generate code that will get the result of an expression into this
 -- register.
-genCodeExprInto :: Reg -> Expr -> CodeGen ()
+genCodeExprInto :: VarSymTable -> Reg -> Expr -> CodeGen ()
 -- TODO: implement code generation for ScalarExprs (must treat value and ref
 -- variables correctly for Singular variables, and must handle indexing into
 -- Array and Matrix variables).
@@ -276,14 +286,14 @@ genCodeExprInto :: Reg -> Expr -> CodeGen ()
 -- point.
 
 -- Base cases: float, int and bool constants:
-genCodeExprInto register (IntConst int)
+genCodeExprInto _ register (IntConst int)
   = instr $ IntConstInstr register int
-genCodeExprInto register (FloatConst float)
+genCodeExprInto _ register (FloatConst float)
   = instr $ RealConstInstr register float
 -- In Oz we represent True as the integer 1, and false as the integer 0
-genCodeExprInto register (BoolConst True)
+genCodeExprInto _ register (BoolConst True)
   = instr $ IntConstInstr register 1
-genCodeExprInto register (BoolConst False)
+genCodeExprInto _ register (BoolConst False)
   = instr $ IntConstInstr register 0
 
 -- Recursive cases: binary and unary operations involving nested expressions:
@@ -299,52 +309,58 @@ genCodeExprInto register (BoolConst False)
 --    register.
 -- 4. Whatever the result, leave it in the target register (it's the result of
 --    the And operation).
-genCodeExprInto register (BinExpr And l r)
+genCodeExprInto varSymTable register (BinExpr And l r)
   = do
       afterLabel <- getNewBlockLabel
-      genCodeExprInto register l
+      genCodeExprInto varSymTable register l
       instr $ BranchOnFalseInstr register afterLabel
-      genCodeExprInto register r
+      genCodeExprInto varSymTable register r
       label afterLabel
 
 -- Or is similar (but we skip the second operand when the first is True,
 -- rather than False):
-genCodeExprInto register (BinExpr Or l r)
+genCodeExprInto varSymTable register (BinExpr Or l r)
   = do
       afterLabel <- getNewBlockLabel
-      genCodeExprInto register l
+      genCodeExprInto varSymTable register l
       instr $ BranchOnTrueInstr register afterLabel
-      genCodeExprInto register r
+      genCodeExprInto varSymTable register r
       label afterLabel
 
 -- All other expressions are strict, so we can safely load the operands into
 -- two registers then just perform the appropriate operation:
-genCodeExprInto register (BinExpr op lExpr rExpr)
+genCodeExprInto varSymTable register (BinExpr op lExpr rExpr)
   = do
-      genCodeExprInto register lExpr
-      genCodeExprInto (succ register) rExpr
+      genCodeExprInto varSymTable register lExpr
+      genCodeExprInto varSymTable (succ register) rExpr
       genCodeBinOp register register (succ register) op lType rType
   where
-    lType = getExprType lExpr
-    rType = getExprType rExpr
+    lType = getExprType varSymTable lExpr
+    rType = getExprType varSymTable rExpr
 
 -- There are only two cases for unary operations:
 -- Logical `Not`:
-genCodeExprInto register (UnExpr Not expr)
+genCodeExprInto varSymTable register (UnExpr Not expr)
   = do
-      genCodeExprInto register expr
+      genCodeExprInto varSymTable register expr
       instr $ NotInstr register register
 
 -- And arithmetic `Neg` (which could be applied to either a real value or an
 -- int value):
-genCodeExprInto register (UnExpr Neg expr)
+genCodeExprInto varSymTable register (UnExpr Neg expr)
   = do
-      genCodeExprInto register expr
+      genCodeExprInto varSymTable register expr
       instr $ instruction register register
   where
-    instruction = case getExprType expr of
+    instruction = case getExprType varSymTable expr of
       FloatType -> NegRealInstr
       IntType -> NegIntInstr
+
+genCodeExprInto varSymTable register (ScalarExpr (Single ident))
+  = do
+      let slot = varStackSlot $ lookupVarRecord varSymTable ident
+      instr $ LoadInstr register slot
+
 
 -- genCodeBinOp
 -- Action to generate code for an arbitrary binary operation from two registers
@@ -487,46 +503,45 @@ lookupOpBool GEq
 -- TODO: Of course, we will want to change from using a recursive function to
 -- calculate expression types to precomputing these types during semantic
 -- analysis and embedding them within the Expression AST nodes themselves.
-getExprType :: Expr -> BaseType
-getExprType (BoolConst _)
+getExprType :: VarSymTable -> Expr -> BaseType
+getExprType _ (BoolConst _)
   = BoolType
-getExprType (FloatConst _)
+getExprType _ (FloatConst _)
   = FloatType
-getExprType (IntConst _)
+getExprType _ (IntConst _)
   = IntType
-getExprType (BinExpr operator left right)
+getExprType varSymTable (BinExpr operator left right)
   = case operator of
-      Add -> case getExprType left of
+      Add -> case getExprType varSymTable left of
         FloatType -> FloatType
-        otherwise -> case getExprType right of
+        otherwise -> case getExprType varSymTable right of
           FloatType -> FloatType
           otherwise -> IntType
-      Sub -> case getExprType left of
+      Sub -> case getExprType varSymTable left of
         FloatType -> FloatType
-        otherwise -> case getExprType right of
+        otherwise -> case getExprType varSymTable right of
           FloatType -> FloatType
           otherwise -> IntType
-      Mul -> case getExprType left of
+      Mul -> case getExprType varSymTable left of
         FloatType -> FloatType
-        otherwise -> case getExprType right of
+        otherwise -> case getExprType varSymTable right of
           FloatType -> FloatType
           otherwise -> IntType
-      Div -> case getExprType left of
+      Div -> case getExprType varSymTable left of
         FloatType -> FloatType
-        otherwise -> case getExprType right of
+        otherwise -> case getExprType varSymTable right of
           FloatType -> FloatType
           otherwise -> IntType
       otherwise -> BoolType
-getExprType (UnExpr operator operand)
-  = getExprType operand
--- TODO: implement this last case (using symbol table?)
--- getExprType (ScalarExpr scalar)
---   = getScalarType scalar
---
--- getScalarType :: Scalar -> BaseType
--- getScalarType (Single (Id name))
---   = ???
--- getScalarType (Array (Id name) iExpr)
---   = ???
--- getScalarType (Matrix (Id name) iExpr jExpr)
---   = ???
+getExprType varSymTable (UnExpr operator operand)
+  = getExprType varSymTable operand
+getExprType varSymTable (ScalarExpr scalar)
+  = getScalarType varSymTable scalar
+
+getScalarType :: VarSymTable -> Scalar -> BaseType
+getScalarType varSymTable (Single ident)
+  = varType $ lookupVarRecord varSymTable ident
+getScalarType varSymTable (Array ident iExpr)
+  = varType $ lookupVarRecord varSymTable ident
+getScalarType varSymTable (Matrix ident iExpr jExpr)
+  = varType $ lookupVarRecord varSymTable ident
