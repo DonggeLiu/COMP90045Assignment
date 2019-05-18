@@ -27,26 +27,6 @@ import GoatLang.SymbolTable
 
 -- Summary of TODO items from throughout file:
 --
--- Milestone 2:
--- - Extend genCodeProc to allow for local variable declarations
---   - We'll need a basic symbol table to hold information about each (singular)
---     variable Id, e.g. its stack slot and base type.
---   - We'll need to use this information to calculate the required frame size
---     and add coresponding push and pop instructions
---   - Also use this information to initialise all of the stack slots.
--- - Add Asg and Read statements to genCodeStmt, and extend genCodeExprInto to
---   allow for Scalar expressions (in both cases, just Singular variables for
---   now).
---   - Both of these will require accessing information from the symbol table.
---     it might make sense to pass the symbol table down, or maybe to add it to
---     the CodeGen state monad (with corresponding helper functions e.g. maybe
---     'setSymbolTable', 'lookupVar' or similar?)
---
--- Milestone 3:
---
--- - extend genCodeStmt to add If, If Else and While statements.
---
---
 -- Milestone 4:
 -- - Allow multiple procedures in genCodeGoatProgram
 -- - Extend genCodeGoatProc to allow procedures not named "main"
@@ -246,6 +226,7 @@ genCodeStmt _ (WriteString str)
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
+-- TODO: handle arrays/matrices
 genCodeStmt varSymTable (Read (Single ident))
   = do
       let record = lookupVarRecord varSymTable ident
@@ -256,6 +237,7 @@ genCodeStmt varSymTable (Read (Single ident))
         FloatType -> instr $ CallBuiltinInstr ReadReal
       instr $ StoreInstr (varStackSlot record) (Reg 0)
 
+-- TODO: handle arrays/matrices
 genCodeStmt varSymTable (Asg (Single ident) expr)
   = do
       comment "assign"
@@ -389,6 +371,7 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
       FloatType -> NegRealInstr
       IntType -> NegIntInstr
 
+-- TODO: handle arrays/matrices
 genCodeExprInto varSymTable register (ScalarExpr (Single ident))
   = do
       let slot = varStackSlot $ lookupVarRecord varSymTable ident
