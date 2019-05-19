@@ -208,16 +208,26 @@ genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
 
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
--- TODO: Add suport for local array and matrix variables.
 genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
-genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
+genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
   = do
       comment $ "initialising " ++ name
-      let slot = varStackSlot $ lookupVarRecord symTable ident
+      let slot@(Slot x) = varStackSlot $ lookupVarRecord symTable ident
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
         otherwise -> instr $ IntConstInstr (Reg 0) 0
-      instr $ StoreInstr slot (Reg 0)
+      case dim of
+        Dim0 -> genCodeInitVarSlots x x
+        (Dim1 n) -> genCodeInitVarSlots x (x + n)
+        (Dim2 n m) -> genCodeInitVarSlots x (x + n * m)
+
+
+-- genCodeInitVarSlots
+-- Generates Store instructions to initialise a Scalar of any dimension.
+genCodeInitVarSlots :: Int -> Int -> CodeGen()
+genCodeInitVarSlots fstSlot lastSlot  
+  = do
+      mapM_ instr (map (flip StoreInstr (Reg 0)) (map Slot [fstSlot..lastSlot]))
 
 
 -- genCodeStmt
@@ -225,12 +235,11 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- composite statement).
 -- TODO: add Call statements
 genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
-
 genCodeStmt _ varSymTable (WriteExpr expr)
   = do
       comment "write <expr>" -- TODO: improve commenting: use prettyprint module
-      genCodeExprInto varSymTable (Reg 0) expr
-      case getExprType varSymTable expr of
+      genCodeExprInto varSymTable (Reg 0) expr          -- Save expr into Reg 0
+      case getExprType varSymTable expr of              -- Get the Instruction
         BoolType -> instr $ CallBuiltinInstr PrintBool
         IntType -> instr $ CallBuiltinInstr PrintInt
         FloatType -> instr $ CallBuiltinInstr PrintReal
