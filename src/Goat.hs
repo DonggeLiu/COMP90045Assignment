@@ -20,8 +20,13 @@ import System.Environment
 import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
+
+import Text.Parsec
+import Text.Parsec.Error
+
 import Util.ColourParTTY
 import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
+
 
 import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (printGoatProgramColoured)
@@ -44,9 +49,7 @@ main
       sourceCode <- readFile sourceFileName
       let parsed = parseProgram sourceFileName sourceCode
       ast <- case parsed of
-        Left err  -> do
-            putStrLn $ "Parse error at " ++ show err
-            exitWith (ExitFailure 2)
+        Left err  -> syntaxErrorExit sourceCode err
         Right ast -> return ast
 
       -- handle the parsed program:
@@ -68,6 +71,41 @@ detectColourScheme flags
   | flagIsSet 'l' flags = getColourSchemeByName LightTerminal
   | flagIsSet 'd' flags = getColourSchemeByName DarkTerminal
   | otherwise           = getColourSchemeByName NoColours
+
+-- ----------------------------------------------------------------------------
+-- Handling errors in the source program
+-- ----------------------------------------------------------------------------
+
+-- syntaxErrorExit
+-- Display syntax error diagnostic information to the user, including the
+-- relevant section of the source program, then exit (with failure).
+syntaxErrorExit :: String -> ParseError -> IO a
+syntaxErrorExit src err
+  = do
+      let pos = errorPos err
+      let lineNum = sourceLine pos
+      let colNum = sourceColumn pos
+
+      putStrLn $ red1 "Syntax error" ++ " at " ++ show pos ++ ":"
+      -- show 3 lines of context:
+      putStr   $ unlines $ take (min lineNum 3) $ drop (lineNum-3) $ lines src
+      -- point to the problem:
+      -- (and surrounding characters, since sometimes parsec point off-by-1)
+      putStr   $ take (colNum-2) (repeat ' ') ++ red1 "^^^"
+      putStrLn $ showErrorMessagesDefaults (errorMessages err)
+
+      exitWith (ExitFailure 2)
+
+-- showErrorMessagesDefaults
+-- wrap Parsec's showErrorMessages function, which requires a bunch of template
+-- strings be provided.
+showErrorMessagesDefaults :: [Message] -> String
+showErrorMessagesDefaults
+  = showErrorMessages
+      "or" "unknown parse error" "expecting" "unexpected" "end of input"
+
+-- TODO: Something similar for semantic errors
+
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options
@@ -102,12 +140,12 @@ checkArgs
           helpExit
       let invalidFlags = flags \\ validFlags
       unless (null invalidFlags) $ do
-          errorExit $ "invalid flag(s): " ++ (intersperse ',' invalidFlags)
+          argsErrorExit $ "invalid flag(s): " ++ (intersperse ',' invalidFlags)
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        []               -> errorExit $ "missing required argument: file"
-        (_:excess)       -> errorExit $ "excess positional argument(s): "
+        []               -> argsErrorExit $ "missing required argument: file"
+        (_:excess)       -> argsErrorExit $ "excess positional argument(s): "
                                         ++ intercalate ", " excess
 
 -- getFlags, getArguments
@@ -129,12 +167,12 @@ helpExit
       printUsage
       exitSuccess
 
--- errorExit
+-- argsErrorExit
 -- Display an error message and then exit (with failure)
-errorExit :: String -> IO a
-errorExit problem
+argsErrorExit :: String -> IO a
+argsErrorExit problem
   = do
-      putStrLn $ "Argument error:\n  " ++ problem
+      putStrLn $ red1 "Argument error" ++ ":\n  " ++ problem
       printUsage
       exitWith (ExitFailure 1)
 
@@ -208,4 +246,3 @@ printGoatHead
 --              '''|____/   \__/\___|
 --                      \_.  / _/
 --             valkyrie    \/\/
-
