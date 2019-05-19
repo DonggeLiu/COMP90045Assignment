@@ -15,7 +15,7 @@ module GoatLang.SymbolTable where
 --
 -- ----------------------------------------------------------------------------
 
-import Data.Map.Strict (Map, fromList, size, (!))
+import Data.Map.Strict (Map, fromList, size, (!), elems)
 
 import GoatLang.AST
 import GoatLang.OzCode
@@ -41,9 +41,12 @@ data VarRecord
 
 -- numSlots
 -- Simply return the number of slots for a Variable Symbol Table
+-- Updated for Arrays and Matrices
 numSlots :: VarSymTable -> Int
 numSlots (VarSymTable m)
-  = size m
+  = foldl (\x varRec -> x + (getSize varRec)) 0 (elems m)
+  where
+    getSize = dimSize . varShape
 
 -- lookupVarRecord
 -- Simply lookup the VarRecord for a given Variable's Id.
@@ -111,25 +114,14 @@ constructDeclVarMapping (Decl basetype ident dim) slot
                          }
 
 -- getSlots
--- Get the Slot with the appropriate slot number for each declaration
+-- Get a Slot with its appropriate slot number for each declaration.
 getSlots decls n
-  = map Slot $ getValsFromIncs n $ map getNumSlots decls
+  = map Slot $ scanl1 (+) $ (:) 0 $ map getNumSlots decls
 
 -- getNumSlots
 -- Gets the number of slots required for a given declared variable.
 getNumSlots :: Decl -> Int
 getNumSlots (Decl _ _ dim) = dimSize dim
-
--- getValsFromIncs
--- Takes a starting Int and a list of increments, and returns a list of
--- Ints starting from the start value, after which each value is the previous
--- value plus the next increment.
-getValsFromIncs :: Int -> [Int] -> [Int]
-getValsFromIncs start (inc:incs)
-  = start : (getValsFromIncs (start + inc) incs)
-getValsFromIncs _ []
-  = []
-
 
 -- dimSize
 -- Retrieves the size implied by the dimensionality
