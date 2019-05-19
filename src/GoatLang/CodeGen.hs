@@ -216,10 +216,7 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
         otherwise -> instr $ IntConstInstr (Reg 0) 0
-      case dim of
-        Dim0 -> genCodeInitVarSlots x x
-        (Dim1 n) -> genCodeInitVarSlots x (x + n)
-        (Dim2 n m) -> genCodeInitVarSlots x (x + n * m)
+      genCodeInitVarSlots x $ x - 1 + (dimSize dim)
 
 
 -- genCodeInitVarSlots

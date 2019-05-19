@@ -110,28 +110,36 @@ constructDeclVarMapping (Decl basetype ident dim) slot
                          , varStackSlot = slot
                          }
 
+-- getSlots
+-- Get the Slot with the appropriate slot number for each declaration
 getSlots decls n
   = map Slot $ getValsFromIncs n $ map getNumSlots decls
 
 -- getNumSlots
--- Given a Decl, get the number of slots required to store its contents
+-- Gets the number of slots required for a given declared variable.
 getNumSlots :: Decl -> Int
-getNumSlots (Decl _ _ Dim0)
-  = 1
-getNumSlots (Decl _ _ (Dim1 n))
-  = n
-getNumSlots (Decl _ _ (Dim2 n m))
-  = n * m
+getNumSlots (Decl _ _ dim) = dimSize dim
 
 -- getValsFromIncs
--- Takes a starting value and a list of increments, and returns a list of
--- Value starting from the start value, after which each value is the previous
+-- Takes a starting Int and a list of increments, and returns a list of
+-- Ints starting from the start value, after which each value is the previous
 -- value plus the next increment.
 getValsFromIncs :: Int -> [Int] -> [Int]
 getValsFromIncs start (inc:incs)
   = start : (getValsFromIncs (start + inc) incs)
 getValsFromIncs _ []
   = []
+
+
+-- dimSize
+-- Retrieves the size implied by the dimensionality
+dimSize :: Dim -> Int
+dimSize Dim0
+  = 1
+dimSize (Dim1 n)
+  = n
+dimSize (Dim2 n m)
+  = n * m
 
 
 -- Previously (uglier) used the following functions. More efficient b/c it
