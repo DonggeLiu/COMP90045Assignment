@@ -74,6 +74,7 @@ type CodeGen a
 -- of OzLines (instructions or peudo-instructions; see OzCode module).
 data CodeGenState
   = CodeGenState LabelCounter (DiffList OzLine)
+
 type LabelCounter
   = Int
 
@@ -184,7 +185,7 @@ genCodeProc (Proc (Id "main") [] decls stmts)
       let varSymTable = constructVarSymTable [] decls
       label $ ProcLabel "main"
       comment "prologue"
-      -- TODO: figure out TRUE required frame size (inc. arrays, matrices)
+      -- TODO: figure out TRUE required frame size (incl. arrays, matrices)
       instr $ PushStackFrameInstr (FrameSize $ numSlots varSymTable)
       -- TODO: copy any parameters from registers to appropriate stack slots
       mapM_ (genCodeInitVar varSymTable) decls
@@ -194,7 +195,9 @@ genCodeProc (Proc (Id "main") [] decls stmts)
       instr $ PopStackFrameInstr (FrameSize $ numSlots varSymTable)
       instr ReturnInstr
 
-
+-- genCodeInitVar
+-- Action to generate code to initialise a local variable to 0.
+-- TODO: Add suport for local array and matrix variables.
 genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
 genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
   = do
@@ -209,8 +212,6 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- genCodeStmt
 -- Action to generate code for a single Goat Statement (may be an atomic or
 -- composite statement).
--- TODO: add Asg and Read statements
--- TODO: add If, If Else and While statements.
 -- TODO: add Call statements
 genCodeStmt :: VarSymTable -> Stmt -> CodeGen ()
 
@@ -218,7 +219,10 @@ genCodeStmt varSymTable (WriteExpr expr)
   = do
       comment "write <expr>" -- TODO: improve commenting: use prettyprint module
       genCodeExprInto varSymTable (Reg 0) expr
-      instr $ CallBuiltinInstr $ lookupPrintBuiltin varSymTable expr
+      case getExprType varSymTable expr of
+        BoolType -> instr $ CallBuiltinInstr PrintBool
+        IntType -> instr $ CallBuiltinInstr PrintInt
+        FloatType -> instr $ CallBuiltinInstr PrintReal
 
 genCodeStmt _ (WriteString str)
   = do
@@ -226,7 +230,7 @@ genCodeStmt _ (WriteString str)
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
--- TODO: handle arrays/matrices
+-- TODO: handle reading into arrays/matrices
 genCodeStmt varSymTable (Read (Single ident))
   = do
       let record = lookupVarRecord varSymTable ident
@@ -237,7 +241,7 @@ genCodeStmt varSymTable (Read (Single ident))
         FloatType -> instr $ CallBuiltinInstr ReadReal
       instr $ StoreInstr (varStackSlot record) (Reg 0)
 
--- TODO: handle arrays/matrices
+-- TODO: handle assigning into arrays/matrices
 genCodeStmt varSymTable (Asg (Single ident) expr)
   = do
       comment "assign"
@@ -281,14 +285,6 @@ genCodeStmt varSymTable (While cond stmts)
       label $ odLabel
 
 
-lookupPrintBuiltin :: VarSymTable -> Expr -> BuiltinFunc
-lookupPrintBuiltin varSymTable expr
-  = case getExprType varSymTable expr of
-      BoolType -> PrintBool
-      FloatType -> PrintReal
-      IntType -> PrintInt
-
-
 -- genCodeExprInto register
 -- Action to generate code that will get the result of an expression into this
 -- register.
@@ -301,10 +297,13 @@ genCodeExprInto :: VarSymTable -> Reg -> Expr -> CodeGen ()
 -- point.
 
 -- Base cases: float, int and bool constants:
+
 genCodeExprInto _ register (IntConst int)
   = instr $ IntConstInstr register int
+
 genCodeExprInto _ register (FloatConst float)
   = instr $ RealConstInstr register float
+
 -- In Oz we represent True as the integer 1, and false as the integer 0
 genCodeExprInto _ register (BoolConst True)
   = instr $ IntConstInstr register 1
@@ -515,7 +514,6 @@ lookupOpBool GEq
   = GEqIntInstr
 
 -- Recursively (re-)compute the type of
--- TODO: Add handling for scalar expressions (e.g. using a symbol table)
 -- TODO: Of course, we will want to change from using a recursive function to
 -- calculate expression types to precomputing these types during semantic
 -- analysis and embedding them within the Expression AST nodes themselves.
