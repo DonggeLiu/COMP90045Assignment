@@ -83,7 +83,7 @@ constructVarSymTable params decls
     where
       symbolMap = fromList $ paramMappings ++ declMappings
       paramMappings = zipWith constructParamVarMapping params (map Slot [0..])
-      declMappings = zipWith constructDeclVarMapping decls (map Slot [n..])
+      declMappings = zipWith constructDeclVarMapping decls (getSlots decls n)
       n = length params
 
 -- constructParamVarMapping
@@ -101,7 +101,7 @@ constructParamVarMapping (Param passby basetype ident) slot
 -- constructDeclVarMapping
 -- Take a Decl and return a tuple with its id and a VarRecord
 constructDeclVarMapping :: Decl -> Slot -> (Id, VarRecord)
-constructDeclVarMapping (Decl basetype ident dim) slot
+constructDeclVarMapping (Decl basetype ident dim) slot 
   = (ident, record)
     where
       record = VarRecord { varShape = dim
@@ -109,3 +109,48 @@ constructDeclVarMapping (Decl basetype ident dim) slot
                          , varPassBy = Val
                          , varStackSlot = slot
                          }
+
+getSlots decls n
+  = map Slot $ getValsFromIncs n $ map getNumSlots decls
+
+-- getNumSlots
+-- Given a Decl, get the number of slots required to store its contents
+getNumSlots :: Decl -> Int
+getNumSlots (Decl _ _ Dim0)
+  = 1
+getNumSlots (Decl _ _ (Dim1 n))
+  = n
+getNumSlots (Decl _ _ (Dim2 n m))
+  = n * m
+
+-- getValsFromIncs
+-- Takes a starting value and a list of increments, and returns a list of
+-- Value starting from the start value, after which each value is the previous
+-- value plus the next increment.
+getValsFromIncs :: Int -> [Int] -> [Int]
+getValsFromIncs start (inc:incs)
+  = start : (getValsFromIncs (start + inc) incs)
+getValsFromIncs _ []
+  = []
+
+
+-- Previously (uglier) used the following functions. More efficient b/c it
+-- only requires one scan, but the code is uglier.
+
+-- -- getSlots
+-- -- Gets a list of starting slots for the given declarations
+-- getSlots :: [Decl] -> Int -> [Slot]
+-- getSlots ((Decl _ _ dim):rest) n
+--   = (Slot n) : (getSlots rest $ n + (getNumSlots dim))
+-- getSlots [] _
+--   = []
+
+-- -- getNumSlots
+-- -- Given a Dim, get the number of slots required to store the Scalar's contents
+-- getNumSlots :: Dim -> Int
+-- getNumSlots Dim0
+--   = 1
+-- getNumSlots (Dim1 n)
+--   = n
+-- getNumSlots (Dim2 n m)
+--   = n * m
