@@ -86,6 +86,8 @@ instance Pretty GoatProgram where
   writer = writeGoatProgram
 instance Pretty Proc where
   writer = writeProc
+instance Pretty Param where
+  writer = writeParam
 instance Pretty Decl where
   writer = writeDecl
 instance Pretty Stmt where

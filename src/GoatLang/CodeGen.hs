@@ -23,6 +23,7 @@ import Util.DiffList
 import GoatLang.AST
 import GoatLang.OzCode
 import GoatLang.SymbolTable
+import GoatLang.PrettyPrint
 
 
 -- Summary of TODO items from throughout file:
@@ -196,9 +197,9 @@ genCodeProc (Proc (Id "main") [] decls stmts)
 
 
 genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
-genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
+genCodeInitVar symTable decl@(Decl baseType ident Dim0)
   = do
-      comment $ "initialising " ++ name
+      comment $ "initialising " ++ (init $ prettify decl)
       let slot = varStackSlot $ lookupVarRecord symTable ident
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
@@ -214,23 +215,23 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- TODO: add Call statements
 genCodeStmt :: VarSymTable -> Stmt -> CodeGen ()
 
-genCodeStmt varSymTable (WriteExpr expr)
+genCodeStmt varSymTable stmt@(WriteExpr expr)
   = do
-      comment "write <expr>" -- TODO: improve commenting: use prettyprint module
+      comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
       instr $ CallBuiltinInstr $ lookupPrintBuiltin varSymTable expr
 
-genCodeStmt _ (WriteString str)
+genCodeStmt _ stmt@(WriteString str)
   = do
-      comment "write <string>"
+      comment $ init $ prettify stmt
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
 -- TODO: handle arrays/matrices
-genCodeStmt varSymTable (Read (Single ident))
+genCodeStmt varSymTable stmt@(Read (Single ident))
   = do
       let record = lookupVarRecord varSymTable ident
-      comment "read"
+      comment $ init $ prettify stmt
       case varType record of
         BoolType -> instr $ CallBuiltinInstr ReadBool
         IntType -> instr $ CallBuiltinInstr ReadInt
@@ -238,9 +239,9 @@ genCodeStmt varSymTable (Read (Single ident))
       instr $ StoreInstr (varStackSlot record) (Reg 0)
 
 -- TODO: handle arrays/matrices
-genCodeStmt varSymTable (Asg (Single ident) expr)
+genCodeStmt varSymTable stmt@(Asg (Single ident) expr)
   = do
-      comment "assign"
+      comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
       let record = lookupVarRecord varSymTable ident
       when (varType record == FloatType) $
@@ -249,7 +250,7 @@ genCodeStmt varSymTable (Asg (Single ident) expr)
 
 genCodeStmt varSymTable (If cond thenStmts)
   = do
-      comment "if"
+      comment $ "if " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
@@ -258,7 +259,7 @@ genCodeStmt varSymTable (If cond thenStmts)
 
 genCodeStmt varSymTable (IfElse cond thenStmts elseStmts)
   = do
-      comment "if-else"
+      comment $ "if-else " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
@@ -271,7 +272,7 @@ genCodeStmt varSymTable (IfElse cond thenStmts elseStmts)
 
 genCodeStmt varSymTable (While cond stmts)
   = do
-      comment "do"
+      comment $ "while " ++ prettify cond
       whileLabel <- getNewBlockLabel
       label $ whileLabel
       genCodeExprInto varSymTable (Reg 0) cond
