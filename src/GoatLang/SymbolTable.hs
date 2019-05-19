@@ -28,6 +28,7 @@ data VarSymTable
 
 data ProcRecord
   = ProcRecord { procFrameSize :: FrameSize
+               , procParams :: [Param]
                , procVarSymTable :: VarSymTable
                }
 
@@ -49,6 +50,27 @@ numSlots (VarSymTable m)
 lookupVarRecord :: VarSymTable -> Id -> VarRecord
 lookupVarRecord (VarSymTable m) ident
   = m ! ident
+
+lookupProcRecord :: ProcSymTable -> Id -> ProcRecord
+lookupProcRecord (ProcSymTable m) ident
+  = m ! ident
+
+constructProcSymTable :: [Proc] -> ProcSymTable
+constructProcSymTable procs
+  = ProcSymTable procMap
+    where
+      procMap = fromList procMappings
+      procMappings = map constructProcMapping procs
+
+constructProcMapping :: Proc -> (Id, ProcRecord)
+constructProcMapping (Proc ident params decls _)
+  = (ident, record)
+    where
+      record = ProcRecord { procFrameSize = FrameSize frameSize
+                          , procParams = params
+                          , procVarSymTable = constructVarSymTable params decls
+                          }
+      frameSize = length params + length decls
 
 
 -- constructVarSymTable

@@ -167,16 +167,17 @@ comment text
 genCodeGoatProgram :: GoatProgram -> CodeGen ()
 genCodeGoatProgram (GoatProgram procs)
   = do
+      let procSymTable = constructProcSymTable procs
       instr $ CallInstr (ProcLabel "main")
       instr $ HaltInstr
-      mapM_ genCodeProc procs
+      mapM_ (genCodeProc procSymTable) procs
 
 
 -- genCodeProc
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
-genCodeProc :: Proc -> CodeGen ()
-genCodeProc (Proc (Id procName) params decls stmts)
+genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
+genCodeProc procSymTable (Proc (Id procName) params decls stmts)
   = do
       let varSymTable = constructVarSymTable params decls
       label $ ProcLabel procName
@@ -187,7 +188,7 @@ genCodeProc (Proc (Id procName) params decls stmts)
         zipWith (genCodeRetrieveParamFrom varSymTable) [Reg 0..] params
       mapM_ (genCodeInitVar varSymTable) decls
       comment "procedure body"
-      mapM_ (genCodeStmt varSymTable) stmts
+      mapM_ (genCodeStmt procSymTable varSymTable) stmts
       comment "epilogue"
       instr $ PopStackFrameInstr (FrameSize $ numSlots varSymTable)
       instr ReturnInstr
@@ -198,7 +199,7 @@ genCodeProc (Proc (Id procName) params decls stmts)
 -- appropriate stack slot corresponding to the paramater (local variable).
 -- TODO: allow pass-by-reference parameters
 genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
-genCodeRetrieveParamFrom symTable reg (Param Val _ ident@(Id name))
+genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
   = do
       comment $ "retrieving " ++ name
       let slot = varStackSlot $ lookupVarRecord symTable ident
@@ -223,9 +224,9 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) Dim0)
 -- Action to generate code for a single Goat Statement (may be an atomic or
 -- composite statement).
 -- TODO: add Call statements
-genCodeStmt :: VarSymTable -> Stmt -> CodeGen ()
+genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
 
-genCodeStmt varSymTable (WriteExpr expr)
+genCodeStmt _ varSymTable (WriteExpr expr)
   = do
       comment "write <expr>" -- TODO: improve commenting: use prettyprint module
       genCodeExprInto varSymTable (Reg 0) expr
@@ -234,14 +235,14 @@ genCodeStmt varSymTable (WriteExpr expr)
         IntType -> instr $ CallBuiltinInstr PrintInt
         FloatType -> instr $ CallBuiltinInstr PrintReal
 
-genCodeStmt _ (WriteString str)
+genCodeStmt _ _ (WriteString str)
   = do
       comment "write <string>"
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
 -- TODO: handle reading into arrays/matrices
-genCodeStmt varSymTable (Read (Single ident))
+genCodeStmt _ varSymTable (Read scalar@(Single ident))
   = do
       let record = lookupVarRecord varSymTable ident
       comment "read"
@@ -249,41 +250,41 @@ genCodeStmt varSymTable (Read (Single ident))
         BoolType -> instr $ CallBuiltinInstr ReadBool
         IntType -> instr $ CallBuiltinInstr ReadInt
         FloatType -> instr $ CallBuiltinInstr ReadReal
-      instr $ StoreInstr (varStackSlot record) (Reg 0)
+      genCodeStore varSymTable scalar (Reg 0)
 
 -- TODO: handle assigning into arrays/matrices
-genCodeStmt varSymTable (Asg (Single ident) expr)
+genCodeStmt _ varSymTable (Asg scalar@(Single ident) expr)
   = do
       comment "assign"
       genCodeExprInto varSymTable (Reg 0) expr
       let record = lookupVarRecord varSymTable ident
       when (varType record == FloatType) $
         realify (Reg 0) (getExprType varSymTable expr)
-      instr $ StoreInstr (varStackSlot record) (Reg 0)
+      genCodeStore varSymTable scalar (Reg 0)
 
-genCodeStmt varSymTable (If cond thenStmts)
+genCodeStmt procSymTable varSymTable (If cond thenStmts)
   = do
       comment "if"
       genCodeExprInto varSymTable (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
-      mapM_ (genCodeStmt varSymTable) thenStmts
+      mapM_ (genCodeStmt procSymTable varSymTable) thenStmts
       label $ fiLabel
 
-genCodeStmt varSymTable (IfElse cond thenStmts elseStmts)
+genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts)
   = do
       comment "if-else"
       genCodeExprInto varSymTable (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
-      mapM_ (genCodeStmt varSymTable) thenStmts
+      mapM_ (genCodeStmt procSymTable varSymTable) thenStmts
       fiLabel <- getNewBlockLabel
       instr $ BranchUncondInstr fiLabel
       label $ elseLabel
-      mapM_ (genCodeStmt varSymTable) elseStmts
+      mapM_ (genCodeStmt procSymTable varSymTable) elseStmts
       label $ fiLabel
 
-genCodeStmt varSymTable (While cond stmts)
+genCodeStmt procSymTable varSymTable (While cond stmts)
   = do
       comment "do"
       whileLabel <- getNewBlockLabel
@@ -291,13 +292,42 @@ genCodeStmt varSymTable (While cond stmts)
       genCodeExprInto varSymTable (Reg 0) cond
       odLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) odLabel
-      mapM_ (genCodeStmt varSymTable) stmts
+      mapM_ (genCodeStmt procSymTable varSymTable) stmts
       label $ odLabel
 
-genCodeStmt varSymTable (Call (Id procName) args)
+genCodeStmt procSymTable varSymTable (Call ident@(Id procName) args)
   = do
-      sequence_ $ zipWith (genCodeExprInto varSymTable) [Reg 0..] args
+      let procRecord = lookupProcRecord procSymTable ident
+      let params = procParams procRecord
+      sequence_ $ zipWith3 (genCodeArgInto varSymTable) [Reg 0..] params args
       instr $ CallInstr $ ProcLabel procName
+
+
+genCodeStore :: VarSymTable -> Scalar -> Reg -> CodeGen ()
+genCodeStore varSymTable (Single ident) reg
+  = do
+      let record = lookupVarRecord varSymTable ident
+      let passBy = varPassBy record
+      let slot = varStackSlot record
+      let nextReg = succ reg
+      case passBy of
+        Val -> instr $ StoreInstr slot reg
+        Ref -> do
+            instr $ LoadInstr nextReg slot
+            instr $ StoreIndirectInstr nextReg reg
+
+
+genCodeArgInto :: VarSymTable -> Reg -> Param -> Expr -> CodeGen ()
+genCodeArgInto varSymTable reg (Param Val _ _) expr
+  = genCodeExprInto varSymTable reg expr
+genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
+  = do
+      let record = lookupVarRecord varSymTable ident
+      let slot = varStackSlot record
+      let localPassBy = varPassBy record
+      case localPassBy of
+        Val -> instr $ LoadAddressInstr reg slot
+        Ref -> instr $ LoadInstr reg slot
 
 
 -- genCodeExprInto register
@@ -386,10 +416,16 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
       IntType -> NegIntInstr
 
 -- TODO: handle arrays/matrices
-genCodeExprInto varSymTable register (ScalarExpr (Single ident))
+genCodeExprInto varSymTable reg (ScalarExpr (Single ident))
   = do
-      let slot = varStackSlot $ lookupVarRecord varSymTable ident
-      instr $ LoadInstr register slot
+      let record = lookupVarRecord varSymTable ident
+      let slot = varStackSlot record
+      let passBy = varPassBy record
+      case passBy of
+        Val -> instr $ LoadInstr reg slot
+        Ref -> do
+            instr $ LoadInstr reg slot
+            instr $ LoadIndirectInstr reg reg
 
 
 -- genCodeBinOp
