@@ -98,7 +98,7 @@ data Instruction
 
   | BranchOnTrueInstr Reg Label
   | BranchOnFalseInstr Reg Label
-  | BrachUncondInstr Label
+  | BranchUncondInstr Label
 
   | CallInstr Label
   | CallBuiltinInstr BuiltinFunc
@@ -282,7 +282,7 @@ writeInstruction (BranchOnTrueInstr rI label)
 writeInstruction (BranchOnFalseInstr rI label)
   = writeKeyword "branch_on_false" >> space >> 
       commaSep [writeReg rI, writeLabelName label]
-writeInstruction (BrachUncondInstr label)
+writeInstruction (BranchUncondInstr label)
   = writeKeyword "branch_uncond" >> space >> writeLabelName label
 
 writeInstruction (CallInstr label)

@@ -15,7 +15,7 @@ module GoatLang.AST where
 --
 -- ----------------------------------------------------------------------------
 
-class ASTNode node 
+class ASTNode node
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram
@@ -39,7 +39,7 @@ instance ASTNode Proc
 -- The number of required expressions is governed by dimensionality.
 data Id
   = Id String
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 instance ASTNode Id
 
 -- A parameter must be of a type contained in the BaseType data type (either
@@ -120,7 +120,7 @@ instance ASTNode Expr
 -- data ExprAttr = ExprAttr { lineNum :: Int
 --                          , value :: a
 --                          , id :: String
---                          } deriving (Show) 
+--                          } deriving (Show)
 
 -- We're thinking of going with THIS ONE:
 
