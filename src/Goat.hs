@@ -86,11 +86,12 @@ syntaxErrorExit src err
       let lineNum = sourceLine pos
       let colNum = sourceColumn pos
 
-      putStrLn $ "Syntax error at " ++ show pos ++ ":"
+      putStrLn $ red1 "Syntax error" ++ " at " ++ show pos ++ ":"
       -- show 3 lines of context:
       putStr   $ unlines $ take (min lineNum 3) $ drop (lineNum-3) $ lines src
       -- point to the problem:
-      putStr   $ take (colNum-1) (repeat ' ') ++ "^"
+      -- (and surrounding characters, since sometimes parsec point off-by-1)
+      putStr   $ take (colNum-2) (repeat ' ') ++ red1 "^^^"
       putStrLn $ showErrorMessagesDefaults (errorMessages err)
 
       exitWith (ExitFailure 2)
@@ -171,7 +172,7 @@ helpExit
 argsErrorExit :: String -> IO a
 argsErrorExit problem
   = do
-      putStrLn $ "Argument error:\n  " ++ problem
+      putStrLn $ red1 "Argument error" ++ ":\n  " ++ problem
       printUsage
       exitWith (ExitFailure 1)
 
