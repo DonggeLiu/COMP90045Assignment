@@ -177,23 +177,34 @@ genCodeGoatProgram (GoatProgram [main])
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
 genCodeProc :: Proc -> CodeGen ()
--- TODO: allow declarations in main
--- TODO: allow procedures not named "main"
--- TODO: allow non-empty list of parameters
-genCodeProc (Proc (Id "main") [] decls stmts)
+genCodeProc (Proc (Id procName) params decls stmts)
   = do
       let varSymTable = constructVarSymTable [] decls
-      label $ ProcLabel "main"
+      label $ ProcLabel procName
       comment "prologue"
       -- TODO: figure out TRUE required frame size (incl. arrays, matrices)
       instr $ PushStackFrameInstr (FrameSize $ numSlots varSymTable)
-      -- TODO: copy any parameters from registers to appropriate stack slots
+      sequence_ $
+        zipWith (genCodeRetrieveParamFrom varSymTable) [Reg 0..] params
       mapM_ (genCodeInitVar varSymTable) decls
       comment "procedure body"
       mapM_ (genCodeStmt varSymTable) stmts
       comment "epilogue"
       instr $ PopStackFrameInstr (FrameSize $ numSlots varSymTable)
       instr ReturnInstr
+
+
+-- genCodeRetrieveParamFrom
+-- Retrieve the value of a passed argument from a register into the
+-- appropriate stack slot corresponding to the paramater (local variable).
+-- TODO: allow pass-by-reference parameters
+genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
+genCodeRetrieveParamFrom symTable reg (Param Val _ ident@(Id name))
+  = do
+      comment $ "retrieving " ++ name
+      let slot = varStackSlot $ lookupVarRecord symTable ident
+      instr $ StoreInstr slot reg
+
 
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
