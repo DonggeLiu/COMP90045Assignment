@@ -32,29 +32,66 @@ import Util.CodeWriter
 import GoatLang.AST
 
 
-
 --
 -- Okay, let's get to it!                              (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
 
+
+
+-- ----------------------------------------------------------------------------
+-- Top-level functions to write a whole Goat Program to stdout
+-- ----------------------------------------------------------------------------
 
 -- printGoatProgram
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a string and print it directly to stdout.
 printGoatProgram :: GoatProgram -> IO ()
-printGoatProgram gp
-  = printGoatProgramColoured (getColourSchemeByName NoColours) gp
-printGoatProgramColoured :: ColourScheme -> GoatProgram -> IO ()
-printGoatProgramColoured cs gp
-  = putStr $ prettify cs gp
+printGoatProgram prog
+  = putStr $ prettify prog
+  -- = putStr $ writeCode $ writeGoatProgram prog
 
--- prettify
+-- printGoatProgramColoured
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
--- a String, using an efficient String Builder approach.
--- NOTE: The result includes a trailing newline! If printing, just use
--- putStr rather than putStrLn. Or just use `printProgram'.
-prettify :: ColourScheme -> GoatProgram -> String
-prettify cs gp
-  = writeCodeColoured cs $ writeGoatProgram gp
+-- a syntax-highlighted string and print it directly to stdout.
+printGoatProgramColoured :: ColourScheme -> GoatProgram -> IO ()
+printGoatProgramColoured cs prog
+  = putStr $ prettifyColoured cs prog
+  -- = putStr $ writeCodeColoured cs $ writeGoatProgram prog
+
+
+-- ----------------------------------------------------------------------------
+-- 'Pretty' class allows us to convert arbitrary slices of an AST to Strings
+-- ----------------------------------------------------------------------------
+
+class Pretty a where
+  -- writer
+  -- Backend function to turn an ast node into a CodeWriter (). The other 
+  -- functions are expressed in terms of this function, so that it's the
+  -- minimum required for a complete program definition
+  writer :: a -> CodeWriter ()
+  
+  -- prettifyColoured
+  -- Transform part of an Abstract Syntax Tree into a Syntax-highlighted String
+  prettifyColoured :: ColourScheme -> a -> String
+  prettifyColoured cs node
+    = writeCodeColoured cs $ writer node
+  
+  -- prettify
+  -- Like prettifyColoured, but without syntax highlighting
+  prettify :: a -> String
+  prettify node
+    = writeCode $ writer node
+
+-- Hook up the relevant writer for various slices of AST:
+instance Pretty GoatProgram where
+  writer = writeGoatProgram
+instance Pretty Proc where
+  writer = writeProc
+instance Pretty Decl where
+  writer = writeDecl
+instance Pretty Stmt where
+  writer = writeStmt
+instance Pretty Expr where
+  writer = writeExpr
 
 
 -- ----------------------------------------------------------------------------
