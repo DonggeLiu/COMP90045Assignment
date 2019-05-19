@@ -38,14 +38,23 @@ data VarRecord
               , varStackSlot :: Slot
               }
 
+-- numSlots
+-- Simply return the number of slots for a Variable Symbol Table
 numSlots :: VarSymTable -> Int
 numSlots (VarSymTable m)
   = size m
 
+-- lookupVarRecord
+-- Simply lookup the VarRecord for a given Variable's Id.
 lookupVarRecord :: VarSymTable -> Id -> VarRecord
 lookupVarRecord (VarSymTable m) ident
   = m ! ident
 
+
+-- constructVarSymTable
+-- Given lists of decls and params, generate slots for params and decls, and
+-- then teturn a set of tuples from the params and decls to VarRecords, s.t.
+-- each VarRecord stores the appropriate Slot.
 constructVarSymTable :: [Param] -> [Decl] -> VarSymTable
 constructVarSymTable params decls
   = VarSymTable symbolMap
@@ -55,6 +64,8 @@ constructVarSymTable params decls
       declMappings = zipWith constructDeclVarMapping decls (map Slot [n..])
       n = length params
 
+-- constructParamVarMapping
+-- Take a Param and a slot and return a tuple with its id and a VarRecord
 constructParamVarMapping :: Param -> Slot -> (Id, VarRecord)
 constructParamVarMapping (Param passby basetype ident) slot
   = (ident, record)
@@ -65,6 +76,8 @@ constructParamVarMapping (Param passby basetype ident) slot
                          , varStackSlot = slot
                          }
 
+-- constructDeclVarMapping
+-- Take a Decl and return a tuple with its id and a VarRecord
 constructDeclVarMapping :: Decl -> Slot -> (Id, VarRecord)
 constructDeclVarMapping (Decl basetype ident dim) slot
   = (ident, record)
