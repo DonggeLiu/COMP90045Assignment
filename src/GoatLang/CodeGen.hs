@@ -165,12 +165,11 @@ comment text
 -- genCodeGoatProgram
 -- Action to generate instructions for a full Goat Program.
 genCodeGoatProgram :: GoatProgram -> CodeGen ()
--- TODO: allow multiple procedures (we'll just need to `mapM_ genCodeProc`)
-genCodeGoatProgram (GoatProgram [main])
+genCodeGoatProgram (GoatProgram procs)
   = do
       instr $ CallInstr (ProcLabel "main")
       instr $ HaltInstr
-      genCodeProc main
+      mapM_ genCodeProc procs
 
 
 -- genCodeProc
@@ -179,7 +178,7 @@ genCodeGoatProgram (GoatProgram [main])
 genCodeProc :: Proc -> CodeGen ()
 genCodeProc (Proc (Id procName) params decls stmts)
   = do
-      let varSymTable = constructVarSymTable [] decls
+      let varSymTable = constructVarSymTable params decls
       label $ ProcLabel procName
       comment "prologue"
       -- TODO: figure out TRUE required frame size (incl. arrays, matrices)
@@ -294,6 +293,11 @@ genCodeStmt varSymTable (While cond stmts)
       instr $ BranchOnFalseInstr (Reg 0) odLabel
       mapM_ (genCodeStmt varSymTable) stmts
       label $ odLabel
+
+genCodeStmt varSymTable (Call (Id procName) args)
+  = do
+      sequence_ $ zipWith (genCodeExprInto varSymTable) [Reg 0..] args
+      instr $ CallInstr $ ProcLabel procName
 
 
 -- genCodeExprInto register
