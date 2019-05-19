@@ -13,11 +13,7 @@ begin
         then read ss;
         read ff;
       else
-        # call a("if then                                  else", "1234");
-        # EDIT: We intentionally decided that we should not allow
-        # strings as part of expressions.
-        call a (else', 1234);
-        write "if then                                  else";
+        call a ("if then                                  else", "1234");
       fi
 
     od

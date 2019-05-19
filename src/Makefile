@@ -21,36 +21,41 @@ submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
 	tar -cvf submission/src.tar Goat.hs GoatLang/*.hs Util/*.hs
 	cp _SubmissionMakefile submission/Makefile
 
+# Automated tests:
+
 tests: Goat utests itests
 
 # Unit tests with HUnit:
-tests/UnitTests: tests/testgen.py
-	# generate HUnit test script from Python test spec:
-	python3 tests/testgen.py > tests/UnitTests.hs
-	# compile unit tests script
+tests/UnitTests: tests/UnitTests.hs
 	ghc tests/UnitTests.hs
-
 utests: Goat tests/UnitTests
 	# ** RUN UNIT TESTS **
 	tests/UnitTests
 clean_utests:
-	rm -rf tests/*.hi tests/*.o tests/UnitTests tests/UnitTests.hs
+	rm -rf tests/*.hi tests/*.o tests/UnitTests
+
 
 # Integration tests:
-
-# Recursive directory dependencies:
-# (adapted from https://stackoverflow.com/a/25043823)
+# Recursive directory dependencies (adapted from
+# https://stackoverflow.com/a/25043823)
 SAMPLE_ROOT = tests/samples
 SAMPLE_DIRS = $(shell find $(SAMPLE_ROOT) -type d)
 ALL_SAMPLES = $(shell find $(SAMPLE_ROOT) -type f -name '*.gt.*')
 itests: Goat tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
 	# ** RUN INTEGRATION TESTS **
 	bash tests/testall.sh
-clean_itests:
-	# rm -rf # (nothing to clean for integration tests)
 
 
-clean: clean_utests clean_itests
+# Stage 3 milestones:
+
+MILES_DIR = tests/samples/stage3-miles
+miles: Goat tests/milestones.sh $(MILES_DIR) 
+	bash tests/milestones.sh
+
+
+# Makefile stuff:
+
+clean: clean_utests
 	rm -rf *.o *.hi */*.o */*.hi Goat submission
 
-.PHONY: clean tests itests clean_itests utests clean_utests submission
+.PHONY: clean tests itests utests clean_utests submission miles

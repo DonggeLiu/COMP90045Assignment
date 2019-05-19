@@ -8,7 +8,8 @@ begin
             read ss;
             read ff;
         else
-            call a("if then else", x = y, b || c, d && e);
+            call a(if', x = y, b || c, d && e);
+            write "if then else";
         fi
     od
 end

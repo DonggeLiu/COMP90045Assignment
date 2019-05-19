@@ -61,8 +61,15 @@ instance Monoid (DiffList a) where
   mappend
     = (<>)
 
+-- snoc
+-- 'Backwards cons': append a single item to a difference list.
+snoc :: DiffList a -> a -> DiffList a
+snoc d x
+  = d <> (dlistify [x])
+
+
 -- Oh, and, if we ever want to show a diff list (e.g. for debugging
 -- or testing), let's just convert it to a regular list first.
 instance (Show a) => Show (DiffList a) where
   show d
-    = show (listify d)
+    = "DiffList (" ++ show (listify d) ++ " ++ _)"

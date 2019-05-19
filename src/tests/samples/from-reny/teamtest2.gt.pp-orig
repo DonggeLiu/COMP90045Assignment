@@ -4,7 +4,7 @@ proc main ()
     float c[100, 2];
     bool d[23];
 begin
-    new_state's := something[ab[cd, ef]];
+    newstates := something[ab[cd, ef]];
     new[hello] := ((6 * i) + 4) - i;
     read yes[May[the, force]];
     while a + (a / b) do
@@ -12,9 +12,7 @@ begin
             read ss;
             read ff;
         else
-            call a(then', 1234);
-            write "if then' else";
-            write "1234";
+            call a("if then' else", "1234", 2 || (((3 * 4) / (5 + 6)) - 7), -1, 7 >= 2, !True, hey[yes]);
         fi
     od
 end

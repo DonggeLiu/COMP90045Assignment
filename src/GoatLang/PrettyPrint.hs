@@ -15,199 +15,249 @@ module GoatLang.PrettyPrint where
 --
 -- ----------------------------------------------------------------------------
 
-import Control.Monad (mapM, mapM_)
-import Numeric (showFFloatAlt) -- see LMS
+import Control.Monad (mapM_)
+import Numeric (showFFloatAlt) -- for formatting floats; see LMS
+
+-- Our custom CodeWriter utility module provides us a monadic interface for
+-- efficiently constructing syntax-highlighted strings (using a specialised
+-- State Monad powered by difference lists and ANSI escape sequences).
+--
+import Util.CodeWriter
+--
+-- With this, we can prettify a Goat Program using Monadic style. Yay!
+-- You can think of it as kind of like an opposite of Parsec---Complete
+-- with some helpful code writers and code writer combinators defined for
+-- us by Util.CodeWriter.
 
 import GoatLang.AST
 
 
--- Our custom StringBuilder utility module provides us a monadic interface for
--- efficiently constructing strings (using a specialised Writer Monad powered
--- by difference lists).
---
-import Util.StringBuilder
---
--- With this, we can prettify a Goat Program using Monadic style. Yay!
--- You can think of it as kind of like an opposite of Parsec---Complete
--- with some helpful string builders and string builder combinators defined
--- for us by that file (imported above, plus some Goat-specific ones defined
--- below)
 --
 -- Okay, let's get to it!                              (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
 
 
 
--- printProgram
+-- ----------------------------------------------------------------------------
+-- Top-level functions to write a whole Goat Program to stdout
+-- ----------------------------------------------------------------------------
+
+-- printGoatProgram
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
 -- a string and print it directly to stdout.
-printProgram :: GoatProgram -> IO ()
-printProgram gp
-  = putStr $ prettify gp
+printGoatProgram :: GoatProgram -> IO ()
+printGoatProgram prog
+  = putStr $ prettify prog
+  -- = putStr $ writeCode $ writeGoatProgram prog
 
-
--- prettify
+-- printGoatProgramColoured
 -- Top-level function to transform a GoatProgram (an Abstract Syntax Tree) into
--- a String, using an efficient String Builder approach.
--- NOTE: The result includes a trailing newline! If printing, just use
--- putStr rather than putStrLn. Or just use `printProgram'.
-prettify :: GoatProgram -> String
-prettify gp
-  = buildString $ writeGoatProgram gp
-
+-- a syntax-highlighted string and print it directly to stdout.
+printGoatProgramColoured :: ColourScheme -> GoatProgram -> IO ()
+printGoatProgramColoured cs prog
+  = putStr $ prettifyColoured cs prog
+  -- = putStr $ writeCodeColoured cs $ writeGoatProgram prog
 
 
 -- ----------------------------------------------------------------------------
--- StringBuilders for the different elements of a program
+-- 'Pretty' class allows us to convert arbitrary slices of an AST to Strings
+-- ----------------------------------------------------------------------------
+
+class Pretty a where
+  -- writer
+  -- Backend function to turn an ast node into a CodeWriter (). The other 
+  -- functions are expressed in terms of this function, so that it's the
+  -- minimum required for a complete program definition
+  writer :: a -> CodeWriter ()
+  
+  -- prettifyColoured
+  -- Transform part of an Abstract Syntax Tree into a Syntax-highlighted String
+  prettifyColoured :: ColourScheme -> a -> String
+  prettifyColoured cs node
+    = writeCodeColoured cs $ writer node
+  
+  -- prettify
+  -- Like prettifyColoured, but without syntax highlighting
+  prettify :: a -> String
+  prettify node
+    = writeCode $ writer node
+
+-- Hook up the relevant writer for various slices of AST:
+instance Pretty GoatProgram where
+  writer = writeGoatProgram
+instance Pretty Proc where
+  writer = writeProc
+instance Pretty Param where
+  writer = writeParam
+instance Pretty Decl where
+  writer = writeDecl
+instance Pretty Stmt where
+  writer = writeStmt
+instance Pretty Expr where
+  writer = writeExpr
+
+
+-- ----------------------------------------------------------------------------
+-- CodeWriters for the different elements of a program
 -- ----------------------------------------------------------------------------
 
 -- writeGoatProgram
 -- Create an action for building a String representing an entire
--- Goat Program
-writeGoatProgram :: GoatProgram -> StringBuilder
+-- Goat Program.
+writeGoatProgram :: GoatProgram -> CodeWriter ()
 writeGoatProgram (GoatProgram procs)
-  = sepBy newline (map writeProc procs)
+  = sepBy newline $ map writeProc procs
+  -- NOTE: this will add a second newline between each proc, except at eof
+  -- (each procedure already comes with a newline after the "end" keyword).
 
 
 -- writeProc
 -- Create an action for building a String representing a procedure
-writeProc :: Proc -> StringBuilder
-writeProc (Proc name params decls stmts)
+writeProc :: Proc -> CodeWriter ()
+writeProc (Proc (Id name) params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
-      write "proc" >> space >> write name >> space
-      parens (commaSep (map writeF params)) >> newline
+      line $ writeKeyword "proc" >> space >> writeIdent name >> space >>
+        parens (commaSep (map writeParam params))
 
-      -- then proceed to write lines for each decl and stmt (indented 1 level)
-      let levelOneIndentation = softTab
-      mapM (writeDeclWith levelOneIndentation) decls
-      writeLn "begin"
-      mapM (writeStmtWith levelOneIndentation) stmts
+      -- then proceed to write lines for each decl (indented 1 level)
+      withIncreasedIndentation softTab $ mapM_ writeDecl decls
+
+      -- 'begin' separates decls from statements
+      line $ writeKeyword "begin"
+
+      -- statements are also indented one level
+      withIncreasedIndentation softTab $ mapM_ writeStmt stmts
 
       -- finish with the "end" keyword on its own line
-      writeLn "end"
+      line $ writeKeyword "end"
 
 --                          Aren't Monads Awesome?                ___φʕ ^ᴥ^ ʔ
 
-
-
 -- softTab
 -- Helper-action to write a single level of indentation
-softTab :: StringBuilder
+softTab :: CodeWriter ()
 softTab
   = space >> space >> space >> space
 
--- endLine
--- Helper action to add a semicolon AND terminate the line
-endLine :: StringBuilder
-endLine
-  = semi >> newline
 
-
-
--- writeDeclWith
--- Create an action for building a declaration as a string, using a
--- provided action for indenting each line
--- (actually, there is only one line in this case)
-writeDeclWith :: StringBuilder -> Decl -> StringBuilder
-writeDeclWith indentn (Decl baseType name dim)
-  = indentn >> writeF baseType >> space >> write name >> writeF dim >> endLine
-
-
--- writeStmtWith
--- Create an action for building a statement (atomic or composite) as
--- a string, using a provided action for indenting each line.
-writeStmtWith :: StringBuilder -> Stmt -> StringBuilder
-
--- For atomic statements, building will involve writing a single line
--- with the current level of indentation
-writeStmtWith indentation (Asg var expr)
+-- writeParam
+-- Create an action to build a parameter specification as a string
+writeParam :: Param -> CodeWriter ()
+writeParam (Param passBy baseType (Id name))
   = do
-      indentation >> writeVar var >> spaces (write ":=")
-      writeExpr expr >> endLine
+      writeKeyword (format passBy)
+      space
+      writeKeyword (format baseType)
+      space
+      writeIdent name
 
-writeStmtWith indentation (Read var)
-  = indentation >> write "read" >> space >> writeVar var >> endLine
 
-writeStmtWith indentation (Write expr)
-  = indentation >> write "write" >> space >> writeExpr expr >> endLine
+-- writeDecl
+-- Create an action for building a declaration as a string
+writeDecl :: Decl -> CodeWriter ()
+writeDecl (Decl baseType (Id name) dim)
+  = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >>
+      writeDim dim
 
-writeStmtWith indentation (Call name args)
-  = do
-      indentation >> write "call" >> space >> write name
-      parens (commaSep (map writeExpr args)) >> endLine
+
+-- writeDim
+-- Create an action to build a shape/dimensionality indicator as a string
+writeDim :: Dim -> CodeWriter ()
+writeDim Dim0
+  = return ()
+writeDim (Dim1 n)
+  = brackets $ writeIntLit n
+writeDim (Dim2 n m)
+  = brackets $ commaSep $ map writeIntLit [n, m]
+
+
+-- writeStmt
+-- Create an action for building a statement (atomic or composite) as a string.
+writeStmt :: Stmt -> CodeWriter ()
+
+writeStmt (Asg scalar expr)
+  = semiLine $ writeScalar scalar >> spaces (write ":=") >> writeExpr expr
+
+writeStmt (Read scalar)
+  = semiLine $ writeKeyword "read" >> space >> writeScalar scalar
+
+writeStmt (WriteExpr expr)
+  = semiLine $ writeKeyword "write" >> space >> writeExpr expr
+
+writeStmt (WriteString str)
+  = semiLine $ writeKeyword "write" >> space >> asString (writeStringLit str)
+
+writeStmt (Call (Id name) args)
+  = semiLine $ writeKeyword "call" >> space >> writeIdent name >>
+      parens (commaSep (map writeExpr args))
 
 -- For composite statements, we will have to write some lines at the current
--- level of indentation, and also some statements at the next level of 
+-- level of indentation, and also some statements at the next level of
 -- indentation (using nextLevelIndentation = indentation >> softTab).
-writeStmtWith indentation (If cond thenStmts)
+writeStmt (If cond thenStmts)
   = do
-      let nextLevelIndentation = indentation >> softTab
-      indentation >> write "if" >> spaces (writeExpr cond) >> writeLn "then"
-      mapM (writeStmtWith nextLevelIndentation) thenStmts
-      indentation >> writeLn "fi"
+      line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
+      withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
+      line $ writeKeyword "fi"
 
-writeStmtWith indentation (IfElse cond thenStmts elseStmts)
+writeStmt (IfElse cond thenStmts elseStmts)
   = do
-      let nextLevelIndentation = indentation >> softTab
-      indentation >> write "if" >> spaces (writeExpr cond) >> writeLn "then"
-      mapM (writeStmtWith nextLevelIndentation) thenStmts
-      indentation >> writeLn "else"
-      mapM (writeStmtWith nextLevelIndentation) elseStmts
-      indentation >> writeLn "fi"
+      line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
+      withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
+      line $ writeKeyword "else"
+      withIncreasedIndentation softTab $ mapM_ writeStmt elseStmts
+      line $ writeKeyword "fi"
 
-writeStmtWith indentation (While cond doStmts)
+writeStmt (While cond doStmts)
   = do
-      let nextLevelIndentation = indentation >> softTab
-      indentation >> write "while" >> spaces (writeExpr cond) >> writeLn "do"
-      mapM (writeStmtWith nextLevelIndentation) doStmts
-      indentation >> writeLn "od"
+      line $ writeKeyword "while" >> spaces (writeExpr cond) >> writeKeyword "do"
+      withIncreasedIndentation softTab $ mapM_ writeStmt doStmts
+      line $ writeKeyword "od"
 
 
--- writeVar
--- Create an action to represent a variable as a String
-writeVar :: Var -> StringBuilder
-writeVar (Var0 name)
-  = write name
-writeVar (Var1 name index)
-  = write name >> brackets (writeExpr index)
-writeVar (Var2 name index1 index2)
-  = write name >> brackets (commaSep (map writeExpr [index1, index2]))
+-- writeScalar
+-- Create an action to represent a scalar (variable element) as a String
+writeScalar :: Scalar -> CodeWriter ()
+writeScalar (Single (Id name))
+  = writeIdent name
+writeScalar (Array (Id name) index)
+  = do
+      writeIdent name
+      brackets $ writeExpr index
+writeScalar (Matrix (Id name) index1 index2)
+  = do
+      writeIdent name
+      brackets $ commaSep (map writeExpr [index1, index2])
+
 
 
 -- writeExpr
 -- Create an action to represent an expression as a String
-writeExpr :: Expr -> StringBuilder
+writeExpr :: Expr -> CodeWriter ()
 
 -- For simple expressions, we can construct the action directly:
-writeExpr (BoolConst True)
-  = write "true"
-writeExpr (BoolConst False)
-  = write "false"
+writeExpr (BoolConst bool)
+  = writeBoolLit bool
 writeExpr (IntConst int)
-  -- default `show` behaves fine for integers
-  = write $ show int
+  = writeIntLit int
 writeExpr (FloatConst float)
-  -- but we always need to show floats without exponentials and with `.`
-  = write $ showFFloatAlt Nothing float ""
-writeExpr (StrConst str)
-  -- we must also 'un-parse' string literals incl. recreating newline combos
-  = quote $ mapM_ writeF str
-writeExpr (VarExpr var)
-  = writeVar var
+  = writeFloatLit float
+writeExpr (ScalarExpr scalar)
+  = writeScalar scalar
 
 -- But for complex expressions, the string may also involve parenthesed
 -- subexpressions (if they are binary expressions themselves).
 -- We use `writeExprParens' to detect this and add parens if necessary:
-writeExpr (BinExpr op expr1 expr2)
-  = writeExprParens expr1 >> spaces (writeF op) >> writeExprParens expr2
+writeExpr (BinExpr op lExpr rExpr)
+  = writeExprParens lExpr >> spaces (write (format op)) >> writeExprParens rExpr
 writeExpr (UnExpr op expr)
-  = writeF op >> writeExprParens expr
+  = write (format op) >> writeExprParens expr
 
 -- writeExprParens
 -- Create an action to create a string for an expression, enclosed in
 -- parentheses if it represents a binary operation expression (or not
 -- otherwise)
-writeExprParens :: Expr -> StringBuilder
+writeExprParens :: Expr -> CodeWriter ()
 writeExprParens expr@(BinExpr _ _ _)
   = parens $ writeExpr expr
 writeExprParens expr
@@ -215,34 +265,72 @@ writeExprParens expr
 
 
 -- ----------------------------------------------------------------------------
+-- CodeWriters for formatting literals (bool, int, float, str) in Goat format
+-- ----------------------------------------------------------------------------
+
+
+-- writeBoolLit
+-- Create an action to represent a bool in the required format (which is
+-- to be lower-case 'true' or 'false'.
+writeBoolLit :: Bool -> CodeWriter ()
+writeBoolLit True
+  = writeKeyword "true"
+writeBoolLit False
+  = writeKeyword "false"
+
+
+-- writeIntLit
+-- Create an action to represent an int in the required format (which is just
+-- the default 'show' format).
+writeIntLit :: Int -> CodeWriter ()
+writeIntLit int
+  = asNumber $ showWrite int
+
+
+-- writeFloatLit
+-- Create an action to represent a float in decimal notation (always with '.'
+-- and never in exponential notation). See LMS Discussion Board.
+writeFloatLit :: Float -> CodeWriter ()
+writeFloatLit float
+  = asNumber $ write $ showFFloatAlt Nothing float ""
+
+
+-- writeStringLit
+-- Create an action to represent a string literal as a string.
+-- Note: we have to 'unparse' the string for representation, or it will contain
+-- actual newlines etc.
+writeStringLit :: String -> CodeWriter ()
+writeStringLit str
+  = asString $ quote $ mapM_ writeCharEsc str
+
+-- writeCharEsc
+-- Write a single character, taking care to 'unparse' escaped characters back
+-- into escape sequences (namely `\n` --> `\` followed by `n`).
+writeCharEsc :: Char -> CodeWriter ()
+writeCharEsc '\n'
+    -- a `\` (slash) followed by `n`.
+    = write "\\" >> write "n"
+writeCharEsc c
+    -- just the character itself (as a string)
+    = write (c:"")
+
+
+
+-- ----------------------------------------------------------------------------
 -- The remaining code deals with converting simpler structures to
 -- to Strings directly, in non-monadic style. We create a new typeclass
 -- `Displayable' providing a function `format' for converting its members'
--- values to strings, and ONE general function `writeF' for writing something
--- of this type class to our StringBuilder.
+-- values to strings.
 --
 -- NOTE: We could have overridden the implementation of `show' for these types
 -- but this way we are still able to keep the default behaviour or `show'
 -- (which is useful to enable viewing ASTs such as for debugging this module).
 -- ----------------------------------------------------------------------------
 
--- writeF
--- Shortcut for action to write a displayable as a string using the format
--- function (see below for Display type-class definitions)
-writeF :: (Display a) => a -> StringBuilder
-writeF d
-  = write $ format d
-
-
 -- A Display type implements the format function, for converting
 -- values to strings for pretty-printing.
 class Display displayable where
   format :: displayable -> String
-
--- Represent a formal paramater as a string
-instance Display Param where
-  format (Param passBy baseType name)
-    = format passBy ++ " " ++ format baseType ++ " " ++ name
 
 -- Represent a paramater passing mechanism as a String
 instance Display PassBy where
@@ -260,18 +348,6 @@ instance Display BaseType where
   format IntType
     = "int"
 
--- Represent a shape/dimensionality indicator as a string
-instance Display Dim where
-  format (Dim0)
-    = ""
-  format (Dim1 n)
-    = wrapBrackets $ show n
-  format (Dim2 n m)
-    = wrapBrackets $ show n ++ ", " ++ show m
-
-wrapBrackets :: String -> String
-wrapBrackets s
-  = "[" ++ s ++ "]"
 
 -- Represent a binary operator as a string
 instance Display BinOp where
@@ -300,18 +376,10 @@ instance Display BinOp where
   format Or
     = "||"
 
+
 -- Represent a unary operator as a string
 instance Display UnOp where
   format Neg
     = "-"
   format Not
     = "!"
-
--- Represent a string literal character as a string
-instance Display Char where
-  -- translate newline back into \ and n combo:
-  format '\n'
-    = "\\n"
-  -- all other characters are just printed as singleton strings
-  format c
-    = c:""

@@ -20,11 +20,18 @@ import System.Environment
 import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
+
 import Text.Parsec
 import Text.Parsec.Error
 
+import Util.ColourParTTY
+import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
+
+
 import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (prettify)
+import GoatLang.PrettyPrint (printGoatProgramColoured)
+import GoatLang.CodeGen (genCode)
+import GoatLang.OzCode (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -49,13 +56,21 @@ main
       when (flagIsSet 'a' flags) $ do
           print ast
       when (flagIsSet 'p' flags) $ do
-          putStr $ prettify ast
+          printGoatProgramColoured (detectColourScheme flags) ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          putStrLn "Sorry, can't generate code yet!"
+          let code = genCode ast
+          printOzProgramColoured (detectColourScheme flags) code
+
+
+detectColourScheme :: [Flag] -> ColourScheme
+detectColourScheme flags
+  | flagIsSet 'l' flags = getColourSchemeByName LightTerminal
+  | flagIsSet 'd' flags = getColourSchemeByName DarkTerminal
+  | otherwise           = getColourSchemeByName NoColours
 
 -- ----------------------------------------------------------------------------
 -- Handling errors in the source program
@@ -110,7 +125,7 @@ flagIsSet f flags
 
 -- List of valid flags
 validFlags
-  = "xaph"
+  = "xaphld"
 
 -- checkArgs
 -- Parse command line options, either ensuring they have the correct structure
@@ -166,11 +181,15 @@ printUsage :: IO ()
 printUsage
    = do
       name <- getProgName
-      putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p] [file]\n"
+      putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p[l|d]] [file]\n"
       putStrLn "Options and arguments:"
       putStrLn "  -x    : (or no flags) compile the file, print executable code"
       putStrLn "  -a    : parse the file and print the AST"
       putStrLn "  -p    : parse the file and pretty-print its source code"
+      putStr $ "  -l    : " ++ rainbow1 "pretty-print WITH COLOUR! "
+      putStrLn "(for light terminals)"
+      putStr $ "  -d    : " ++ rainbow2 "pretty-print WITH COLOUR! "
+      putStrLn "(for dark terminals)"
       putStrLn "  -h    : print this help message and exit"
       putStrLn "  file  : path to goat (.gt) file containing Goat source code"
       putStrLn "          (required argument for -x, -a and -p)"
@@ -194,7 +213,8 @@ printGoatHead
       putStrLn "       |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
       putStrLn "       |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
       putStrLn "        \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
-      putStrLn "         \\______,/; ;   ;;\\ @|\\  | /|@|;: \\__\\__\\_/"
+      putStr $ "         \\______,/; ;   ;;\\ "++grn2"@"++"|\\  | /|"++cyn2"@"
+      putStrLn "|;: \\__\\__\\_/"
       putStrLn "                   ;   ;;;|\\/' \\ |/ '\\/;;"
       putStrLn "                  ;   ;;;;\\  {  \\|' }/;:'"
       putStrLn "                  ;  ;;;;;:| {   |  }|;'"

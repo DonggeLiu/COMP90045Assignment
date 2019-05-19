@@ -113,27 +113,27 @@ PRINT_TESTS = \
     , ("int action[1];\\n", "Decl IntType \"action\" (Dim1 1)")
     , ("float boolean;\\n", "Decl FloatType \"boolean\" (Dim0)")
     ])
-, ("writeVar",
-    [ ("x", "Var0 \"x\""), ("x[1]", "Var1 \"x\" (IntConst 1)")
-    , ("x[2, 3.0]", "Var2 \"x\" (IntConst 2) (FloatConst 3.0)")
+, ("writeScalar",
+    [ ("x", "Single \"x\""), ("x[1]", "Array \"x\" (IntConst 1)")
+    , ("x[2, 3.0]", "Matrix \"x\" (IntConst 2) (FloatConst 3.0)")
     ])
 , ("(writeStmtWith $ return ())",  # no indentation
     [ ("call f();\\n", "Call \"f\" []")
     , ("call f(1);\\n", "Call \"f\" [IntConst 1]")
     , ("call f(1, 2);\\n", "Call \"f\" [IntConst 1, IntConst 2]")
-    , ("x := 42;\\n", "Asg (Var0 \"x\") (IntConst 42)")
-    , ("x[1] := 42;\\n", "Asg (Var1 \"x\" (IntConst 1)) (IntConst 42)")
-    , ("x[1, 2] := 42;\\n", "Asg (Var2 \"x\" (IntConst 1) (IntConst 2)) (IntConst 42)")
-    , ("read x;\\n", "Read (Var0 \"x\")")
-    , ("read x[1];\\n", "Read (Var1 \"x\" (IntConst 1))")
-    , ("read x[1, 2];\\n", "Read (Var2 \"x\" (IntConst 1) (IntConst 2))")
-    , ("write x;\\n", "Write $ VarExpr (Var0 \"x\")")
-    , ("write x[1];\\n", "Write $ VarExpr (Var1 \"x\" (IntConst 1))")
-    , ("write x[1, 2];\\n", "Write $ VarExpr (Var2 \"x\" (IntConst 1) (IntConst 2))")
+    , ("x := 42;\\n", "Asg (Single \"x\") (IntConst 42)")
+    , ("x[1] := 42;\\n", "Asg (Array \"x\" (IntConst 1)) (IntConst 42)")
+    , ("x[1, 2] := 42;\\n", "Asg (Matrix \"x\" (IntConst 1) (IntConst 2)) (IntConst 42)")
+    , ("read x;\\n", "Read (Single \"x\")")
+    , ("read x[1];\\n", "Read (Array \"x\" (IntConst 1))")
+    , ("read x[1, 2];\\n", "Read (Matrix \"x\" (IntConst 1) (IntConst 2))")
+    , ("write x;\\n", "WriteExpr $ ScalarExpr (Single \"x\")")
+    , ("write x[1];\\n", "WriteExpr $ ScalarExpr (Array \"x\" (IntConst 1))")
+    , ("write x[1, 2];\\n", "WriteExpr $ ScalarExpr (Matrix \"x\" (IntConst 1) (IntConst 2))")
     , # TODO: Test compound statement writing
     ])
-, ("writeExpr",
-    [ (r'\"hello, world!\\n\"', "StrConst \"hello, world!\\n\"")
+, ("writeStr",
+    [ (r'\"hello, world!\\n\"', "\"hello, world!\\n\"")
     # TODO: Test expression writing
     ])
 ]
