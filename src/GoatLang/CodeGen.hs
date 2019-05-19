@@ -27,21 +27,15 @@ import GoatLang.SymbolTable
 
 -- Summary of TODO items from throughout file:
 --
--- Milestone 4:
--- - Allow multiple procedures in genCodeGoatProgram
--- - Extend genCodeGoatProc to allow procedures not named "main"
--- - Extend genCodeGoatProc to allow for non-empty list of parameters (by val)
--- - Extend genCodeStmt to allow Call statements (with value arguments only)
---
--- Milestone 5:
---
--- - Add to the milestone 4 stuff the ability to handle reference parameters in
---   all possible places.
---
 -- Milestone 6:
 --
 -- - Allow for arrays and matrices.
---
+--     - SymbolTable constructed w/ correct Slot numbers - DONE
+--     - numSlots correctly returns total number of Slots for a table - DONE
+--     - Initialisation of all Slots for array and matrix variables
+--     - Array and Matrix cases of genCodeArgInto
+--     - Matrix case of genCodeExprInto
+-- 
 -- When we do semantic analysis:
 --
 -- - genCodeExprInto assumes that all expressions are completely well-types
@@ -182,7 +176,6 @@ genCodeProc procSymTable (Proc (Id procName) params decls stmts)
       let varSymTable = constructVarSymTable params decls
       label $ ProcLabel procName
       comment "prologue"
-      -- TODO: figure out TRUE required frame size (incl. arrays, matrices)
       instr $ PushStackFrameInstr (FrameSize $ numSlots varSymTable)
       sequence_ $
         zipWith (genCodeRetrieveParamFrom varSymTable) [Reg 0..] params
@@ -335,6 +328,13 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
         Val -> instr $ LoadAddressInstr reg slot
         Ref -> instr $ LoadInstr reg slot
 
+-- TODO: Array case
+-- genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Array Id (IntConst i)))
+
+-- TODO: Matrix case
+-- genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Matrix Id (IntConst i) (IntConst j)))
+
+
 
 -- genCodeExprInto register
 -- Action to generate code that will get the result of an expression into this
@@ -421,7 +421,6 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
       FloatType -> NegRealInstr
       IntType -> NegIntInstr
 
--- TODO: handle arrays/matrices
 genCodeExprInto varSymTable reg (ScalarExpr (Single ident))
   = do
       let record = lookupVarRecord varSymTable ident
@@ -432,6 +431,32 @@ genCodeExprInto varSymTable reg (ScalarExpr (Single ident))
         Ref -> do
             instr $ LoadInstr reg slot
             instr $ LoadIndirectInstr reg reg
+
+genCodeExprInto varSymTable reg@(Reg x) (ScalarExpr (Array ident (IntConst i)))
+  = do
+      let record = lookupVarRecord varSymTable ident
+      let slot = varStackSlot record
+      instr $ IntConstInstr (Reg x) i
+      instr $ LoadAddressInstr (Reg (x + 1)) slot
+      instr $ SubOffsetInstr (Reg x) (Reg (x + 1)) (Reg x)
+      instr $ LoadIndirectInstr (Reg x) (Reg x)
+
+-- TODO: Handle matrices
+-- genCodeExprInto varSymTable reg@(Reg x) (ScalarExpr (Matrix ident (IntConst i) (IntConst j)))
+--   = do
+--       let record = lookupVarRecord varSymTable ident
+--       let slot = varStackSlot record
+--       instr $ IntConstInstr (Reg x) i
+--       instr $ IntConstInstr (Reg (x + 1)) j
+
+
+--       instr $ LoadAddressInstr (Reg (x + 1)) slot
+--       instr $ SubOffsetInstr (Reg x) (Reg (x + 1)) (Reg x)
+--       instr $ LoadIndirectInstr (Reg x) (Reg x)
+
+
+
+
 
 
 -- genCodeBinOp
