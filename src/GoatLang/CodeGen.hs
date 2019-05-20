@@ -32,8 +32,11 @@ import GoatLang.SymbolTable
 -- - Allow for arrays and matrices.
 --     - SymbolTable constructed w/ correct Slot numbers - DONE
 --     - numSlots correctly returns total number of Slots for a table - DONE
---     - Initialisation of all Slots for array and matrix variables
---     - Array and Matrix cases of genCodeArgInto
+--     - Initialisation of all Slots for array and matrix variables - DONE
+--     - Array and Matrix cases of genCodeArgInto - DONE
+--     - Array and Matrix cases of genCodeExprInto - DONE
+--     - Make genCodeStmt exhaustive
+--     - ...
 -- 
 -- When we do semantic analysis:
 --
