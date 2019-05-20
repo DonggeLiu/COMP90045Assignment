@@ -34,7 +34,6 @@ import GoatLang.SymbolTable
 --     - numSlots correctly returns total number of Slots for a table - DONE
 --     - Initialisation of all Slots for array and matrix variables
 --     - Array and Matrix cases of genCodeArgInto
---     - Matrix case of genCodeExprInto
 -- 
 -- When we do semantic analysis:
 --
@@ -315,7 +314,9 @@ genCodeStore varSymTable (Single ident) reg
             instr $ LoadInstr nextReg slot
             instr $ StoreIndirectInstr nextReg reg
 
-
+-- genCodeArgInto
+-- Generate the code to store the expression (that is referenced by Param)
+-- into the given register.
 genCodeArgInto :: VarSymTable -> Reg -> Param -> Expr -> CodeGen ()
 genCodeArgInto varSymTable reg (Param Val _ _) expr
   = genCodeExprInto varSymTable reg expr
@@ -328,12 +329,30 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
         Val -> instr $ LoadAddressInstr reg slot
         Ref -> instr $ LoadInstr reg slot
 
--- TODO: Array case
--- genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Array Id (IntConst i)))
+genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr scalar)
+  = do
+      -- 0. Get the slot of the start of the Array/Matrix
+      let record = lookupVarRecord varSymTable (getIdent scalar)
+      let slot = varStackSlot record
 
--- TODO: Matrix case
--- genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Matrix Id (IntConst i) (IntConst j)))
+      -- Calculate the offset & generate the code
+      case scalar of
+        Array _ (IntConst i) -> genCodeArrAddrInto reg slot i
+        Matrix _ (IntConst i) (IntConst j) -> do
+            let (Dim2 _ cols) = varShape record
+            let offset = (i * cols) + j
+            genCodeArrAddrInto reg slot offset
 
+
+-- getIdent
+-- Get the identity of a given Scalar
+getIdent :: Scalar -> Id
+getIdent (Single ident)
+  = ident
+getIdent (Array ident _)
+  = ident
+getIdent (Matrix ident _ _)
+  = ident
 
 
 -- genCodeExprInto register
@@ -437,25 +456,33 @@ genCodeExprInto varSymTable reg (ScalarExpr (Array ident (IntConst i)))
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
 
-      genCodeArrInto reg i slot
+      genCodeArrAddrInto reg slot i
+
+      -- Load into the register the value at the address that it stores
+      -- (r0 = &r0)
+      instr $ LoadIndirectInstr reg reg
 
 genCodeExprInto varSymTable reg (ScalarExpr (Matrix ident (IntConst i) (IntConst j)))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
-      let (Dim2 rows cols) = varShape record
+      let (Dim2 _ cols) = varShape record
 
       -- Calculate the stack offset 
       let offset = (i * cols) + j
 
       -- Store the value into the offset
-      genCodeArrInto reg offset slot
+      genCodeArrAddrInto reg slot offset
+
+      -- Load into the register the value at the address that it stores
+      -- (r0 = &r0)
+      instr $ LoadIndirectInstr reg reg
 
 
--- genCodeArrInto
--- Given the 1/2D array a, an offset, a register and a slot, store the value
--- into that register.
-genCodeArrInto (Reg x) offset slot
+-- genCodeArrAddrInto
+-- Given the 1/2D array a, an offset, a register and a slot, store the address
+-- of the Scalar into that register.
+genCodeArrAddrInto (Reg x) slot offset
   = do
       -- Store the offset into the register (r0 = i)
       instr $ IntConstInstr (Reg x) offset
@@ -464,14 +491,9 @@ genCodeArrInto (Reg x) offset slot
       -- (r1 = &slot)
       instr $ LoadAddressInstr (Reg (x + 1)) slot
 
-      -- Calculate the offset from the address & store it in the register 
+      -- Calculate the address offset from the slot & store it in the register
       -- (r0 = r1 - r0)
       instr $ SubOffsetInstr (Reg x) (Reg (x + 1)) (Reg x)
-
-      -- Load into the register the value at the address that it stores
-      -- (r0 = &r0)
-      instr $ LoadIndirectInstr (Reg x) (Reg x)
-
 
 
 -- genCodeBinOp
