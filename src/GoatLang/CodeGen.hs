@@ -26,17 +26,6 @@ import GoatLang.SymbolTable
 
 
 -- Summary of TODO items from throughout file:
---
--- Milestone 6:
---
--- - Allow for arrays and matrices.
---     - SymbolTable constructed w/ correct Slot numbers - DONE
---     - numSlots correctly returns total number of Slots for a table - DONE
---     - Initialisation of all Slots for array and matrix variables - DONE
---     - Array and Matrix cases of genCodeArgInto - DONE
---     - Array and Matrix cases of genCodeExprInto - DONE
---     - Make genCodeStmt exhaustive
---     - ...
 -- 
 -- When we do semantic analysis:
 --
@@ -192,7 +181,6 @@ genCodeProc procSymTable (Proc (Id procName) params decls stmts)
 -- genCodeRetrieveParamFrom
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
--- TODO: allow pass-by-reference parameters
 genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
 genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
   = do
@@ -223,9 +211,10 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
 genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
 genCodeStmt _ varSymTable (WriteExpr expr)
   = do
-      comment "write <expr>" -- TODO: improve commenting: use prettyprint module
-      genCodeExprInto varSymTable (Reg 0) expr          -- Save expr into Reg 0
-      case getExprType varSymTable expr of              -- Get the Instruction
+      -- TODO: improve commenting: use prettyprint module
+      comment "write <expr>"
+      genCodeExprInto varSymTable (Reg 0) expr
+      case getExprType varSymTable expr of
         BoolType -> instr $ CallBuiltinInstr PrintBool
         IntType -> instr $ CallBuiltinInstr PrintInt
         FloatType -> instr $ CallBuiltinInstr PrintReal
@@ -236,7 +225,6 @@ genCodeStmt _ _ (WriteString str)
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
--- TODO: handle reading into arrays/matrices
 genCodeStmt _ varSymTable (Read scalar)
   = do
       comment "read"
@@ -247,7 +235,6 @@ genCodeStmt _ varSymTable (Read scalar)
         FloatType -> instr $ CallBuiltinInstr ReadReal
       genCodeStore varSymTable scalar (Reg 0)
 
--- TODO: handle assigning into arrays/matrices
 genCodeStmt _ varSymTable (Asg scalar expr)
   = do
       comment "assign"
@@ -357,7 +344,7 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
 -- need to calculate the address and load it into the register.
 genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr scalar)
   = genCodeOffsetAddrInto varSymTable reg scalar
-      
+
 
 -- genCodeOffsetAddrInto
 -- Given an Array or Matrix scalar, evaluate the one or two indices to determine
@@ -397,9 +384,6 @@ genCodeOffsetAddrInto varSymTable reg (Matrix ident exprI exprJ)
 -- Action to generate code that will get the result of an expression into this
 -- register.
 genCodeExprInto :: VarSymTable -> Reg -> Expr -> CodeGen ()
--- TODO: implement code generation for ScalarExprs (must treat value and ref
--- variables correctly for Singular variables, and must handle indexing into
--- Array and Matrix variables).
 -- TODO: The following code assumes that the expression is well-typed. Semantic
 -- analysis will need to come in and actually provide that guarantee at some
 -- point.
@@ -417,6 +401,7 @@ genCodeExprInto _ register (BoolConst True)
   = instr $ IntConstInstr register 1
 genCodeExprInto _ register (BoolConst False)
   = instr $ IntConstInstr register 0
+
 
 -- Recursive cases: binary and unary operations involving nested expressions:
 
@@ -477,6 +462,9 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
     instruction = case getExprType varSymTable expr of
       FloatType -> NegRealInstr
       IntType -> NegIntInstr
+
+
+-- Scalar expressions:
 
 -- For scalar expressions of Single variables we need to be careful about
 -- whether the stack slot holds a reference (for pass by reference variables)
@@ -654,28 +642,14 @@ getExprType _ (FloatConst _)
 getExprType _ (IntConst _)
   = IntType
 getExprType varSymTable (BinExpr operator left right)
-  = case operator of
-      Add -> case getExprType varSymTable left of
-        FloatType -> FloatType
-        otherwise -> case getExprType varSymTable right of
-          FloatType -> FloatType
-          otherwise -> IntType
-      Sub -> case getExprType varSymTable left of
-        FloatType -> FloatType
-        otherwise -> case getExprType varSymTable right of
-          FloatType -> FloatType
-          otherwise -> IntType
-      Mul -> case getExprType varSymTable left of
-        FloatType -> FloatType
-        otherwise -> case getExprType varSymTable right of
-          FloatType -> FloatType
-          otherwise -> IntType
-      Div -> case getExprType varSymTable left of
-        FloatType -> FloatType
-        otherwise -> case getExprType varSymTable right of
-          FloatType -> FloatType
-          otherwise -> IntType
-      otherwise -> BoolType
+  | arithmetic operator = case types of
+      (IntType, IntType) -> IntType
+      otherwise -> FloatType
+  | otherwise = BoolType
+  where 
+    arithmetic = (`elem` [Add, Sub, Mul, Div])
+    types = (getExprType varSymTable left, getExprType varSymTable right)
+
 getExprType varSymTable (UnExpr operator operand)
   = getExprType varSymTable operand
 getExprType varSymTable (ScalarExpr scalar)
