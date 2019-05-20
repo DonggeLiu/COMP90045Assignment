@@ -432,30 +432,45 @@ genCodeExprInto varSymTable reg (ScalarExpr (Single ident))
             instr $ LoadInstr reg slot
             instr $ LoadIndirectInstr reg reg
 
-genCodeExprInto varSymTable reg@(Reg x) (ScalarExpr (Array ident (IntConst i)))
+genCodeExprInto varSymTable reg (ScalarExpr (Array ident (IntConst i)))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
-      instr $ IntConstInstr (Reg x) i
+
+      genCodeArrInto reg i slot
+
+genCodeExprInto varSymTable reg (ScalarExpr (Matrix ident (IntConst i) (IntConst j)))
+  = do
+      let record = lookupVarRecord varSymTable ident
+      let slot = varStackSlot record
+      let (Dim2 rows cols) = varShape record
+
+      -- Calculate the stack offset 
+      let offset = (i * cols) + j
+
+      -- Store the value into the offset
+      genCodeArrInto reg offset slot
+
+
+-- genCodeArrInto
+-- Given the 1/2D array a, an offset, a register and a slot, store the value
+-- into that register.
+genCodeArrInto (Reg x) offset slot
+  = do
+      -- Store the offset into the register (r0 = i)
+      instr $ IntConstInstr (Reg x) offset
+
+      -- Load the address at the slot into the next register
+      -- (r1 = &slot)
       instr $ LoadAddressInstr (Reg (x + 1)) slot
+
+      -- Calculate the offset from the address & store it in the register 
+      -- (r0 = r1 - r0)
       instr $ SubOffsetInstr (Reg x) (Reg (x + 1)) (Reg x)
+
+      -- Load into the register the value at the address that it stores
+      -- (r0 = &r0)
       instr $ LoadIndirectInstr (Reg x) (Reg x)
-
--- TODO: Handle matrices
--- genCodeExprInto varSymTable reg@(Reg x) (ScalarExpr (Matrix ident (IntConst i) (IntConst j)))
---   = do
---       let record = lookupVarRecord varSymTable ident
---       let slot = varStackSlot record
---       instr $ IntConstInstr (Reg x) i
---       instr $ IntConstInstr (Reg (x + 1)) j
-
-
---       instr $ LoadAddressInstr (Reg (x + 1)) slot
---       instr $ SubOffsetInstr (Reg x) (Reg (x + 1)) (Reg x)
---       instr $ LoadIndirectInstr (Reg x) (Reg x)
-
-
-
 
 
 
