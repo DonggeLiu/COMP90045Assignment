@@ -27,27 +27,36 @@ import Util.CodeWriter
 
 newtype FrameSize
   = FrameSize Int
+  deriving (Show, Eq)
 
 newtype Reg
   = Reg Int
+  deriving (Show, Eq)
 instance Enum Reg where
   fromEnum (Reg r) = r
   toEnum r = Reg r
 
 newtype Slot
   = Slot Int
+  deriving (Show, Eq)
+instance Enum Slot where
+  fromEnum (Slot s) = s
+  toEnum s = Slot s
 
 data Label
   = ProcLabel String
   | BlockLabel Int
+  deriving (Show, Eq)
 
 data OzProgram
   = OzProgram [OzLine]
+  deriving (Show, Eq)
 
 data OzLine
   = Instr Instruction
   | Label Label
   | Comment String
+  deriving (Show, Eq)
 
 data Instruction
   = PushStackFrameInstr FrameSize
@@ -108,6 +117,7 @@ data Instruction
   | DebugRegInstr Reg
   | DebugSlotInstr Slot
   | DebugStackInstr
+  deriving (Show, Eq)
 
 data BuiltinFunc
   = ReadBool
@@ -117,6 +127,7 @@ data BuiltinFunc
   | PrintReal
   | PrintInt
   | PrintStr
+  deriving (Show, Eq)
 
 
 -- ----------------------------------------------------------------------------
