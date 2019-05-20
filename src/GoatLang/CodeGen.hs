@@ -207,25 +207,19 @@ genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
 genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
   = do
       comment $ "initialising " ++ name
-      let slot@(Slot x) = varStackSlot $ lookupVarRecord symTable ident
+      -- first load the appropriately-typed zero value into a register
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
         otherwise -> instr $ IntConstInstr (Reg 0) 0
-      genCodeInitVarSlots x $ x - 1 + (dimSize dim)
-
-
--- genCodeInitVarSlots
--- Generates Store instructions to initialise a Scalar of any dimension.
-genCodeInitVarSlots :: Int -> Int -> CodeGen()
-genCodeInitVarSlots fstSlot lastSlot  
-  = do
-      mapM_ instr (map (flip StoreInstr (Reg 0)) (map Slot [fstSlot..lastSlot]))
+      -- then store it into the slot (or slots) spanned by this local variable
+      let startSlot = varStackSlot $ lookupVarRecord symTable ident
+      let allSlots = take (numSlotsDim dim) [startSlot..]
+      mapM_ (\slot -> instr (StoreInstr slot (Reg 0))) allSlots
 
 
 -- genCodeStmt
 -- Action to generate code for a single Goat Statement (may be an atomic or
 -- composite statement).
--- TODO: add Call statements
 genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
 genCodeStmt _ varSymTable (WriteExpr expr)
   = do

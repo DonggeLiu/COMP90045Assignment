@@ -41,12 +41,9 @@ data VarRecord
 
 -- numSlots
 -- Simply return the number of slots for a Variable Symbol Table
--- Updated for Arrays and Matrices
 numSlots :: VarSymTable -> Int
 numSlots (VarSymTable m)
-  = foldl (\x varRec -> x + (getSize varRec)) 0 (elems m)
-  where
-    getSize = dimSize . varShape
+  = sum $ map (numSlotsDim . varShape) (elems m)
 
 -- lookupVarRecord
 -- Simply lookup the VarRecord for a given Variable's Id.
@@ -85,9 +82,16 @@ constructVarSymTable params decls
   = VarSymTable symbolMap
     where
       symbolMap = fromList $ paramMappings ++ declMappings
-      paramMappings = zipWith constructParamVarMapping params (map Slot [0..])
-      declMappings = zipWith constructDeclVarMapping decls (getSlots decls n)
-      n = length params
+      -- first allocate enough slots for all of the declared variables
+      declStartSlots = declStartSlotsFrom (Slot 0) decls
+      declMappings = zipWith constructDeclVarMapping decls declStartSlots
+      -- then continue allocating remaining slots for params (which will only
+      -- need a single slot each)
+      -- NOTE: declStartSlots ends with the next available slot; start there
+      firstParamStartSlot = last declStartSlots
+      paramStartSlots = [firstParamStartSlot..]
+      paramMappings = zipWith constructParamVarMapping params paramStartSlots
+
 
 -- constructParamVarMapping
 -- Take a Param and a slot and return a tuple with its id and a VarRecord
@@ -101,6 +105,7 @@ constructParamVarMapping (Param passby basetype ident) slot
                          , varStackSlot = slot
                          }
 
+
 -- constructDeclVarMapping
 -- Take a Decl and return a tuple with its id and a VarRecord
 constructDeclVarMapping :: Decl -> Slot -> (Id, VarRecord)
@@ -113,44 +118,30 @@ constructDeclVarMapping (Decl basetype ident dim) slot
                          , varStackSlot = slot
                          }
 
--- getSlots
--- Get a Slot with its appropriate slot number for each declaration.
-getSlots decls n
-  = map Slot $ scanl1 (+) $ (:) 0 $ map getNumSlots decls
 
--- getNumSlots
+-- declStartSlotsFrom
+-- Determine appropriate starting slots for a series of declarations, starting 
+-- from a given slot. The resulting list contains n+1 slots where n is the
+-- number of declarations: the last slot is the next available slot after the 
+-- slots for all the decls.
+declStartSlotsFrom :: Slot -> [Decl] -> [Slot]
+declStartSlotsFrom (Slot start) decls
+  = map Slot $ scanl (+) start $ map numSlotsDecl decls
+
+
+-- numSlotsDecl
 -- Gets the number of slots required for a given declared variable.
-getNumSlots :: Decl -> Int
-getNumSlots (Decl _ _ dim) = dimSize dim
+numSlotsDecl :: Decl -> Int
+numSlotsDecl (Decl _ _ dim)
+  = numSlotsDim dim
 
--- dimSize
+
+-- numSlotsDim
 -- Retrieves the size implied by the dimensionality
-dimSize :: Dim -> Int
-dimSize Dim0
+numSlotsDim :: Dim -> Int
+numSlotsDim Dim0
   = 1
-dimSize (Dim1 n)
+numSlotsDim (Dim1 n)
   = n
-dimSize (Dim2 n m)
+numSlotsDim (Dim2 n m)
   = n * m
-
-
--- Previously (uglier) used the following functions. More efficient b/c it
--- only requires one scan, but the code is uglier.
-
--- -- getSlots
--- -- Gets a list of starting slots for the given declarations
--- getSlots :: [Decl] -> Int -> [Slot]
--- getSlots ((Decl _ _ dim):rest) n
---   = (Slot n) : (getSlots rest $ n + (getNumSlots dim))
--- getSlots [] _
---   = []
-
--- -- getNumSlots
--- -- Given a Dim, get the number of slots required to store the Scalar's contents
--- getNumSlots :: Dim -> Int
--- getNumSlots Dim0
---   = 1
--- getNumSlots (Dim1 n)
---   = n
--- getNumSlots (Dim2 n m)
---   = n * m
