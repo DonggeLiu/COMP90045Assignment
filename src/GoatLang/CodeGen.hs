@@ -237,10 +237,10 @@ genCodeStmt _ _ (WriteString str)
       instr $ CallBuiltinInstr PrintStr
 
 -- TODO: handle reading into arrays/matrices
-genCodeStmt _ varSymTable (Read scalar@(Single ident))
+genCodeStmt _ varSymTable (Read scalar)
   = do
-      let record = lookupVarRecord varSymTable ident
       comment "read"
+      let record = lookupVarRecord varSymTable (scalarIdent scalar)
       case varType record of
         BoolType -> instr $ CallBuiltinInstr ReadBool
         IntType -> instr $ CallBuiltinInstr ReadInt
@@ -248,11 +248,11 @@ genCodeStmt _ varSymTable (Read scalar@(Single ident))
       genCodeStore varSymTable scalar (Reg 0)
 
 -- TODO: handle assigning into arrays/matrices
-genCodeStmt _ varSymTable (Asg scalar@(Single ident) expr)
+genCodeStmt _ varSymTable (Asg scalar expr)
   = do
       comment "assign"
       genCodeExprInto varSymTable (Reg 0) expr
-      let record = lookupVarRecord varSymTable ident
+      let record = lookupVarRecord varSymTable (scalarIdent scalar)
       when (varType record == FloatType) $
         realify (Reg 0) (getExprType varSymTable expr)
       genCodeStore varSymTable scalar (Reg 0)
@@ -292,13 +292,21 @@ genCodeStmt procSymTable varSymTable (While cond stmts)
 
 genCodeStmt procSymTable varSymTable (Call ident@(Id procName) args)
   = do
+      comment "call <proc> (<args>)"
       let procRecord = lookupProcRecord procSymTable ident
       let params = procParams procRecord
       sequence_ $ zipWith3 (genCodeArgInto varSymTable) [Reg 0..] params args
       instr $ CallInstr $ ProcLabel procName
 
-
+-- genCodeStore
+-- Generate the code to store the value in a register into the stack slot
+-- corresponding to a scalar.
 genCodeStore :: VarSymTable -> Scalar -> Reg -> CodeGen ()
+
+-- Single variable scalars may have been passed by reference, in which case we
+-- need to store them indirectly using the _address_ in the local stack slot.
+-- In contrast for scalars passed by value, we simply store the value from the
+-- register to the stack slot.
 genCodeStore varSymTable (Single ident) reg
   = do
       let record = lookupVarRecord varSymTable ident
@@ -311,8 +319,16 @@ genCodeStore varSymTable (Single ident) reg
             instr $ LoadInstr nextReg slot
             instr $ StoreIndirectInstr nextReg reg
 
+-- Arrays and Matrices cannot be passed by reference but we need to calculate
+-- the correct stack slot based on an offset given by the index expression(s).
+genCodeStore varSymTable scalar reg
+  = do
+      genCodeOffsetAddrInto varSymTable (succ reg) scalar
+      instr $ StoreIndirectInstr (succ reg) reg
+
+
 -- genCodeArgInto
--- Generate the code to store the expression (that is referenced by Param)
+-- Generate the code to load the expression (that is referenced by Param)
 -- into the given register.
 genCodeArgInto :: VarSymTable -> Reg -> Param -> Expr -> CodeGen ()
 

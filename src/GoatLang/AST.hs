@@ -106,6 +106,16 @@ data Scalar
     deriving (Show, Eq)
 instance ASTNode Scalar
 
+-- scalarExpr
+-- Helper function to provide convenient access to a scalar's identifier
+scalarIdent :: Scalar -> Id
+scalarIdent (Single ident)
+  = ident
+scalarIdent (Array ident _)
+  = ident
+scalarIdent (Matrix ident _ _)
+  = ident
+
 -- Expressions can take 6 different forms, as indicated below.
 data Expr
   = ScalarExpr Scalar         -- the value inside a scalar (variable element)
