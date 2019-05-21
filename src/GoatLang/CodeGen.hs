@@ -23,6 +23,7 @@ import Util.DiffList
 import GoatLang.AST
 import GoatLang.OzCode
 import GoatLang.SymbolTable
+import GoatLang.PrettyPrint
 
 
 -- Summary of TODO items from throughout file:
@@ -194,10 +195,10 @@ genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
 genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
-genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
+genCodeInitVar symTable decl@(Decl baseType ident dim)
   = do
-      comment $ "initialising " ++ name
-      -- first load the appropriately-typed zero value into a register
+      comment $ "initialising " ++ (init $ prettify decl)
+      let slot = varStackSlot $ lookupVarRecord symTable ident
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
         otherwise -> instr $ IntConstInstr (Reg 0) 0
@@ -211,25 +212,25 @@ genCodeInitVar symTable (Decl baseType ident@(Id name) dim)
 -- Action to generate code for a single Goat Statement (may be an atomic or
 -- composite statement).
 genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
-genCodeStmt _ varSymTable (WriteExpr expr)
+
+genCodeStmt _ varSymTable stmt@(WriteExpr expr)
   = do
-      -- TODO: improve commenting: use prettyprint module
-      comment "write <expr>"
+      comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
       case getExprType varSymTable expr of
         BoolType -> instr $ CallBuiltinInstr PrintBool
         IntType -> instr $ CallBuiltinInstr PrintInt
         FloatType -> instr $ CallBuiltinInstr PrintReal
 
-genCodeStmt _ _ (WriteString str)
+genCodeStmt _ _ stmt@(WriteString str)
   = do
-      comment "write <string>"
+      comment $ init $ prettify stmt
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
-genCodeStmt _ varSymTable (Read scalar)
+genCodeStmt _ varSymTable stmt@(Read scalar)
   = do
-      comment "read"
+      comment $ init $ prettify stmt
       let record = lookupVarRecord varSymTable (scalarIdent scalar)
       case varType record of
         BoolType -> instr $ CallBuiltinInstr ReadBool
@@ -237,9 +238,9 @@ genCodeStmt _ varSymTable (Read scalar)
         FloatType -> instr $ CallBuiltinInstr ReadReal
       genCodeStore varSymTable scalar (Reg 0)
 
-genCodeStmt _ varSymTable (Asg scalar expr)
+genCodeStmt _ varSymTable stmt@(Asg scalar expr)
   = do
-      comment "assign"
+      comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
       let record = lookupVarRecord varSymTable (scalarIdent scalar)
       when (varType record == FloatType) $
@@ -248,7 +249,7 @@ genCodeStmt _ varSymTable (Asg scalar expr)
 
 genCodeStmt procSymTable varSymTable (If cond thenStmts)
   = do
-      comment "if"
+      comment $ "if " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
@@ -257,7 +258,7 @@ genCodeStmt procSymTable varSymTable (If cond thenStmts)
 
 genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts)
   = do
-      comment "if-else"
+      comment $ "if-else " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
@@ -270,7 +271,7 @@ genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts)
 
 genCodeStmt procSymTable varSymTable (While cond stmts)
   = do
-      comment "do"
+      comment $ "while " ++ prettify cond
       whileLabel <- getNewBlockLabel
       label $ whileLabel
       genCodeExprInto varSymTable (Reg 0) cond
@@ -279,9 +280,9 @@ genCodeStmt procSymTable varSymTable (While cond stmts)
       mapM_ (genCodeStmt procSymTable varSymTable) stmts
       label $ odLabel
 
-genCodeStmt procSymTable varSymTable (Call ident@(Id procName) args)
+genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName) args)
   = do
-      comment "call <proc> (<args>)"
+      comment $ init $ prettify stmt
       let procRecord = lookupProcRecord procSymTable ident
       let params = procParams procRecord
       sequence_ $ zipWith3 (genCodeArgInto varSymTable) [Reg 0..] params args
