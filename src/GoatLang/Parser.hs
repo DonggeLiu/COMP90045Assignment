@@ -55,6 +55,7 @@ pGoatProgram
 pProc :: Parser Proc
 pProc
   = do
+      pos <- getPosition
       reserved "proc"
       name <- identifier
       params <- parens (commaSep pParam)
@@ -62,7 +63,7 @@ pProc
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc (Id name) params decls stmts)
+      return (Proc (Id name) params decls stmts pos)
   <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at least
@@ -72,10 +73,11 @@ pProc
 pParam :: Parser Param
 pParam
   = do
+      pos <- getPosition
       passBy <- pPassBy
       baseType <- pBaseType
       name <- identifier
-      return (Param passBy baseType (Id name))
+      return (Param passBy baseType (Id name) pos)
   <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
@@ -95,11 +97,12 @@ pBaseType
 pDecl :: Parser Decl
 pDecl
   = do
+      pos <- getPosition
       baseType <- pBaseType
       name <- identifier
       dim <- pDim
       semi
-      return (Decl baseType (Id name) dim)
+      return (Decl baseType (Id name) dim pos)
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -137,45 +140,50 @@ pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
 -- ASGN        -> SCALAR ":=" EXPR ";"
 pAsg
   = do
+      pos <- getPosition
       scalar <- pScalar
       reservedOp ":="
       expr <- pExpr
       semi
-      return (Asg scalar expr)
+      return (Asg scalar expr pos)
 
 -- READ        -> "read" SCALAR ";"
 pRead
   = do
+      pos <- getPosition
       reserved "read"
       scalar <- pScalar
       semi
-      return (Read scalar)
+      return (Read scalar pos)
 
 -- WRITE       -> "write" EXPR_OR_STR ";"
 -- EXPR_OR_STR -> EXPR | string
 pWrite
   = do
+      pos <- getPosition
       reserved "write"
       exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
       semi
       case exprOrStr of
-        Left  expr   -> return (WriteExpr   expr)
-        Right string -> return (WriteString string)
+        Left  expr   -> return (WriteExpr expr pos)
+        Right string -> return (WriteString string pos)
 
 -- CALL        -> "call" id "(" EXPRS ")" ";"
 -- EXPRS       -> (EXPR ",")* EXPR | ε
 pCall
   = do
+      pos <- getPosition
       reserved "call"
       name <- identifier
       args <- parens (commaSep pExpr)
       semi
-      return (Call (Id name) args)
+      return (Call (Id name) args pos)
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε
 pIfOptElse
   = do
+      pos <- getPosition
       reserved "if"
       cond <- pExpr
       reserved "then"
@@ -183,18 +191,19 @@ pIfOptElse
       maybeElseStmts <- optionMaybe (reserved "else" >> many1 pStmt)
       reserved "fi"
       case maybeElseStmts of
-        Nothing        -> return (If cond thenStmts)
-        Just elseStmts -> return (IfElse cond thenStmts elseStmts)
+        Nothing        -> return (If cond thenStmts pos)
+        Just elseStmts -> return (IfElse cond thenStmts elseStmts pos)
 
 -- WHILE       -> "while" EXPR "do" STMT+ "od"
 pWhile
   = do
+      pos <- getPosition
       reserved "while"
       cond <- pExpr
       reserved "do"
       doStmts <- many1 pStmt
       reserved "od"
-      return (While cond doStmts)
+      return (While cond doStmts pos)
 
 
 -- SCALAR      -> id SUBSCRIPT
@@ -202,13 +211,14 @@ pWhile
 pScalar :: Parser Scalar
 pScalar
   = do
+      pos <- getPosition
       name <- identifier
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Single (Id name))
-        Just [i]   -> return (Array  (Id name) i)
-        Just [i,j] -> return (Matrix (Id name) i j)
+        Nothing    -> return (Single (Id name) pos)
+        Just [i]   -> return (Array  (Id name) i pos)
+        Just [i,j] -> return (Matrix (Id name) i j pos)
     <?> "scalar (variable element)"
 
 

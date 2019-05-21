@@ -163,7 +163,7 @@ genCodeGoatProgram (GoatProgram procs)
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
 genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
-genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts)
+genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts _)
   = do
       let procRecord = lookupProcRecord procSymTable ident
       let varSymTable = procVarSymTable procRecord
@@ -185,7 +185,7 @@ genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts)
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
 genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
-genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
+genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name) _)
   = do
       comment $ "retrieving " ++ name
       let slot = varStackSlot $ lookupVarRecord symTable ident
@@ -195,7 +195,7 @@ genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name))
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
 genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
-genCodeInitVar symTable decl@(Decl baseType ident dim)
+genCodeInitVar symTable decl@(Decl baseType ident dim _)
   = do
       comment $ "initialising " ++ (init $ prettify decl)
       let slot = varStackSlot $ lookupVarRecord symTable ident
@@ -213,7 +213,7 @@ genCodeInitVar symTable decl@(Decl baseType ident dim)
 -- composite statement).
 genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
 
-genCodeStmt _ varSymTable stmt@(WriteExpr expr)
+genCodeStmt _ varSymTable stmt@(WriteExpr expr _)
   = do
       comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
@@ -222,13 +222,13 @@ genCodeStmt _ varSymTable stmt@(WriteExpr expr)
         IntType -> instr $ CallBuiltinInstr PrintInt
         FloatType -> instr $ CallBuiltinInstr PrintReal
 
-genCodeStmt _ _ stmt@(WriteString str)
+genCodeStmt _ _ stmt@(WriteString str _)
   = do
       comment $ init $ prettify stmt
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
-genCodeStmt _ varSymTable stmt@(Read scalar)
+genCodeStmt _ varSymTable stmt@(Read scalar _)
   = do
       comment $ init $ prettify stmt
       let record = lookupVarRecord varSymTable (scalarIdent scalar)
@@ -238,7 +238,7 @@ genCodeStmt _ varSymTable stmt@(Read scalar)
         FloatType -> instr $ CallBuiltinInstr ReadReal
       genCodeStore varSymTable scalar (Reg 0)
 
-genCodeStmt _ varSymTable stmt@(Asg scalar expr)
+genCodeStmt _ varSymTable stmt@(Asg scalar expr _)
   = do
       comment $ init $ prettify stmt
       genCodeExprInto varSymTable (Reg 0) expr
@@ -247,7 +247,7 @@ genCodeStmt _ varSymTable stmt@(Asg scalar expr)
         realify (Reg 0) (getExprType varSymTable expr)
       genCodeStore varSymTable scalar (Reg 0)
 
-genCodeStmt procSymTable varSymTable (If cond thenStmts)
+genCodeStmt procSymTable varSymTable (If cond thenStmts _)
   = do
       comment $ "if " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
@@ -256,7 +256,7 @@ genCodeStmt procSymTable varSymTable (If cond thenStmts)
       mapM_ (genCodeStmt procSymTable varSymTable) thenStmts
       label $ fiLabel
 
-genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts)
+genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts _)
   = do
       comment $ "if-else " ++ prettify cond
       genCodeExprInto varSymTable (Reg 0) cond
@@ -269,7 +269,7 @@ genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts)
       mapM_ (genCodeStmt procSymTable varSymTable) elseStmts
       label $ fiLabel
 
-genCodeStmt procSymTable varSymTable (While cond stmts)
+genCodeStmt procSymTable varSymTable (While cond stmts _)
   = do
       comment $ "while " ++ prettify cond
       whileLabel <- getNewBlockLabel
@@ -280,7 +280,7 @@ genCodeStmt procSymTable varSymTable (While cond stmts)
       mapM_ (genCodeStmt procSymTable varSymTable) stmts
       label $ odLabel
 
-genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName) args)
+genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName) args _)
   = do
       comment $ init $ prettify stmt
       let procRecord = lookupProcRecord procSymTable ident
@@ -297,7 +297,7 @@ genCodeStore :: VarSymTable -> Scalar -> Reg -> CodeGen ()
 -- need to store them indirectly using the _address_ in the local stack slot.
 -- In contrast for scalars passed by value, we simply store the value from the
 -- register to the stack slot.
-genCodeStore varSymTable (Single ident) reg
+genCodeStore varSymTable (Single ident _) reg
   = do
       let record = lookupVarRecord varSymTable ident
       let passBy = varPassBy record
@@ -324,7 +324,7 @@ genCodeArgInto :: VarSymTable -> Reg -> Param -> Expr -> CodeGen ()
 
 -- It's easy to prepare something to be passed by value, we can just use
 -- genCodeExprInto:
-genCodeArgInto varSymTable reg (Param Val _ _) expr
+genCodeArgInto varSymTable reg (Param Val _ _ _) expr
   = genCodeExprInto varSymTable reg expr
 
 -- For pass by reference, the expression must be an lvalue, and we need to
@@ -333,7 +333,7 @@ genCodeArgInto varSymTable reg (Param Val _ _) expr
 -- For Single variables, the stack slot may ALREADY hold an address; in which
 -- case we can just copy that address into the register. If it's a value we
 -- need to load its address instead.
-genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
+genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr (Single ident _))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
@@ -345,7 +345,7 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
 -- For non-Single variables (Arrays/Matrices) they must already be values (Goat
 -- does not allow Array and Matrix variables to be passed by ref). Thus we just
 -- need to calculate the address and load it into the register.
-genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr scalar)
+genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr scalar)
   = genCodeOffsetAddrInto varSymTable reg scalar
 
 
@@ -353,7 +353,7 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr scalar)
 -- Given an Array or Matrix scalar, evaluate the one or two indices to determine
 -- the offset and load the address at this offset into the given register.
 genCodeOffsetAddrInto :: VarSymTable -> Reg -> Scalar -> CodeGen ()
-genCodeOffsetAddrInto varSymTable reg (Array ident exprI)
+genCodeOffsetAddrInto varSymTable reg (Array ident exprI _)
   = do
       let record = lookupVarRecord varSymTable ident
       -- calculate offset into next register
@@ -364,7 +364,7 @@ genCodeOffsetAddrInto varSymTable reg (Array ident exprI)
       -- calculate address of indexed scalar
       instr $ SubOffsetInstr reg (succ reg) reg
 
-genCodeOffsetAddrInto varSymTable reg (Matrix ident exprI exprJ)
+genCodeOffsetAddrInto varSymTable reg (Matrix ident exprI exprJ _)
   = do
       let record = lookupVarRecord varSymTable ident
       -- start by calculating the offset into a register
@@ -472,7 +472,7 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
 -- For scalar expressions of Single variables we need to be careful about
 -- whether the stack slot holds a reference (for pass by reference variables)
 -- or a value (for pass by value variables and local variables).
-genCodeExprInto varSymTable reg (ScalarExpr (Single ident))
+genCodeExprInto varSymTable reg (ScalarExpr (Single ident _))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
@@ -659,9 +659,9 @@ getExprType varSymTable (ScalarExpr scalar)
   = getScalarType varSymTable scalar
 
 getScalarType :: VarSymTable -> Scalar -> BaseType
-getScalarType varSymTable (Single ident)
+getScalarType varSymTable (Single ident _)
   = varType $ lookupVarRecord varSymTable ident
-getScalarType varSymTable (Array ident iExpr)
+getScalarType varSymTable (Array ident iExpr _)
   = varType $ lookupVarRecord varSymTable ident
-getScalarType varSymTable (Matrix ident iExpr jExpr)
+getScalarType varSymTable (Matrix ident iExpr jExpr _)
   = varType $ lookupVarRecord varSymTable ident

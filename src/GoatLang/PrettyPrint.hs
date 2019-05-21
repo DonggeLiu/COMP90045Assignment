@@ -64,17 +64,17 @@ printGoatProgramColoured cs prog
 
 class Pretty a where
   -- writer
-  -- Backend function to turn an ast node into a CodeWriter (). The other 
+  -- Backend function to turn an ast node into a CodeWriter (). The other
   -- functions are expressed in terms of this function, so that it's the
   -- minimum required for a complete program definition
   writer :: a -> CodeWriter ()
-  
+
   -- prettifyColoured
   -- Transform part of an Abstract Syntax Tree into a Syntax-highlighted String
   prettifyColoured :: ColourScheme -> a -> String
   prettifyColoured cs node
     = writeCodeColoured cs $ writer node
-  
+
   -- prettify
   -- Like prettifyColoured, but without syntax highlighting
   prettify :: a -> String
@@ -113,7 +113,7 @@ writeGoatProgram (GoatProgram procs)
 -- writeProc
 -- Create an action for building a String representing a procedure
 writeProc :: Proc -> CodeWriter ()
-writeProc (Proc (Id name) params decls stmts)
+writeProc (Proc (Id name) params decls stmts _)
   = do
       -- first write a line with the keyword and the procedure header
       line $ writeKeyword "proc" >> space >> writeIdent name >> space >>
@@ -143,7 +143,7 @@ softTab
 -- writeParam
 -- Create an action to build a parameter specification as a string
 writeParam :: Param -> CodeWriter ()
-writeParam (Param passBy baseType (Id name))
+writeParam (Param passBy baseType (Id name) _)
   = do
       writeKeyword (format passBy)
       space
@@ -155,7 +155,7 @@ writeParam (Param passBy baseType (Id name))
 -- writeDecl
 -- Create an action for building a declaration as a string
 writeDecl :: Decl -> CodeWriter ()
-writeDecl (Decl baseType (Id name) dim)
+writeDecl (Decl baseType (Id name) dim _)
   = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >>
       writeDim dim
 
@@ -175,32 +175,32 @@ writeDim (Dim2 n m)
 -- Create an action for building a statement (atomic or composite) as a string.
 writeStmt :: Stmt -> CodeWriter ()
 
-writeStmt (Asg scalar expr)
+writeStmt (Asg scalar expr _)
   = semiLine $ writeScalar scalar >> spaces (write ":=") >> writeExpr expr
 
-writeStmt (Read scalar)
+writeStmt (Read scalar _)
   = semiLine $ writeKeyword "read" >> space >> writeScalar scalar
 
-writeStmt (WriteExpr expr)
+writeStmt (WriteExpr expr _)
   = semiLine $ writeKeyword "write" >> space >> writeExpr expr
 
-writeStmt (WriteString str)
+writeStmt (WriteString str _)
   = semiLine $ writeKeyword "write" >> space >> asString (writeStringLit str)
 
-writeStmt (Call (Id name) args)
+writeStmt (Call (Id name) args _)
   = semiLine $ writeKeyword "call" >> space >> writeIdent name >>
       parens (commaSep (map writeExpr args))
 
 -- For composite statements, we will have to write some lines at the current
 -- level of indentation, and also some statements at the next level of
 -- indentation (using nextLevelIndentation = indentation >> softTab).
-writeStmt (If cond thenStmts)
+writeStmt (If cond thenStmts _)
   = do
       line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
       withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
       line $ writeKeyword "fi"
 
-writeStmt (IfElse cond thenStmts elseStmts)
+writeStmt (IfElse cond thenStmts elseStmts _)
   = do
       line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
       withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
@@ -208,7 +208,7 @@ writeStmt (IfElse cond thenStmts elseStmts)
       withIncreasedIndentation softTab $ mapM_ writeStmt elseStmts
       line $ writeKeyword "fi"
 
-writeStmt (While cond doStmts)
+writeStmt (While cond doStmts _)
   = do
       line $ writeKeyword "while" >> spaces (writeExpr cond) >> writeKeyword "do"
       withIncreasedIndentation softTab $ mapM_ writeStmt doStmts
@@ -218,13 +218,13 @@ writeStmt (While cond doStmts)
 -- writeScalar
 -- Create an action to represent a scalar (variable element) as a String
 writeScalar :: Scalar -> CodeWriter ()
-writeScalar (Single (Id name))
+writeScalar (Single (Id name) _)
   = writeIdent name
-writeScalar (Array (Id name) index)
+writeScalar (Array (Id name) index _)
   = do
       writeIdent name
       brackets $ writeExpr index
-writeScalar (Matrix (Id name) index1 index2)
+writeScalar (Matrix (Id name) index1 index2 _)
   = do
       writeIdent name
       brackets $ commaSep (map writeExpr [index1, index2])

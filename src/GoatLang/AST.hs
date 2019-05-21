@@ -15,7 +15,13 @@ module GoatLang.AST where
 --
 -- ----------------------------------------------------------------------------
 
+import Text.Parsec.Pos
+
 class ASTNode node
+
+-- The position in the Goat source file.
+-- Type provided by Parsec - contains the SourceName, Line and Column.
+type Pos = SourcePos
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram
@@ -27,7 +33,7 @@ instance ASTNode GoatProgram
 -- list of parameters, contains a (possibly empty) list of local variable
 -- declarations and contains a body of statements.
 data Proc
-  = Proc Id [Param] [Decl] [Stmt]
+  = Proc Id [Param] [Decl] [Stmt] Pos
     deriving (Show, Eq)
 instance ASTNode Proc
 
@@ -46,7 +52,7 @@ instance ASTNode Id
 -- BoolType, FloatType or IntType). It is passed to a procedure by either value
 -- or reference and assigned an identifier.
 data Param
-  = Param PassBy BaseType Id
+  = Param PassBy BaseType Id Pos
     deriving (Show, Eq)
 instance ASTNode Param
 
@@ -64,7 +70,7 @@ instance ASTNode BaseType
 -- dimensionality indicator. It must be of a type contained in the BaseType
 -- data type.
 data Decl
-  = Decl BaseType Id Dim
+  = Decl BaseType Id Dim Pos
     deriving (Show, Eq)
 instance ASTNode Decl
 
@@ -80,14 +86,14 @@ instance ASTNode Dim
 
 -- Statements can take 7 different forms, as indicated below.
 data Stmt
-  = Asg Scalar Expr             -- assignment of an expression to a scalar
-  | Read Scalar                 -- assignment of user input to a scalar
-  | WriteExpr Expr              -- printing of the result of an expression
-  | WriteString String          -- printing of a literal string
-  | Call Id [Expr]              -- invocation of a procedure
-  | If Expr [Stmt]              -- conditional statement (without alternative)
-  | IfElse Expr [Stmt] [Stmt]   -- conditional statement (with alternative)
-  | While Expr [Stmt]           -- conditional loop
+  = Asg Scalar Expr Pos           -- assignment of an expression to a scalar
+  | Read Scalar Pos               -- assignment of user input to a scalar
+  | WriteExpr Expr Pos            -- printing of the result of an expression
+  | WriteString String Pos        -- printing of a literal string
+  | Call Id [Expr] Pos            -- invocation of a procedure
+  | If Expr [Stmt] Pos            -- conditional statement (without alternative)
+  | IfElse Expr [Stmt] [Stmt] Pos -- conditional statement (with alternative)
+  | While Expr [Stmt] Pos         -- conditional loop
     deriving (Show, Eq)
 instance ASTNode Stmt
 
@@ -100,20 +106,20 @@ instance ASTNode Stmt
 -- in conjunction with 0, 1 or 2 expressions (depending on the identified
 -- variable's dimensionality) to denote a specific element within that variable:
 data Scalar
-  = Single Id              -- a singleton variable's element (no subscript)
-  | Array  Id Expr         -- an array element (identifier plus one subscript)
-  | Matrix Id Expr Expr    -- a matrix element (identifier plus two subscripts)
+  = Single Id Pos           -- a singleton variable's element (no subscript)
+  | Array  Id Expr Pos      -- an array element (identifier plus one subscript)
+  | Matrix Id Expr Expr Pos -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
 instance ASTNode Scalar
 
 -- scalarExpr
 -- Helper function to provide convenient access to a scalar's identifier
 scalarIdent :: Scalar -> Id
-scalarIdent (Single ident)
+scalarIdent (Single ident _)
   = ident
-scalarIdent (Array ident _)
+scalarIdent (Array ident _ _)
   = ident
-scalarIdent (Matrix ident _ _)
+scalarIdent (Matrix ident _ _ _)
   = ident
 
 -- Expressions can take 6 different forms, as indicated below.

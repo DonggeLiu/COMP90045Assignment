@@ -63,7 +63,7 @@ constructProcSymTable procs
       procMappings = map constructProcMapping procs
 
 constructProcMapping :: Proc -> (Id, ProcRecord)
-constructProcMapping (Proc ident params decls _)
+constructProcMapping (Proc ident params decls _ _)
   = (ident, record)
     where
       record = ProcRecord { procFrameSize = FrameSize frameSize
@@ -97,7 +97,7 @@ constructVarSymTable params decls
 -- constructParamVarMapping
 -- Take a Param and a slot and return a tuple with its id and a VarRecord
 constructParamVarMapping :: Param -> Slot -> (Id, VarRecord)
-constructParamVarMapping (Param passby basetype ident) slot
+constructParamVarMapping (Param passby basetype ident _) slot
   = (ident, record)
     where
       record = VarRecord { varShape = Dim0
@@ -110,7 +110,7 @@ constructParamVarMapping (Param passby basetype ident) slot
 -- constructDeclVarMapping
 -- Take a Decl and return a tuple with its id and a VarRecord
 constructDeclVarMapping :: Decl -> Slot -> (Id, VarRecord)
-constructDeclVarMapping (Decl basetype ident dim) slot 
+constructDeclVarMapping (Decl basetype ident dim _) slot
   = (ident, record)
     where
       record = VarRecord { varShape = dim
@@ -121,9 +121,9 @@ constructDeclVarMapping (Decl basetype ident dim) slot
 
 
 -- declStartSlotsFrom
--- Determine appropriate starting slots for a series of declarations, starting 
+-- Determine appropriate starting slots for a series of declarations, starting
 -- from a given slot. The resulting list contains n+1 slots where n is the
--- number of declarations: the last slot is the next available slot after the 
+-- number of declarations: the last slot is the next available slot after the
 -- slots for all the decls.
 declStartSlotsFrom :: Slot -> [Decl] -> [Slot]
 declStartSlotsFrom (Slot start) decls
@@ -133,7 +133,7 @@ declStartSlotsFrom (Slot start) decls
 -- numSlotsDecl
 -- Gets the number of slots required for a given declared variable.
 numSlotsDecl :: Decl -> Int
-numSlotsDecl (Decl _ _ dim)
+numSlotsDecl (Decl _ _ dim _)
   = numSlotsDim dim
 
 
