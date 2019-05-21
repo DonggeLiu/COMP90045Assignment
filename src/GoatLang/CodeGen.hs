@@ -27,7 +27,7 @@ import GoatLang.PrettyPrint
 
 
 -- Summary of TODO items from throughout file:
--- 
+--
 -- When we do semantic analysis:
 --
 -- - genCodeExprInto assumes that all expressions are completely well-types
@@ -165,7 +165,7 @@ genCodeGoatProgram (GoatProgram procs)
 genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
 genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts)
   = do
-      let procRecord = lookupProcRecord ident
+      let procRecord = lookupProcRecord procSymTable ident
       let varSymTable = procVarSymTable procRecord
       let frameSize = procFrameSize procRecord
       label $ ProcLabel procName
@@ -342,7 +342,7 @@ genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr (Single ident))
         Val -> instr $ LoadAddressInstr reg slot
         Ref -> instr $ LoadInstr reg slot
 
--- For non-Single variables (Arrays/Matrices) they must already be values (Goat 
+-- For non-Single variables (Arrays/Matrices) they must already be values (Goat
 -- does not allow Array and Matrix variables to be passed by ref). Thus we just
 -- need to calculate the address and load it into the register.
 genCodeArgInto varSymTable reg (Param Ref _ _) (ScalarExpr scalar)
@@ -649,7 +649,7 @@ getExprType varSymTable (BinExpr operator left right)
       (IntType, IntType) -> IntType
       otherwise -> FloatType
   | otherwise = BoolType
-  where 
+  where
     arithmetic = (`elem` [Add, Sub, Mul, Div])
     types = (getExprType varSymTable left, getExprType varSymTable right)
 
