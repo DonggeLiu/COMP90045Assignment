@@ -68,9 +68,10 @@ constructProcMapping (Proc ident params decls _)
     where
       record = ProcRecord { procFrameSize = FrameSize frameSize
                           , procParams = params
-                          , procVarSymTable = constructVarSymTable params decls
+                          , procVarSymTable = varSymTable
                           }
-      frameSize = length params + length decls
+      varSymTable = constructVarSymTable params decls
+      frameSize = numSlots varSymTable
 
 
 -- constructVarSymTable

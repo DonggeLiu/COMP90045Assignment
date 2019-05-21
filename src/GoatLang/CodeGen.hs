@@ -162,19 +162,21 @@ genCodeGoatProgram (GoatProgram procs)
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
 genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
-genCodeProc procSymTable (Proc (Id procName) params decls stmts)
+genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts)
   = do
-      let varSymTable = constructVarSymTable params decls
+      let procRecord = lookupProcRecord ident
+      let varSymTable = procVarSymTable procRecord
+      let frameSize = procFrameSize procRecord
       label $ ProcLabel procName
       comment "prologue"
-      instr $ PushStackFrameInstr (FrameSize $ numSlots varSymTable)
+      instr $ PushStackFrameInstr frameSize
       sequence_ $
         zipWith (genCodeRetrieveParamFrom varSymTable) [Reg 0..] params
       mapM_ (genCodeInitVar varSymTable) decls
       comment "procedure body"
       mapM_ (genCodeStmt procSymTable varSymTable) stmts
       comment "epilogue"
-      instr $ PopStackFrameInstr (FrameSize $ numSlots varSymTable)
+      instr $ PopStackFrameInstr frameSize
       instr ReturnInstr
 
 
