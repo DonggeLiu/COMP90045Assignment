@@ -55,15 +55,16 @@ pGoatProgram
 pProc :: Parser Proc
 pProc
   = do
-      pos <- getPosition
+      procPos <- getPosition
       reserved "proc"
+      identPos <- getPosition
       name <- identifier
       params <- parens (commaSep pParam)
       decls <- many pDecl
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc (Id name) params decls stmts pos)
+      return (Proc (Id name identPos) params decls stmts procPos)
   <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at least
@@ -73,11 +74,12 @@ pProc
 pParam :: Parser Param
 pParam
   = do
-      pos <- getPosition
+      paramPos <- getPosition
       passBy <- pPassBy
       baseType <- pBaseType
+      identPos <- getPosition
       name <- identifier
-      return (Param passBy baseType (Id name) pos)
+      return (Param passBy baseType (Id name identPos) paramPos)
   <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
@@ -97,12 +99,13 @@ pBaseType
 pDecl :: Parser Decl
 pDecl
   = do
-      pos <- getPosition
+      declPos <- getPosition
       baseType <- pBaseType
+      identPos <- getPosition
       name <- identifier
       dim <- pDim
       semi
-      return (Decl baseType (Id name) dim pos)
+      return (Decl baseType (Id name identPos) dim declPos)
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -172,12 +175,13 @@ pWrite
 -- EXPRS       -> (EXPR ",")* EXPR | ε
 pCall
   = do
-      pos <- getPosition
+      callPos <- getPosition
       reserved "call"
+      identPos <- getPosition
       name <- identifier
       args <- parens (commaSep pExpr)
       semi
-      return (Call (Id name) args pos)
+      return (Call (Id name identPos) args callPos)
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε
@@ -216,9 +220,9 @@ pScalar
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Single (Id name) pos)
-        Just [i]   -> return (Array  (Id name) i pos)
-        Just [i,j] -> return (Matrix (Id name) i j pos)
+        Nothing    -> return (Single (Id name pos) pos)
+        Just [i]   -> return (Array  (Id name pos) i pos)
+        Just [i,j] -> return (Matrix (Id name pos) i j pos)
     <?> "scalar (variable element)"
 
 

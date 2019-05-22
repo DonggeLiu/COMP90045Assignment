@@ -44,9 +44,15 @@ instance ASTNode Proc
 --       (ii) a local variable.
 -- The number of required expressions is governed by dimensionality.
 data Id
-  = Id String
-    deriving (Show, Eq, Ord)
+  = Id String Pos
+    deriving (Show)
 instance ASTNode Id
+instance Eq Id where
+  (==) (Id a _) (Id b _)
+    = a == b
+instance Ord Id where
+  compare (Id a _) (Id b _)
+    = compare a b
 
 -- A parameter must be of a type contained in the BaseType data type (either
 -- BoolType, FloatType or IntType). It is passed to a procedure by either value

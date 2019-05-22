@@ -113,7 +113,7 @@ writeGoatProgram (GoatProgram procs)
 -- writeProc
 -- Create an action for building a String representing a procedure
 writeProc :: Proc -> CodeWriter ()
-writeProc (Proc (Id name) params decls stmts _)
+writeProc (Proc (Id name _) params decls stmts _)
   = do
       -- first write a line with the keyword and the procedure header
       line $ writeKeyword "proc" >> space >> writeIdent name >> space >>
@@ -143,7 +143,7 @@ softTab
 -- writeParam
 -- Create an action to build a parameter specification as a string
 writeParam :: Param -> CodeWriter ()
-writeParam (Param passBy baseType (Id name) _)
+writeParam (Param passBy baseType (Id name _) _)
   = do
       writeKeyword (format passBy)
       space
@@ -155,7 +155,7 @@ writeParam (Param passBy baseType (Id name) _)
 -- writeDecl
 -- Create an action for building a declaration as a string
 writeDecl :: Decl -> CodeWriter ()
-writeDecl (Decl baseType (Id name) dim _)
+writeDecl (Decl baseType (Id name _) dim _)
   = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >>
       writeDim dim
 
@@ -187,7 +187,7 @@ writeStmt (WriteExpr expr _)
 writeStmt (WriteString str _)
   = semiLine $ writeKeyword "write" >> space >> asString (writeStringLit str)
 
-writeStmt (Call (Id name) args _)
+writeStmt (Call (Id name _) args _)
   = semiLine $ writeKeyword "call" >> space >> writeIdent name >>
       parens (commaSep (map writeExpr args))
 
@@ -218,13 +218,13 @@ writeStmt (While cond doStmts _)
 -- writeScalar
 -- Create an action to represent a scalar (variable element) as a String
 writeScalar :: Scalar -> CodeWriter ()
-writeScalar (Single (Id name) _)
+writeScalar (Single (Id name _) _)
   = writeIdent name
-writeScalar (Array (Id name) index _)
+writeScalar (Array (Id name _) index _)
   = do
       writeIdent name
       brackets $ writeExpr index
-writeScalar (Matrix (Id name) index1 index2 _)
+writeScalar (Matrix (Id name _) index1 index2 _)
   = do
       writeIdent name
       brackets $ commaSep (map writeExpr [index1, index2])

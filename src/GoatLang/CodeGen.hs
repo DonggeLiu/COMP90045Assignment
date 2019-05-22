@@ -163,7 +163,7 @@ genCodeGoatProgram (GoatProgram procs)
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
 genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
-genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts _)
+genCodeProc procSymTable (Proc ident@(Id procName _) params decls stmts _)
   = do
       let procRecord = lookupProcRecord procSymTable ident
       let varSymTable = procVarSymTable procRecord
@@ -185,7 +185,7 @@ genCodeProc procSymTable (Proc ident@(Id procName) params decls stmts _)
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
 genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
-genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name) _)
+genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name _) _)
   = do
       comment $ "retrieving " ++ name
       let slot = varStackSlot $ lookupVarRecord symTable ident
@@ -280,7 +280,7 @@ genCodeStmt procSymTable varSymTable (While cond stmts _)
       mapM_ (genCodeStmt procSymTable varSymTable) stmts
       label $ odLabel
 
-genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName) args _)
+genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName _) args _)
   = do
       comment $ init $ prettify stmt
       let procRecord = lookupProcRecord procSymTable ident
