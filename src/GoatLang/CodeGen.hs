@@ -163,7 +163,7 @@ genCodeGoatProgram (AGoatProgram procs)
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
 genCodeProc :: AProc -> CodeGen ()
-genCodeProc (AProc (Id procName _) params decls stmts attrs)
+genCodeProc (AProc (Id _ procName) params decls stmts attrs)
   = do
       label $ ProcLabel procName
       -- comment "prologue"
@@ -181,7 +181,7 @@ genCodeProc (AProc (Id procName _) params decls stmts attrs)
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
 genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
-genCodeRetrieveParamFrom reg (AParam _ _ (Id name _) attrs)
+genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
   = do
       -- comment $ "retrieving " ++ name
       -- TODO: Should the number of slots be stored in the attrs, to allow
@@ -265,7 +265,7 @@ genCodeStmt (AWhile cond stmts)
       mapM_ genCodeStmt stmts
       label $ odLabel
 
-genCodeStmt stmt@(ACall (Id procName _) args attrs)
+genCodeStmt stmt@(ACall (Id _ procName) args attrs)
   = do
       -- comment $ init $ prettify stmt
       sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callParams attrs) args

@@ -38,7 +38,7 @@ instance ASTNode GoatProgram
 -- list of parameters, contains a (possibly empty) list of local variable
 -- declarations and contains a body of statements.
 data Proc
-  = Proc Id [Param] [Decl] [Stmt] Pos
+  = Proc Pos Id [Param] [Decl] [Stmt]
     deriving (Show, Eq)
 instance ASTNode Proc
 
@@ -49,21 +49,21 @@ instance ASTNode Proc
 --       (ii) a local variable.
 -- The number of required expressions is governed by dimensionality.
 data Id
-  = Id String Pos
+  = Id Pos String
     deriving (Show)
 instance ASTNode Id
 instance Eq Id where
-  (==) (Id a _) (Id b _)
+  (==) (Id _ a) (Id _ b)
     = a == b
 instance Ord Id where
-  compare (Id a _) (Id b _)
+  compare (Id _ a) (Id _ b)
     = compare a b
 
 -- A parameter must be of a type contained in the BaseType data type (either
 -- BoolType, FloatType or IntType). It is passed to a procedure by either value
 -- or reference and assigned an identifier.
 data Param
-  = Param PassBy BaseType Id Pos
+  = Param Pos PassBy BaseType Id
     deriving (Show, Eq)
 instance ASTNode Param
 
@@ -81,7 +81,7 @@ instance ASTNode BaseType
 -- dimensionality indicator. It must be of a type contained in the BaseType
 -- data type.
 data Decl
-  = Decl BaseType Id Dim Pos
+  = Decl Pos BaseType Id Dim
     deriving (Show, Eq)
 instance ASTNode Decl
 
@@ -97,14 +97,14 @@ instance ASTNode Dim
 
 -- Statements can take 7 different forms, as indicated below.
 data Stmt
-  = Asg Scalar Expr Pos           -- assignment of an expression to a scalar
-  | Read Scalar Pos               -- assignment of user input to a scalar
-  | WriteExpr Expr Pos            -- printing of the result of an expression
-  | WriteString String Pos        -- printing of a literal string
-  | Call Id [Expr] Pos            -- invocation of a procedure
-  | If Expr [Stmt] Pos            -- conditional statement (without alternative)
-  | IfElse Expr [Stmt] [Stmt] Pos -- conditional statement (with alternative)
-  | While Expr [Stmt] Pos         -- conditional loop
+  = Asg Pos Scalar Expr           -- assignment of an expression to a scalar
+  | Read Pos Scalar               -- assignment of user input to a scalar
+  | WriteExpr Pos Expr            -- printing of the result of an expression
+  | WriteString Pos String        -- printing of a literal string
+  | Call Pos Id [Expr]            -- invocation of a procedure
+  | If Pos Expr [Stmt]            -- conditional statement (without alternative)
+  | IfElse Pos Expr [Stmt] [Stmt] -- conditional statement (with alternative)
+  | While Pos Expr [Stmt]         -- conditional loop
     deriving (Show, Eq)
 instance ASTNode Stmt
 
@@ -117,20 +117,20 @@ instance ASTNode Stmt
 -- in conjunction with 0, 1 or 2 expressions (depending on the identified
 -- variable's dimensionality) to denote a specific element within that variable:
 data Scalar
-  = Single Id Pos           -- a singleton variable's element (no subscript)
-  | Array  Id Expr Pos      -- an array element (identifier plus one subscript)
-  | Matrix Id Expr Expr Pos -- a matrix element (identifier plus two subscripts)
+  = Single Pos Id           -- a singleton variable's element (no subscript)
+  | Array  Pos Id Expr      -- an array element (identifier plus one subscript)
+  | Matrix Pos Id Expr Expr -- a matrix element (identifier plus two subscripts)
     deriving (Show, Eq)
 instance ASTNode Scalar
 
 -- scalarExpr
 -- Helper function to provide convenient access to a scalar's identifier
 scalarIdent :: Scalar -> Id
-scalarIdent (Single ident _)
+scalarIdent (Single _ ident)
   = ident
-scalarIdent (Array ident _ _)
+scalarIdent (Array _ ident _)
   = ident
-scalarIdent (Matrix ident _ _ _)
+scalarIdent (Matrix _ ident _ _)
   = ident
 
 -- Expressions can take 6 different forms, as indicated below.
@@ -143,44 +143,6 @@ data Expr
   | UnExpr Pos UnOp Expr        -- unary expression
     deriving (Show, Eq)
 instance ASTNode Expr
-
--- data ExprAttr = ExprAttr { lineNum :: Int
---                          , value :: a
---                          , id :: String
---                          } deriving (Show)
-
--- We're thinking of going with THIS ONE:
-
--- -- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
--- data AExpr
---   = AScalarExpr ExprAttr Scalar         -- the value inside a scalar (variable element)
---   | ABoolConst ExprAttr Bool            -- boolean constant
---   | AFloatConst ExprAttr Float          -- floating point constant
---   | AIntConst ExprAttr Int              -- integer constant
---   | ABinExpr ExprAttr BinOp AExpr AExpr -- binary expression
---   | AUnExpr ExprAttr UnOp AExpr         -- unary expression
---     deriving (Show, Eq)
-
--- Alternatives:
-
--- type AExpr = (Expr, Attr)
--- data Expr
---   = ScalarExpr Scalar         -- the value inside a scalar (variable element)
---   | BoolConst Bool            -- boolean constant
---   | FloatConst Float          -- floating point constant
---   | IntConst Int              -- integer constant
---   | BinExpr BinOp AExpr AExpr   -- binary expression
---   | UnExpr UnOp AExpr          -- unary expression
---     deriving (Show, Eq)
---
--- data AExpr = Node Attr Expr
-
-
--- (BinExpr Add (IntConst 1, attr) (IntConst 2, attr), attr)
--- (attr, BinExpr Add (attr, IntConst 1) (attr, IntConst 2))
--- ABinExpr attr Add (AIntConst attr 1) (AIntConst attr 2)  -- AExpr -> 105-112          <- Chosen for now
--- Node attr (BinExpr Add (Node attr (IntConst 1)) (Node attr (IntConst 2)))
-
 
 
 -- Binary operators

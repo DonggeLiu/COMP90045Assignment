@@ -18,8 +18,6 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
-import Util.Combinators (withPosition)
-
 import GoatLang.AST
 import GoatLang.Token
 
@@ -50,14 +48,15 @@ pGoatProgram :: Parser GoatProgram
 pGoatProgram
   = do
       procs <- many1 pProc
-      return (GoatProgram procs)
+      return $ GoatProgram procs
 
 
 -- PROC        -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
 -- PARAMS      -> (PARAM ",")* PARAM | ε
 pProc :: Parser Proc
 pProc
-  = withPosition ( do
+  = do
+      pos <- getPosition
       reserved "proc"
       ident <- pIdent
       params <- parens (commaSep pParam)
@@ -65,8 +64,8 @@ pProc
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc ident params decls stmts)
-    ) <?> "at least one procedure definition"
+      return $ Proc pos ident params decls stmts
+  <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at
 -- least one procedure definition' to give the programmer a hint about this 
@@ -74,20 +73,22 @@ pProc
 
 pIdent :: Parser Id
 pIdent
-  = ( withPosition $ do
+  = do
+      pos <- getPosition
       name <- identifier
-      return $ Id name
-    ) <?> "identifier"
+      return $ Id pos name
+  <?> "identifier"
 
 -- PARAM       -> PASSBY TYPE id
 pParam :: Parser Param
 pParam
-  = (withPosition $ do
+  = do
+      pos <- getPosition
       passBy <- pPassBy
       baseType <- pBaseType
       ident <- pIdent
-      return (Param passBy baseType ident)
-  ) <?> "parameter"
+      return $ Param pos passBy baseType ident
+  <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
 pPassBy :: Parser PassBy
@@ -106,12 +107,12 @@ pBaseType
 pDecl :: Parser Decl
 pDecl
   = do
-      declPos <- getPosition
+      pos <- getPosition
       baseType <- pBaseType
       ident <- pIdent
       dim <- pDim
       semi
-      return (Decl baseType ident dim declPos)
+      return $ Decl pos baseType ident dim
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -154,7 +155,7 @@ pAsg
       reservedOp ":="
       expr <- pExpr
       semi
-      return (Asg scalar expr pos)
+      return $ Asg pos scalar expr
 
 -- READ        -> "read" SCALAR ";"
 pRead
@@ -163,7 +164,7 @@ pRead
       reserved "read"
       scalar <- pScalar
       semi
-      return (Read scalar pos)
+      return $ Read pos scalar
 
 -- WRITE       -> "write" EXPR_OR_STR ";"
 -- EXPR_OR_STR -> EXPR | string
@@ -174,19 +175,19 @@ pWrite
       exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
       semi
       case exprOrStr of
-        Left  expr   -> return (WriteExpr expr pos)
-        Right string -> return (WriteString string pos)
+        Left  expr   -> return $ WriteExpr pos expr
+        Right string -> return $ WriteString pos string
 
 -- CALL        -> "call" id "(" EXPRS ")" ";"
 -- EXPRS       -> (EXPR ",")* EXPR | ε
 pCall
   = do
-      callPos <- getPosition
+      pos <- getPosition
       reserved "call"
       ident <- pIdent
       args <- parens (commaSep pExpr)
       semi
-      return (Call ident args callPos)
+      return $ Call pos ident args
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε
@@ -200,8 +201,8 @@ pIfOptElse
       maybeElseStmts <- optionMaybe (reserved "else" >> many1 pStmt)
       reserved "fi"
       case maybeElseStmts of
-        Nothing        -> return (If cond thenStmts pos)
-        Just elseStmts -> return (IfElse cond thenStmts elseStmts pos)
+          Nothing        -> return $ If pos cond thenStmts
+          Just elseStmts -> return $ IfElse pos cond thenStmts elseStmts
 
 -- WHILE       -> "while" EXPR "do" STMT+ "od"
 pWhile
@@ -212,7 +213,7 @@ pWhile
       reserved "do"
       doStmts <- many1 pStmt
       reserved "od"
-      return (While cond doStmts pos)
+      return $ While pos cond doStmts
 
 
 -- SCALAR      -> id SUBSCRIPT
@@ -225,9 +226,9 @@ pScalar
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Single ident pos)
-        Just [i]   -> return (Array  ident i pos)
-        Just [i,j] -> return (Matrix ident i j pos)
+        Nothing    -> return $ Single pos ident
+        Just [i]   -> return $ Array  pos ident i
+        Just [i,j] -> return $ Matrix pos ident i j
     <?> "scalar (variable element)"
 
 

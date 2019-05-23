@@ -113,7 +113,7 @@ writeGoatProgram (GoatProgram procs)
 -- writeProc
 -- Create an action for building a String representing a procedure
 writeProc :: Proc -> CodeWriter ()
-writeProc (Proc (Id name _) params decls stmts _)
+writeProc (Proc _ (Id _ name) params decls stmts)
   = do
       -- first write a line with the keyword and the procedure header
       line $ writeKeyword "proc" >> space >> writeIdent name >> space >>
@@ -143,7 +143,7 @@ softTab
 -- writeParam
 -- Create an action to build a parameter specification as a string
 writeParam :: Param -> CodeWriter ()
-writeParam (Param passBy baseType (Id name _) _)
+writeParam (Param _ passBy baseType (Id _ name))
   = do
       writeKeyword (format passBy)
       space
@@ -155,7 +155,7 @@ writeParam (Param passBy baseType (Id name _) _)
 -- writeDecl
 -- Create an action for building a declaration as a string
 writeDecl :: Decl -> CodeWriter ()
-writeDecl (Decl baseType (Id name _) dim _)
+writeDecl (Decl _ baseType (Id _ name) dim)
   = semiLine $ writeKeyword (format baseType) >> space >> writeIdent name >>
       writeDim dim
 
@@ -175,32 +175,32 @@ writeDim (Dim2 n m)
 -- Create an action for building a statement (atomic or composite) as a string.
 writeStmt :: Stmt -> CodeWriter ()
 
-writeStmt (Asg scalar expr _)
+writeStmt (Asg _ scalar expr)
   = semiLine $ writeScalar scalar >> spaces (write ":=") >> writeExpr expr
 
-writeStmt (Read scalar _)
+writeStmt (Read _ scalar)
   = semiLine $ writeKeyword "read" >> space >> writeScalar scalar
 
-writeStmt (WriteExpr expr _)
+writeStmt (WriteExpr _ expr)
   = semiLine $ writeKeyword "write" >> space >> writeExpr expr
 
-writeStmt (WriteString str _)
+writeStmt (WriteString _ str)
   = semiLine $ writeKeyword "write" >> space >> asString (writeStringLit str)
 
-writeStmt (Call (Id name _) args _)
+writeStmt (Call _ (Id _ name) args)
   = semiLine $ writeKeyword "call" >> space >> writeIdent name >>
       parens (commaSep (map writeExpr args))
 
 -- For composite statements, we will have to write some lines at the current
 -- level of indentation, and also some statements at the next level of
 -- indentation (using nextLevelIndentation = indentation >> softTab).
-writeStmt (If cond thenStmts _)
+writeStmt (If _ cond thenStmts)
   = do
       line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
       withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
       line $ writeKeyword "fi"
 
-writeStmt (IfElse cond thenStmts elseStmts _)
+writeStmt (IfElse _ cond thenStmts elseStmts)
   = do
       line $ writeKeyword "if" >> spaces (writeExpr cond) >> writeKeyword "then"
       withIncreasedIndentation softTab $ mapM_ writeStmt thenStmts
@@ -208,7 +208,7 @@ writeStmt (IfElse cond thenStmts elseStmts _)
       withIncreasedIndentation softTab $ mapM_ writeStmt elseStmts
       line $ writeKeyword "fi"
 
-writeStmt (While cond doStmts _)
+writeStmt (While _ cond doStmts)
   = do
       line $ writeKeyword "while" >> spaces (writeExpr cond) >> writeKeyword "do"
       withIncreasedIndentation softTab $ mapM_ writeStmt doStmts
@@ -218,13 +218,13 @@ writeStmt (While cond doStmts _)
 -- writeScalar
 -- Create an action to represent a scalar (variable element) as a String
 writeScalar :: Scalar -> CodeWriter ()
-writeScalar (Single (Id name _) _)
+writeScalar (Single _ (Id _ name))
   = writeIdent name
-writeScalar (Array (Id name _) index _)
+writeScalar (Array _ (Id _ name) index)
   = do
       writeIdent name
       brackets $ writeExpr index
-writeScalar (Matrix (Id name _) index1 index2 _)
+writeScalar (Matrix _ (Id _ name) index1 index2)
   = do
       writeIdent name
       brackets $ commaSep (map writeExpr [index1, index2])

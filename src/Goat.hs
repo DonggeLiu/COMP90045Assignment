@@ -61,9 +61,9 @@ main
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
-      when (null flags || flagIsSet 'x' flags) $ do
-          let code = genCode ast
-          printOzProgramColoured (detectColourScheme flags) code
+      -- when (null flags || flagIsSet 'x' flags) $ do
+      --     let code = genCode ast
+      --     printOzProgramColoured (detectColourScheme flags) code
 
 
 detectColourScheme :: [Flag] -> ColourScheme
