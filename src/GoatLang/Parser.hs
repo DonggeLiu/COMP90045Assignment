@@ -57,18 +57,25 @@ pProc
   = do
       procPos <- getPosition
       reserved "proc"
-      identPos <- getPosition
-      name <- identifier
+      ident <- pIdent
       params <- parens (commaSep pParam)
       decls <- many pDecl
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc (Id name identPos) params decls stmts procPos)
+      return (Proc ident params decls stmts procPos)
   <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
--- consuming any input if the file is blank; thus we can say 'expecting at least
--- one prcedure definition' to give the programmer a hint about this requirement
+-- consuming any input if the file is blank; thus we can say 'expecting at
+-- least one procedure definition' to give the programmer a hint about this 
+-- requirement
+
+pIdent :: Parser Id
+pIdent
+  = do
+      identPos <- getPosition
+      name <- identifier
+      return (Id name identPos)
 
 -- PARAM       -> PASSBY TYPE id
 pParam :: Parser Param
@@ -77,9 +84,8 @@ pParam
       paramPos <- getPosition
       passBy <- pPassBy
       baseType <- pBaseType
-      identPos <- getPosition
-      name <- identifier
-      return (Param passBy baseType (Id name identPos) paramPos)
+      ident <- pIdent
+      return (Param passBy baseType ident paramPos)
   <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
@@ -101,11 +107,10 @@ pDecl
   = do
       declPos <- getPosition
       baseType <- pBaseType
-      identPos <- getPosition
-      name <- identifier
+      ident <- pIdent
       dim <- pDim
       semi
-      return (Decl baseType (Id name identPos) dim declPos)
+      return (Decl baseType ident dim declPos)
   <?> "declaration"
 
 -- DIM         -> ε | "[" int  "]" | "[" int  "," int  "]"
@@ -177,11 +182,10 @@ pCall
   = do
       callPos <- getPosition
       reserved "call"
-      identPos <- getPosition
-      name <- identifier
+      ident <- pIdent
       args <- parens (commaSep pExpr)
       semi
-      return (Call (Id name identPos) args callPos)
+      return (Call ident args callPos)
 
 -- IF_OPT_ELSE -> "if" EXPR "then" STMT+ OPT_ELSE "fi"
 -- OPT_ELSE    -> "else" STMT+ | ε
@@ -216,13 +220,13 @@ pScalar :: Parser Scalar
 pScalar
   = do
       pos <- getPosition
-      name <- identifier
+      ident <- pIdent
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
       case subscript of
-        Nothing    -> return (Single (Id name pos) pos)
-        Just [i]   -> return (Array  (Id name pos) i pos)
-        Just [i,j] -> return (Matrix (Id name pos) i j pos)
+        Nothing    -> return (Single ident pos)
+        Just [i]   -> return (Array  ident i pos)
+        Just [i,j] -> return (Matrix ident i j pos)
     <?> "scalar (variable element)"
 
 
