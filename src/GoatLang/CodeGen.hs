@@ -333,7 +333,7 @@ genCodeArgInto varSymTable reg (Param Val _ _ _) expr
 -- For Single variables, the stack slot may ALREADY hold an address; in which
 -- case we can just copy that address into the register. If it's a value we
 -- need to load its address instead.
-genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr (Single ident _))
+genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr _ (Single ident _))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
@@ -345,7 +345,7 @@ genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr (Single ident _))
 -- For non-Single variables (Arrays/Matrices) they must already be values (Goat
 -- does not allow Array and Matrix variables to be passed by ref). Thus we just
 -- need to calculate the address and load it into the register.
-genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr scalar)
+genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr _ scalar)
   = genCodeOffsetAddrInto varSymTable reg scalar
 
 
@@ -393,16 +393,16 @@ genCodeExprInto :: VarSymTable -> Reg -> Expr -> CodeGen ()
 
 -- Base cases: float, int and bool constants:
 
-genCodeExprInto _ register (IntConst int)
+genCodeExprInto _ register (IntConst _ int)
   = instr $ IntConstInstr register int
 
-genCodeExprInto _ register (FloatConst float)
+genCodeExprInto _ register (FloatConst _ float)
   = instr $ RealConstInstr register float
 
 -- In Oz we represent True as the integer 1, and false as the integer 0
-genCodeExprInto _ register (BoolConst True)
+genCodeExprInto _ register (BoolConst _ True)
   = instr $ IntConstInstr register 1
-genCodeExprInto _ register (BoolConst False)
+genCodeExprInto _ register (BoolConst _ False)
   = instr $ IntConstInstr register 0
 
 
@@ -419,7 +419,7 @@ genCodeExprInto _ register (BoolConst False)
 --    register.
 -- 4. Whatever the result, leave it in the target register (it's the result of
 --    the And operation).
-genCodeExprInto varSymTable register (BinExpr And l r)
+genCodeExprInto varSymTable register (BinExpr _ And l r)
   = do
       afterLabel <- getNewBlockLabel
       genCodeExprInto varSymTable register l
@@ -429,7 +429,7 @@ genCodeExprInto varSymTable register (BinExpr And l r)
 
 -- Or is similar (but we skip the second operand when the first is True,
 -- rather than False):
-genCodeExprInto varSymTable register (BinExpr Or l r)
+genCodeExprInto varSymTable register (BinExpr _ Or l r)
   = do
       afterLabel <- getNewBlockLabel
       genCodeExprInto varSymTable register l
@@ -439,7 +439,7 @@ genCodeExprInto varSymTable register (BinExpr Or l r)
 
 -- All other expressions are strict, so we can safely load the operands into
 -- two registers then just perform the appropriate operation:
-genCodeExprInto varSymTable register (BinExpr op lExpr rExpr)
+genCodeExprInto varSymTable register (BinExpr _ op lExpr rExpr)
   = do
       genCodeExprInto varSymTable register lExpr
       genCodeExprInto varSymTable (succ register) rExpr
@@ -450,14 +450,14 @@ genCodeExprInto varSymTable register (BinExpr op lExpr rExpr)
 
 -- There are only two cases for unary operations:
 -- Logical `Not`:
-genCodeExprInto varSymTable register (UnExpr Not expr)
+genCodeExprInto varSymTable register (UnExpr _ Not expr)
   = do
       genCodeExprInto varSymTable register expr
       instr $ NotInstr register register
 
 -- And arithmetic `Neg` (which could be applied to either a real value or an
 -- int value):
-genCodeExprInto varSymTable register (UnExpr Neg expr)
+genCodeExprInto varSymTable register (UnExpr _ Neg expr)
   = do
       genCodeExprInto varSymTable register expr
       instr $ instruction register register
@@ -472,7 +472,7 @@ genCodeExprInto varSymTable register (UnExpr Neg expr)
 -- For scalar expressions of Single variables we need to be careful about
 -- whether the stack slot holds a reference (for pass by reference variables)
 -- or a value (for pass by value variables and local variables).
-genCodeExprInto varSymTable reg (ScalarExpr (Single ident _))
+genCodeExprInto varSymTable reg (ScalarExpr _ (Single ident _))
   = do
       let record = lookupVarRecord varSymTable ident
       let slot = varStackSlot record
@@ -489,7 +489,7 @@ genCodeExprInto varSymTable reg (ScalarExpr (Single ident _))
 -- Luckily, for both Arrays an Matrices, the pattern of loading the value given
 -- the offset address is similar. See `genCodeOffsetAddrInto` for computing the
 -- offset address.
-genCodeExprInto varSymTable reg (ScalarExpr scalar)
+genCodeExprInto varSymTable reg (ScalarExpr _ scalar)
   = do
       -- go and calculate the offset-address into the register
       genCodeOffsetAddrInto varSymTable reg scalar
@@ -638,13 +638,13 @@ lookupOpBool GEq
 -- calculate expression types to precomputing these types during semantic
 -- analysis and embedding them within the Expression AST nodes themselves.
 getExprType :: VarSymTable -> Expr -> BaseType
-getExprType _ (BoolConst _)
+getExprType _ (BoolConst _ _)
   = BoolType
-getExprType _ (FloatConst _)
+getExprType _ (FloatConst _ _)
   = FloatType
-getExprType _ (IntConst _)
+getExprType _ (IntConst _ _)
   = IntType
-getExprType varSymTable (BinExpr operator left right)
+getExprType varSymTable (BinExpr _ operator left right)
   | arithmetic operator = case types of
       (IntType, IntType) -> IntType
       otherwise -> FloatType
@@ -653,9 +653,9 @@ getExprType varSymTable (BinExpr operator left right)
     arithmetic = (`elem` [Add, Sub, Mul, Div])
     types = (getExprType varSymTable left, getExprType varSymTable right)
 
-getExprType varSymTable (UnExpr operator operand)
+getExprType varSymTable (UnExpr _ operator operand)
   = getExprType varSymTable operand
-getExprType varSymTable (ScalarExpr scalar)
+getExprType varSymTable (ScalarExpr _ scalar)
   = getScalarType varSymTable scalar
 
 getScalarType :: VarSymTable -> Scalar -> BaseType

@@ -236,21 +236,21 @@ writeScalar (Matrix (Id name _) index1 index2 _)
 writeExpr :: Expr -> CodeWriter ()
 
 -- For simple expressions, we can construct the action directly:
-writeExpr (BoolConst bool)
+writeExpr (BoolConst _ bool)
   = writeBoolLit bool
-writeExpr (IntConst int)
+writeExpr (IntConst _ int)
   = writeIntLit int
-writeExpr (FloatConst float)
+writeExpr (FloatConst _ float)
   = writeFloatLit float
-writeExpr (ScalarExpr scalar)
+writeExpr (ScalarExpr _ scalar)
   = writeScalar scalar
 
 -- But for complex expressions, the string may also involve parenthesed
 -- subexpressions (if they are binary expressions themselves).
 -- We use `writeExprParens' to detect this and add parens if necessary:
-writeExpr (BinExpr op lExpr rExpr)
+writeExpr (BinExpr _ op lExpr rExpr)
   = writeExprParens lExpr >> spaces (write (format op)) >> writeExprParens rExpr
-writeExpr (UnExpr op expr)
+writeExpr (UnExpr _ op expr)
   = write (format op) >> writeExprParens expr
 
 -- writeExprParens
@@ -258,7 +258,7 @@ writeExpr (UnExpr op expr)
 -- parentheses if it represents a binary operation expression (or not
 -- otherwise)
 writeExprParens :: Expr -> CodeWriter ()
-writeExprParens expr@(BinExpr _ _ _)
+writeExprParens expr@(BinExpr _ _ _ _)
   = parens $ writeExpr expr
 writeExprParens expr
   = writeExpr expr

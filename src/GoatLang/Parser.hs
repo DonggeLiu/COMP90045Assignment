@@ -292,25 +292,36 @@ pExpr
 -- pTerm
 -- parse an expression 'term' (non-operation)
 pTerm :: Parser Expr
-pTerm =   parens pExpr
-      <|> fmap ScalarExpr pScalar
-      <|> pIntOrFloatConst  -- integers and floats share a common prefix!
-      <|> pBoolConst
-      <?> "term (variable, literal, or parenthesised expression)"
+pTerm
+  =   parens pExpr
+  <|> pScalarExpr
+  <|> pIntOrFloatConst  -- integers and floats share a common prefix!
+  <|> pBoolConst
+  <?> "term (variable, literal, or parenthesised expression)"
+
+pScalarExpr :: Parser Expr
+pScalarExpr
+  = do
+      pos <- getPosition
+      scalar <- pScalar
+      return $ ScalarExpr pos scalar
 
 pIntOrFloatConst :: Parser Expr
 pIntOrFloatConst
   = do
+      pos <- getPosition
       numberLiteral <- integerOrFloat
       case numberLiteral of
-        Left int  -> return $ IntConst int
-        Right flt -> return $ FloatConst flt
+        Left int  -> return $ IntConst pos int
+        Right flt -> return $ FloatConst pos flt
 
 pBoolConst :: Parser Expr
 pBoolConst
-  =   (reserved "true"  >> return (BoolConst True ))
-  <|> (reserved "false" >> return (BoolConst False))
-
+  = do
+      pos <- getPosition
+      choice [ reserved "true"  >> return (BoolConst pos True)
+             , reserved "false" >> return (BoolConst pos False)
+             ]
 
 -- operatorTable
 -- encodes rules for parsing operations
@@ -329,18 +340,34 @@ operatorTable = [ [ prefix "-" Neg ]
 -- The following helper functions help define the rows in the operator table:
 
 -- prefix
--- shortcut to building table entried for unary prefix operators
+-- shortcut to building table entries for unary prefix operators
 prefix name op
-  = Prefix (reservedOp name  >> return (UnExpr op))
+  = Prefix (pUnOp name op)
 
 -- binary
 -- shortcut to building table entried for binary infix operators
 -- (left associative)
 binary name op
-  = Infix (reservedOp name >> return (BinExpr op)) AssocLeft
+  = Infix (pBinOp name op) AssocLeft
 
 -- prefix
 -- shortcut to building table entried for binary infix relational operators
 -- (not assocative)
 relation name op
-  = Infix (reservedOp name   >> return (BinExpr op )) AssocNone
+  = Infix (pBinOp name op) AssocNone
+
+-- pUnOp
+-- shortcut to build a parser for a particular expression operator
+pUnOp :: String -> UnOp -> Parser (Expr -> Expr)
+pUnOp name op
+  =  do
+      pos <- getPosition
+      reservedOp name
+      return $ UnExpr pos op
+
+pBinOp :: String -> BinOp -> Parser (Expr -> Expr -> Expr)
+pBinOp name op
+  = do
+      pos <- getPosition
+      reservedOp name
+      return $ BinExpr pos op

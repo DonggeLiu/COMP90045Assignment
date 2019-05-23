@@ -18,6 +18,8 @@ module GoatLang.AST where
 import Text.Parsec.Pos
 
 class ASTNode node
+-- where
+--   pos :: node -> Pos
 
 -- The position in the Goat source file.
 -- Type provided by Parsec - contains the SourceName, Line and Column.
@@ -130,12 +132,12 @@ scalarIdent (Matrix ident _ _ _)
 
 -- Expressions can take 6 different forms, as indicated below.
 data Expr
-  = ScalarExpr Scalar         -- the value inside a scalar (variable element)
-  | BoolConst Bool            -- boolean constant
-  | FloatConst Float          -- floating point constant
-  | IntConst Int              -- integer constant
-  | BinExpr BinOp Expr Expr   -- binary expression
-  | UnExpr UnOp Expr          -- unary expression
+  = ScalarExpr Pos Scalar       -- the value inside a scalar (variable element)
+  | BoolConst Pos Bool          -- boolean constant
+  | FloatConst Pos Float        -- floating point constant
+  | IntConst Pos Int            -- integer constant
+  | BinExpr Pos BinOp Expr Expr -- binary expression
+  | UnExpr Pos UnOp Expr        -- unary expression
     deriving (Show, Eq)
 instance ASTNode Expr
 
