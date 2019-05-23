@@ -18,6 +18,24 @@ module Util.Combinators where
 import Control.Applicative (liftA2)
 
 import Text.Parsec
+import Text.Parsec.Pos
+
+-- ----------------------------------------------------------------------------
+-- Automatically annotating parser results with start position
+-- ----------------------------------------------------------------------------
+
+-- withPosition
+-- Combinator to automatically supply the result of a parser with a position.
+-- The given parser should return a function that is expecting a position in
+-- order to complete its annotation.
+withPosition :: Stream s m t =>
+                ParsecT s u m (SourcePos -> a) -> ParsecT s u m a
+withPosition parser
+  = do
+      position <- getPosition
+      result <- parser
+      return (result position)
+
 
 -- ----------------------------------------------------------------------------
 -- Parsing for lists of bounded size
@@ -73,7 +91,7 @@ sepByMN sep m n p
 -- or, basically:
 --     (<:>) p_x p_xs = do {x <- p_x; xs <- p_xs; return (x:xs)}
 
--- (<:>)
+-- (<++>)
 -- 'applicative append' operator - A mnemonic shortcut for using (++) as an
 -- applicative function, to combine the results of parsec parsers.
 (<++>) :: Stream s m t =>

@@ -92,7 +92,7 @@ commaSep   = Token.commaSep   lexer -- parse a comma-separated list
 -- lexeme parser for non-negative decimal integers
 integer :: Parser Int
 integer
-  = (lexeme $ fmap read $ many1 digit)
+  = lexeme (fmap read $ many1 digit)
   <?> "integer"
 
 
@@ -101,7 +101,7 @@ integer
 -- NOTE: actually this parser is not used, but is included for completeness
 float :: Parser Float
 float
-  = (lexeme $ fmap read $ many1 digit <++> (char '.' <:> many1 digit))
+  = lexeme (fmap read $ many1 digit <++> (char '.' <:> many1 digit))
   <?> "float"
 
 
@@ -150,7 +150,7 @@ escapedChar
 -- lexeme parser for either an integer literal (left) or float literal (right)
 integerOrFloat :: Parser (Either Int Float)
 integerOrFloat
-  = (lexeme $ do
+  = lexeme (do
       whole <- many1 digit
       maybeDotFrac <- optionMaybe (char '.' <:> many1 digit)
       case maybeDotFrac of

@@ -17,13 +17,16 @@ module GoatLang.AST where
 
 import Text.Parsec.Pos
 
-class ASTNode node
--- where
---   pos :: node -> Pos
-
 -- The position in the Goat source file.
 -- Type provided by Parsec - contains the SourceName, Line and Column.
 type Pos = SourcePos
+
+
+class ASTNode node
+-- TODO: where nodePos :: node -> Pos ?
+-- Some of the AST nodes would have to be cut.
+-- where
+--   pos :: node -> Pos
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram

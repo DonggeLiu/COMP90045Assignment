@@ -18,6 +18,8 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
+import Util.Combinators (withPosition)
+
 import GoatLang.AST
 import GoatLang.Token
 
@@ -50,12 +52,12 @@ pGoatProgram
       procs <- many1 pProc
       return (GoatProgram procs)
 
+
 -- PROC        -> "proc" id "(" PARAMS ")" DECL* "begin" STMT+ "end"
 -- PARAMS      -> (PARAM ",")* PARAM | ε
 pProc :: Parser Proc
 pProc
-  = do
-      procPos <- getPosition
+  = withPosition ( do
       reserved "proc"
       ident <- pIdent
       params <- parens (commaSep pParam)
@@ -63,8 +65,8 @@ pProc
       reserved "begin"
       stmts <- many1 pStmt
       reserved "end"
-      return (Proc ident params decls stmts procPos)
-  <?> "at least one procedure definition"
+      return (Proc ident params decls stmts)
+    ) <?> "at least one procedure definition"
 -- pProc is only ever called by pGoatProgram, and will only ever fail without
 -- consuming any input if the file is blank; thus we can say 'expecting at
 -- least one procedure definition' to give the programmer a hint about this 
@@ -72,21 +74,20 @@ pProc
 
 pIdent :: Parser Id
 pIdent
-  = do
-      identPos <- getPosition
+  = ( withPosition $ do
       name <- identifier
-      return (Id name identPos)
+      return $ Id name
+    ) <?> "identifier"
 
 -- PARAM       -> PASSBY TYPE id
 pParam :: Parser Param
 pParam
-  = do
-      paramPos <- getPosition
+  = (withPosition $ do
       passBy <- pPassBy
       baseType <- pBaseType
       ident <- pIdent
-      return (Param passBy baseType ident paramPos)
-  <?> "parameter"
+      return (Param passBy baseType ident)
+  ) <?> "parameter"
 
 -- PASSBY      -> "val" | "ref"
 pPassBy :: Parser PassBy
