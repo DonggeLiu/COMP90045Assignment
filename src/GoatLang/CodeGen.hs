@@ -268,7 +268,7 @@ genCodeStmt (AWhile cond stmts)
 genCodeStmt stmt@(ACall (Id _ procName) args attrs)
   = do
       -- comment $ init $ prettify stmt
-      sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callParams attrs) args
+      sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callPassBys attrs) args
       instr $ CallInstr $ ProcLabel procName
 
 -- genCodeStore
@@ -298,11 +298,11 @@ genCodeStore scalar reg
 -- genCodeArgInto
 -- Generate the code to load the argument value given by expr (or reference,
 -- as per param) into the given register.
-genCodeArgInto :: Reg -> AParam -> AExpr -> CodeGen ()
+genCodeArgInto :: Reg -> PassBy -> AExpr -> CodeGen ()
 
 -- It's easy to prepare something to be passed by value, we can just use
 -- genCodeExprInto:
-genCodeArgInto reg (AParam Val _ _ _) expr
+genCodeArgInto reg Val expr
   = genCodeExprInto reg expr
 
 -- For pass by reference, the expression must be an lvalue, and we need to
@@ -311,7 +311,7 @@ genCodeArgInto reg (AParam Val _ _ _) expr
 -- For Single variables, the stack slot may ALREADY hold an address; in which
 -- case we can just copy that address into the register. If it's a value we
 -- need to load its address instead.
-genCodeArgInto reg (AParam Ref _ _ _) (AScalarExpr (ASingle _ attrs))
+genCodeArgInto reg Ref (AScalarExpr (ASingle _ attrs))
   = case (singlePassBy attrs) of
       Val -> instr $ LoadAddressInstr reg (singleStackSlot attrs)
       Ref -> instr $ LoadInstr reg (singleStackSlot attrs)
@@ -319,7 +319,7 @@ genCodeArgInto reg (AParam Ref _ _ _) (AScalarExpr (ASingle _ attrs))
 -- For non-Single variables (Arrays/Matrices) they must already be values (Goat
 -- does not allow Array and Matrix variables to be passed by ref). Thus we just
 -- need to calculate the address and load it into the register.
-genCodeArgInto reg (AParam Ref _ _ _) (AScalarExpr scalar)
+genCodeArgInto reg Ref (AScalarExpr scalar)
   = genCodeOffsetAddrInto reg scalar
 
 
@@ -339,11 +339,11 @@ genCodeOffsetAddrInto reg (AArray _ exprI attrs)
 genCodeOffsetAddrInto reg (AMatrix _ exprI exprJ attrs)
   = do
       -- start by calculating the offset into a register
-      -- first, the column offset
-      instr $ IntConstInstr reg (matrixNumCols attrs)
+      -- first, the offset to the start of the indexed row
+      instr $ IntConstInstr reg (matrixRowWidth attrs)
       genCodeExprInto (succ reg) exprI
       instr $ MulIntInstr reg reg (succ reg)
-      -- plus the row offset
+      -- plus the offset within that row
       genCodeExprInto (succ reg) exprJ
       instr $ AddIntInstr reg reg (succ reg)
       -- then, put the matrix's start slot address in the next register
