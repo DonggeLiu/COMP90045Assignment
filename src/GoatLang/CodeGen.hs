@@ -22,8 +22,9 @@ import Util.DiffList
 
 import GoatLang.AST
 import GoatLang.OzCode
-import GoatLang.SymbolTable
-import GoatLang.PrettyPrint
+-- import GoatLang.SymbolTable
+import GoatLang.AAST
+-- import GoatLang.PrettyPrint
 
 
 -- Summary of TODO items from throughout file:
@@ -66,9 +67,9 @@ type LabelCounter
 
 
 -- genCode
--- Top level function: use the code generators defined below to convert a Goat
--- Program (an AST) into an Oz Program (a list of Oz lines).
-genCode :: GoatProgram -> OzProgram
+-- Top level function: use the code generators defined below to convert an
+-- annotated Goat Program (an AAST) into an Oz Program (a list of Oz lines).
+genCode :: AGoatProgram -> OzProgram
 genCode goatProgram
   = ozProgram
   where
@@ -150,182 +151,159 @@ comment text
 
 -- genCodeGoatProgram
 -- Action to generate instructions for a full Goat Program.
-genCodeGoatProgram :: GoatProgram -> CodeGen ()
-genCodeGoatProgram (GoatProgram procs)
+genCodeGoatProgram :: AGoatProgram -> CodeGen ()
+genCodeGoatProgram (AGoatProgram procs)
   = do
-      let procSymTable = constructProcSymTable procs
       instr $ CallInstr (ProcLabel "main")
       instr $ HaltInstr
-      mapM_ (genCodeProc procSymTable) procs
+      mapM_ genCodeProc procs
 
 
 -- genCodeProc
 -- Action to generate instructions for a single Goat Procedure, including
 -- the procedure's prologue and epilogue.
-genCodeProc :: ProcSymTable -> Proc -> CodeGen ()
-genCodeProc procSymTable (Proc ident@(Id procName _) params decls stmts _)
+genCodeProc :: AProc -> CodeGen ()
+genCodeProc (AProc (Id procName _) params decls stmts attrs)
   = do
-      let procRecord = lookupProcRecord procSymTable ident
-      let varSymTable = procVarSymTable procRecord
-      let frameSize = procFrameSize procRecord
       label $ ProcLabel procName
-      comment "prologue"
-      instr $ PushStackFrameInstr frameSize
-      sequence_ $
-        zipWith (genCodeRetrieveParamFrom varSymTable) [Reg 0..] params
-      mapM_ (genCodeInitVar varSymTable) decls
-      comment "procedure body"
-      mapM_ (genCodeStmt procSymTable varSymTable) stmts
-      comment "epilogue"
-      instr $ PopStackFrameInstr frameSize
+      -- comment "prologue"
+      instr $ PushStackFrameInstr (procFrameSize attrs)
+      sequence_ $ zipWith genCodeRetrieveParamFrom [Reg 0..] params
+      mapM_ genCodeInitVar decls
+      -- comment "procedure body"
+      mapM_ genCodeStmt stmts
+      -- comment "epilogue"
+      instr $ PopStackFrameInstr (procFrameSize attrs)
       instr ReturnInstr
 
 
 -- genCodeRetrieveParamFrom
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
-genCodeRetrieveParamFrom :: VarSymTable -> Reg -> Param -> CodeGen ()
-genCodeRetrieveParamFrom symTable reg (Param _ _ ident@(Id name _) _)
+genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
+genCodeRetrieveParamFrom reg (AParam _ _ (Id name _) attrs)
   = do
-      comment $ "retrieving " ++ name
-      let slot = varStackSlot $ lookupVarRecord symTable ident
-      instr $ StoreInstr slot reg
+      -- comment $ "retrieving " ++ name
+      -- TODO: Should the number of slots be stored in the attrs, to allow
+      -- passing multi-slot things?
+      instr $ StoreInstr (paramStackSlot attrs) reg
 
 
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
-genCodeInitVar :: VarSymTable -> Decl -> CodeGen ()
-genCodeInitVar symTable decl@(Decl baseType ident dim _)
+genCodeInitVar :: ADecl -> CodeGen ()
+genCodeInitVar decl@(ADecl baseType _ dim attrs)
   = do
-      comment $ "initialising " ++ (init $ prettify decl)
-      let slot = varStackSlot $ lookupVarRecord symTable ident
+      -- comment $ "initialising " ++ (init $ prettify decl)
+      -- load the 'zero' value of the correct type into an unused (!) register
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
         otherwise -> instr $ IntConstInstr (Reg 0) 0
       -- then store it into the slot (or slots) spanned by this local variable
-      let startSlot = varStackSlot $ lookupVarRecord symTable ident
-      let allSlots = take (numSlotsDim dim) [startSlot..]
-      mapM_ (\slot -> instr (StoreInstr slot (Reg 0))) allSlots
+      mapM_ (\slot -> instr (StoreInstr slot (Reg 0))) (declStackSlots attrs)
 
 
 -- genCodeStmt
 -- Action to generate code for a single Goat Statement (may be an atomic or
 -- composite statement).
-genCodeStmt :: ProcSymTable -> VarSymTable -> Stmt -> CodeGen ()
+genCodeStmt :: AStmt -> CodeGen ()
 
-genCodeStmt _ varSymTable stmt@(WriteExpr expr _)
+genCodeStmt stmt@(AWriteExpr expr attrs)
   = do
-      comment $ init $ prettify stmt
-      genCodeExprInto varSymTable (Reg 0) expr
-      case getExprType varSymTable expr of
-        BoolType -> instr $ CallBuiltinInstr PrintBool
-        IntType -> instr $ CallBuiltinInstr PrintInt
-        FloatType -> instr $ CallBuiltinInstr PrintReal
+      -- comment $ init $ prettify stmt
+      genCodeExprInto (Reg 0) expr
+      instr $ CallBuiltinInstr (writeExprBuiltin attrs)
 
-genCodeStmt _ _ stmt@(WriteString str _)
+genCodeStmt stmt@(AWriteString str)
   = do
-      comment $ init $ prettify stmt
+      -- comment $ init $ prettify stmt
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
-genCodeStmt _ varSymTable stmt@(Read scalar _)
+genCodeStmt stmt@(ARead scalar attrs)
   = do
-      comment $ init $ prettify stmt
-      let record = lookupVarRecord varSymTable (scalarIdent scalar)
-      case varType record of
-        BoolType -> instr $ CallBuiltinInstr ReadBool
-        IntType -> instr $ CallBuiltinInstr ReadInt
-        FloatType -> instr $ CallBuiltinInstr ReadReal
-      genCodeStore varSymTable scalar (Reg 0)
+      -- comment $ init $ prettify stmt
+      instr $ CallBuiltinInstr (readBuiltin attrs)
+      genCodeStore scalar (Reg 0)
 
-genCodeStmt _ varSymTable stmt@(Asg scalar expr _)
+genCodeStmt stmt@(AAsg scalar expr)
   = do
-      comment $ init $ prettify stmt
-      genCodeExprInto varSymTable (Reg 0) expr
-      let record = lookupVarRecord varSymTable (scalarIdent scalar)
-      when (varType record == FloatType) $
-        realify (Reg 0) (getExprType varSymTable expr)
-      genCodeStore varSymTable scalar (Reg 0)
+      -- comment $ init $ prettify stmt
+      genCodeExprInto (Reg 0) expr
+      genCodeStore scalar (Reg 0)
 
-genCodeStmt procSymTable varSymTable (If cond thenStmts _)
+genCodeStmt (AIf cond thenStmts)
   = do
-      comment $ "if " ++ prettify cond
-      genCodeExprInto varSymTable (Reg 0) cond
+      -- comment $ "if " ++ prettify cond
+      genCodeExprInto (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
-      mapM_ (genCodeStmt procSymTable varSymTable) thenStmts
+      mapM_ genCodeStmt thenStmts
       label $ fiLabel
 
-genCodeStmt procSymTable varSymTable (IfElse cond thenStmts elseStmts _)
+genCodeStmt (AIfElse cond thenStmts elseStmts)
   = do
-      comment $ "if-else " ++ prettify cond
-      genCodeExprInto varSymTable (Reg 0) cond
+      -- comment $ "if-else " ++ prettify cond
+      genCodeExprInto (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
-      mapM_ (genCodeStmt procSymTable varSymTable) thenStmts
+      mapM_ genCodeStmt thenStmts
       fiLabel <- getNewBlockLabel
       instr $ BranchUncondInstr fiLabel
       label $ elseLabel
-      mapM_ (genCodeStmt procSymTable varSymTable) elseStmts
+      mapM_ genCodeStmt elseStmts
       label $ fiLabel
 
-genCodeStmt procSymTable varSymTable (While cond stmts _)
+genCodeStmt (AWhile cond stmts)
   = do
-      comment $ "while " ++ prettify cond
+      -- comment $ "while " ++ prettify cond
       whileLabel <- getNewBlockLabel
       label $ whileLabel
-      genCodeExprInto varSymTable (Reg 0) cond
+      genCodeExprInto (Reg 0) cond
       odLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) odLabel
-      mapM_ (genCodeStmt procSymTable varSymTable) stmts
+      mapM_ genCodeStmt stmts
       label $ odLabel
 
-genCodeStmt procSymTable varSymTable stmt@(Call ident@(Id procName _) args _)
+genCodeStmt stmt@(ACall (Id procName _) args attrs)
   = do
-      comment $ init $ prettify stmt
-      let procRecord = lookupProcRecord procSymTable ident
-      let params = procParams procRecord
-      sequence_ $ zipWith3 (genCodeArgInto varSymTable) [Reg 0..] params args
+      -- comment $ init $ prettify stmt
+      sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callParams attrs) args
       instr $ CallInstr $ ProcLabel procName
 
 -- genCodeStore
 -- Generate the code to store the value in a register into the stack slot
 -- corresponding to a scalar.
-genCodeStore :: VarSymTable -> Scalar -> Reg -> CodeGen ()
+genCodeStore :: AScalar -> Reg -> CodeGen ()
 
 -- Single variable scalars may have been passed by reference, in which case we
 -- need to store them indirectly using the _address_ in the local stack slot.
 -- In contrast for scalars passed by value, we simply store the value from the
 -- register to the stack slot.
-genCodeStore varSymTable (Single ident _) reg
-  = do
-      let record = lookupVarRecord varSymTable ident
-      let passBy = varPassBy record
-      let slot = varStackSlot record
-      let nextReg = succ reg
-      case passBy of
-        Val -> instr $ StoreInstr slot reg
-        Ref -> do
-            instr $ LoadInstr nextReg slot
-            instr $ StoreIndirectInstr nextReg reg
+genCodeStore (ASingle _ attrs) reg
+  = case (singlePassBy attrs) of
+      Val -> instr $ StoreInstr (singleStackSlot attrs) reg
+      Ref -> do
+          instr $ LoadInstr (succ reg) (singleStackSlot attrs)
+          instr $ StoreIndirectInstr (succ reg) reg
 
 -- Arrays and Matrices cannot be passed by reference but we need to calculate
 -- the correct stack slot based on an offset given by the index expression(s).
-genCodeStore varSymTable scalar reg
+genCodeStore scalar reg
   = do
-      genCodeOffsetAddrInto varSymTable (succ reg) scalar
+      genCodeOffsetAddrInto (succ reg) scalar
       instr $ StoreIndirectInstr (succ reg) reg
 
 
 -- genCodeArgInto
--- Generate the code to load the expression (that is referenced by Param)
--- into the given register.
-genCodeArgInto :: VarSymTable -> Reg -> Param -> Expr -> CodeGen ()
+-- Generate the code to load the argument value given by expr (or reference,
+-- as per param) into the given register.
+genCodeArgInto :: Reg -> AParam -> AExpr -> CodeGen ()
 
 -- It's easy to prepare something to be passed by value, we can just use
 -- genCodeExprInto:
-genCodeArgInto varSymTable reg (Param Val _ _ _) expr
-  = genCodeExprInto varSymTable reg expr
+genCodeArgInto reg (AParam Val _ _ _) expr
+  = genCodeExprInto reg expr
 
 -- For pass by reference, the expression must be an lvalue, and we need to
 -- ensure that we load its address into the register instead.
@@ -333,82 +311,78 @@ genCodeArgInto varSymTable reg (Param Val _ _ _) expr
 -- For Single variables, the stack slot may ALREADY hold an address; in which
 -- case we can just copy that address into the register. If it's a value we
 -- need to load its address instead.
-genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr _ (Single ident _))
-  = do
-      let record = lookupVarRecord varSymTable ident
-      let slot = varStackSlot record
-      let localPassBy = varPassBy record
-      case localPassBy of
-        Val -> instr $ LoadAddressInstr reg slot
-        Ref -> instr $ LoadInstr reg slot
+genCodeArgInto reg (AParam Ref _ _ _) (AScalarExpr (ASingle _ attrs))
+  = case (singlePassBy attrs) of
+      Val -> instr $ LoadAddressInstr reg (singleStackSlot attrs)
+      Ref -> instr $ LoadInstr reg (singleStackSlot attrs)
 
 -- For non-Single variables (Arrays/Matrices) they must already be values (Goat
 -- does not allow Array and Matrix variables to be passed by ref). Thus we just
 -- need to calculate the address and load it into the register.
-genCodeArgInto varSymTable reg (Param Ref _ _ _) (ScalarExpr _ scalar)
-  = genCodeOffsetAddrInto varSymTable reg scalar
+genCodeArgInto reg (AParam Ref _ _ _) (AScalarExpr scalar)
+  = genCodeOffsetAddrInto reg scalar
 
 
 -- genCodeOffsetAddrInto
 -- Given an Array or Matrix scalar, evaluate the one or two indices to determine
 -- the offset and load the address at this offset into the given register.
-genCodeOffsetAddrInto :: VarSymTable -> Reg -> Scalar -> CodeGen ()
-genCodeOffsetAddrInto varSymTable reg (Array ident exprI _)
+genCodeOffsetAddrInto :: Reg -> AScalar -> CodeGen ()
+genCodeOffsetAddrInto reg (AArray _ exprI attrs)
   = do
-      let record = lookupVarRecord varSymTable ident
-      -- calculate offset into next register
-      genCodeExprInto varSymTable reg exprI
+      -- calculate offset into a register
+      genCodeExprInto reg exprI
       -- put the start slot address in the next register
-      let startSlot = varStackSlot record
-      instr $ LoadAddressInstr (succ reg) startSlot
-      -- calculate address of indexed scalar
+      instr $ LoadAddressInstr (succ reg) (arrayStartSlot attrs)
+      -- calculate address of indexed scalar into target register
       instr $ SubOffsetInstr reg (succ reg) reg
 
-genCodeOffsetAddrInto varSymTable reg (Matrix ident exprI exprJ _)
+genCodeOffsetAddrInto reg (AMatrix _ exprI exprJ attrs)
   = do
-      let record = lookupVarRecord varSymTable ident
       -- start by calculating the offset into a register
       -- first, the column offset
-      let (Dim2 _ cols) = varShape record
-      instr $ IntConstInstr reg cols
-      genCodeExprInto varSymTable (succ reg) exprI
+      instr $ IntConstInstr reg (matrixNumCols attrs)
+      genCodeExprInto (succ reg) exprI
       instr $ MulIntInstr reg reg (succ reg)
       -- plus the row offset
-      genCodeExprInto varSymTable (succ reg) exprJ
+      genCodeExprInto (succ reg) exprJ
       instr $ AddIntInstr reg reg (succ reg)
       -- then, put the matrix's start slot address in the next register
-      let startSlot = varStackSlot record
-      instr $ LoadAddressInstr (succ reg) startSlot
-      -- calculate address of indexed scalar
+      instr $ LoadAddressInstr (succ reg) (matrixStartSlot attrs)
+      -- calculate address of indexed scalar into target register
       instr $ SubOffsetInstr reg (succ reg) reg
 
 
 -- genCodeExprInto register
--- Action to generate code that will get the result of an expression into this
--- register.
-genCodeExprInto :: VarSymTable -> Reg -> Expr -> CodeGen ()
+-- Action to generate code that will get the result of an expression into a
+-- target register. Will not touch registers below this target register.
+genCodeExprInto :: Reg -> AExpr -> CodeGen ()
 -- TODO: The following code assumes that the expression is well-typed. Semantic
 -- analysis will need to come in and actually provide that guarantee at some
 -- point.
 
 -- Base cases: float, int and bool constants:
 
-genCodeExprInto _ register (IntConst _ int)
-  = instr $ IntConstInstr register int
+genCodeExprInto reg (AIntConst int)
+  = instr $ IntConstInstr reg int
 
-genCodeExprInto _ register (FloatConst _ float)
-  = instr $ RealConstInstr register float
+genCodeExprInto reg (AFloatConst float)
+  = instr $ RealConstInstr reg float
 
 -- In Oz we represent True as the integer 1, and false as the integer 0
-genCodeExprInto _ register (BoolConst _ True)
-  = instr $ IntConstInstr register 1
-genCodeExprInto _ register (BoolConst _ False)
-  = instr $ IntConstInstr register 0
+genCodeExprInto reg (ABoolConst True)
+  = instr $ IntConstInstr reg 1
+genCodeExprInto reg (ABoolConst False)
+  = instr $ IntConstInstr reg 0
+
 
 
 -- Recursive cases: binary and unary operations involving nested expressions:
+genCodeExprInto reg (AUnExpr _ expr attrs)
+  = do
+      genCodeExprInto reg expr
+      instr $ (unExprInstr attrs) reg reg
 
--- First, treat the non-strict operations specially:
+-- Binary operations: First, treat the non-strict operations specially:
 
 -- 'And' will not actually use oz's 'and' instruction (which is strict).
 -- Instead, we'll:
@@ -419,52 +393,31 @@ genCodeExprInto _ register (BoolConst _ False)
 --    register.
 -- 4. Whatever the result, leave it in the target register (it's the result of
 --    the And operation).
-genCodeExprInto varSymTable register (BinExpr _ And l r)
+genCodeExprInto reg (ABinExpr And l r _)
   = do
       afterLabel <- getNewBlockLabel
-      genCodeExprInto varSymTable register l
-      instr $ BranchOnFalseInstr register afterLabel
-      genCodeExprInto varSymTable register r
+      genCodeExprInto reg l
+      instr $ BranchOnFalseInstr reg afterLabel
+      genCodeExprInto reg r
       label afterLabel
 
 -- Or is similar (but we skip the second operand when the first is True,
 -- rather than False):
-genCodeExprInto varSymTable register (BinExpr _ Or l r)
+genCodeExprInto reg (ABinExpr Or l r _)
   = do
       afterLabel <- getNewBlockLabel
-      genCodeExprInto varSymTable register l
-      instr $ BranchOnTrueInstr register afterLabel
-      genCodeExprInto varSymTable register r
+      genCodeExprInto reg l
+      instr $ BranchOnTrueInstr reg afterLabel
+      genCodeExprInto reg r
       label afterLabel
 
 -- All other expressions are strict, so we can safely load the operands into
 -- two registers then just perform the appropriate operation:
-genCodeExprInto varSymTable register (BinExpr _ op lExpr rExpr)
+genCodeExprInto reg (ABinExpr _ lExpr rExpr attrs)
   = do
-      genCodeExprInto varSymTable register lExpr
-      genCodeExprInto varSymTable (succ register) rExpr
-      genCodeBinOp register register (succ register) op lType rType
-  where
-    lType = getExprType varSymTable lExpr
-    rType = getExprType varSymTable rExpr
-
--- There are only two cases for unary operations:
--- Logical `Not`:
-genCodeExprInto varSymTable register (UnExpr _ Not expr)
-  = do
-      genCodeExprInto varSymTable register expr
-      instr $ NotInstr register register
-
--- And arithmetic `Neg` (which could be applied to either a real value or an
--- int value):
-genCodeExprInto varSymTable register (UnExpr _ Neg expr)
-  = do
-      genCodeExprInto varSymTable register expr
-      instr $ instruction register register
-  where
-    instruction = case getExprType varSymTable expr of
-      FloatType -> NegRealInstr
-      IntType -> NegIntInstr
+      genCodeExprInto reg lExpr
+      genCodeExprInto (succ reg) rExpr
+      instr $ (binExprInstr attrs) reg reg (succ reg)
 
 
 -- Scalar expressions:
@@ -472,16 +425,12 @@ genCodeExprInto varSymTable register (UnExpr _ Neg expr)
 -- For scalar expressions of Single variables we need to be careful about
 -- whether the stack slot holds a reference (for pass by reference variables)
 -- or a value (for pass by value variables and local variables).
-genCodeExprInto varSymTable reg (ScalarExpr _ (Single ident _))
-  = do
-      let record = lookupVarRecord varSymTable ident
-      let slot = varStackSlot record
-      let passBy = varPassBy record
-      case passBy of
-        Val -> instr $ LoadInstr reg slot
-        Ref -> do
-            instr $ LoadInstr reg slot
-            instr $ LoadIndirectInstr reg reg
+genCodeExprInto reg (AScalarExpr (ASingle _ attrs))
+  = case (singlePassBy attrs) of
+      Val -> instr $ LoadInstr reg (singleStackSlot attrs)
+      Ref -> do
+          instr $ LoadInstr reg (singleStackSlot attrs)
+          instr $ LoadIndirectInstr reg reg
 
 -- All non-Single variables (Arrays/Matrices) must already be values, but we
 -- will need to generate code for caulcating the scalar address offset from the
@@ -489,179 +438,9 @@ genCodeExprInto varSymTable reg (ScalarExpr _ (Single ident _))
 -- Luckily, for both Arrays an Matrices, the pattern of loading the value given
 -- the offset address is similar. See `genCodeOffsetAddrInto` for computing the
 -- offset address.
-genCodeExprInto varSymTable reg (ScalarExpr _ scalar)
+genCodeExprInto reg (AScalarExpr scalar)
   = do
       -- go and calculate the offset-address into the register
-      genCodeOffsetAddrInto varSymTable reg scalar
+      genCodeOffsetAddrInto reg scalar
       -- then load into the register the value stored at that address
       instr $ LoadIndirectInstr reg reg
-
-
--- genCodeBinOp
--- Action to generate code for an arbitrary binary operation from two registers
--- into a third destination register, given the known types of the values in the
--- two
-genCodeBinOp :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType -> CodeGen ()
-
--- If both
-genCodeBinOp destReg lReg rReg op IntType IntType
-  = instr $ (lookupOpInt op) destReg lReg rReg
-
-genCodeBinOp destReg lReg rReg op BoolType BoolType
-  = instr $ (lookupOpBool op) destReg lReg rReg
-
-genCodeBinOp destReg lReg rReg op FloatType FloatType
-  = instr $ (lookupOpReal op) destReg lReg rReg
-
--- Finally, maybe we have one int value and one real value:
-genCodeBinOp destReg lReg rReg op lType rType
-  = do
-      -- ensure both arguments are formatted as reals
-      realify lReg lType
-      realify rReg rType
-      instr $ (lookupOpIntOrReal op) destReg lReg rReg
-
--- realify
--- Action to generate code to cast an integer value to a real, if necessary
--- (this is a noop if the BaseType is FloatType).
-realify :: Reg -> BaseType -> CodeGen ()
-realify _ FloatType
-  = return ()
-realify register IntType
-  = instr $ IntToRealInstr register register
--- TODO (semantic analysis):
--- Annotate the AST with additional 'float cast' nodes to avoid the need for
--- this case. E.g. an annotated AST requiring a cast, such as for the
--- expression `4 + 0.2`, could look like this:
--- ```
--- Add FloatType
---   (FloatCast (IntConst 4))
---   (FloatConst 0.2)
--- ```
---
--- Then all we'd need would be:
---
--- ```
--- genCodeExprInto register (FloatCase expr)
---   = do
---       genCodeExprInto register expr
---       instr $ IntToRealInstr register register
--- ```
-
-
--- Look up the appropriate Oz Instruction for two real arguments:
--- (arithmetic and comparisons are allowed)
-lookupOpReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
-lookupOpReal Add
-  = AddRealInstr
-lookupOpReal Sub
-  = SubRealInstr
-lookupOpReal Mul
-  = MulRealInstr
-lookupOpReal Div
-  = DivRealInstr
-lookupOpReal Equ
-  = EquRealInstr
-lookupOpReal NEq
-  = NEqRealInstr
-lookupOpReal LTh
-  = LThRealInstr
-lookupOpReal LEq
-  = LEqRealInstr
-lookupOpReal GTh
-  = GThRealInstr
-lookupOpReal GEq
-  = GEqRealInstr
-
--- Look up the appropriate Oz Instruction for an int and a real argument
--- (NOTE: Equ and NEq are not allowed!)
-lookupOpIntOrReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
-lookupOpIntOrReal Add
-  = AddRealInstr
-lookupOpIntOrReal Sub
-  = SubRealInstr
-lookupOpIntOrReal Mul
-  = MulRealInstr
-lookupOpIntOrReal Div
-  = DivRealInstr
-lookupOpIntOrReal LTh
-  = LThRealInstr
-lookupOpIntOrReal LEq
-  = LEqRealInstr
-lookupOpIntOrReal GTh
-  = GThRealInstr
-lookupOpIntOrReal GEq
-  = GEqRealInstr
-
--- Look up the appropriate Oz Instruction for two int arguments (arithmetic
--- and comparisons are allowed)
-lookupOpInt :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
-lookupOpInt Add
-  = AddIntInstr
-lookupOpInt Sub
-  = SubIntInstr
-lookupOpInt Mul
-  = MulIntInstr
-lookupOpInt Div
-  = DivIntInstr
-lookupOpInt Equ
-  = EquIntInstr
-lookupOpInt NEq
-  = NEqIntInstr
-lookupOpInt LTh
-  = LThIntInstr
-lookupOpInt LEq
-  = LEqIntInstr
-lookupOpInt GTh
-  = GThIntInstr
-lookupOpInt GEq
-  = GEqIntInstr
-
--- Look up the appropriate value for two boolean arguments (only comparisons
--- are allowed)
-lookupOpBool :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
-lookupOpBool Equ
-  = EquIntInstr
-lookupOpBool NEq
-  = NEqIntInstr
-lookupOpBool LTh
-  = LThIntInstr
-lookupOpBool LEq
-  = LEqIntInstr
-lookupOpBool GTh
-  = GThIntInstr
-lookupOpBool GEq
-  = GEqIntInstr
-
--- Recursively (re-)compute the type of
--- TODO: Of course, we will want to change from using a recursive function to
--- calculate expression types to precomputing these types during semantic
--- analysis and embedding them within the Expression AST nodes themselves.
-getExprType :: VarSymTable -> Expr -> BaseType
-getExprType _ (BoolConst _ _)
-  = BoolType
-getExprType _ (FloatConst _ _)
-  = FloatType
-getExprType _ (IntConst _ _)
-  = IntType
-getExprType varSymTable (BinExpr _ operator left right)
-  | arithmetic operator = case types of
-      (IntType, IntType) -> IntType
-      otherwise -> FloatType
-  | otherwise = BoolType
-  where
-    arithmetic = (`elem` [Add, Sub, Mul, Div])
-    types = (getExprType varSymTable left, getExprType varSymTable right)
-
-getExprType varSymTable (UnExpr _ operator operand)
-  = getExprType varSymTable operand
-getExprType varSymTable (ScalarExpr _ scalar)
-  = getScalarType varSymTable scalar
-
-getScalarType :: VarSymTable -> Scalar -> BaseType
-getScalarType varSymTable (Single ident _)
-  = varType $ lookupVarRecord varSymTable ident
-getScalarType varSymTable (Array ident iExpr _)
-  = varType $ lookupVarRecord varSymTable ident
-getScalarType varSymTable (Matrix ident iExpr jExpr _)
-  = varType $ lookupVarRecord varSymTable ident
