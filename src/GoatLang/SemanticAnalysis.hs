@@ -1,12 +1,103 @@
 module GoatLang.SemanticAnalysis
 where
 
+import Control.Monad.State
+
+import Util.DiffList
+
 import GoatLang.AST
 import GoatLang.AAST
 
+-- TODO:
 -- import GoatLang.Syntax.AST
+-- import GoatLang.Syntax.Parser
+-- import GoatLang.Syntax.Printer
+-- import GoatLang.Syntax.Tokens
 -- import GoatLang.Semantics.AAST
 -- import GoatLang.Semantics.Errors
+-- import GoatLang.Semantics.Static
+-- import GoatLang.Semantics.Dynamic
+-- import GoatLang.Semantics.CodeGen
+-- import OzLang.Code -- Slots, Reg Instr
+-- import OzLang.Print -- writing Oz programs
+
+
+
+
+
+-- We'll use a state monad to simplify construction of Oz programs
+type SemanticAnalysis a
+  = State SemanticAnalysisState a
+
+data SemanticAnalysisState
+  = SemanticAnalysisState { procSymTableStack :: [ProcSymTable]
+                          , varSymTableStack :: [VarSymTable]
+                          , semanticErrors :: DiffList SemanticError
+                          }
+
+data SemanticError
+  = SemanticError Pos String
+  = GlobalError String
+
+semanticError :: SemanticError -> SemanticAnalysis
+semanticError error
+  = do
+      state <- get
+      put $ state {errors = errors `snoc` error}
+
+
+
+
+
+-- analyse
+analyse :: GoatProgram -> Either [SemanticError] AGoatProgram
+analyse goatProgram
+  = if null errors then annotatedGoatProgram else errors
+  where
+    startState = SemanticAnalysisState { procSymTableStack = []
+                                       , varSymTableStack = []
+                                       , semanticErrors = mempty
+                                       }
+    
+    -- run the analysis monad an extract any errors
+    (aGoatProgram, endState) = runState (aGoatProgram goatProgram) startState
+    errors = semanticErrors endState
+
+
+aGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
+aGoatProgram (GoatProgram procs)
+  = do
+      -- assertMainProc procs
+      -- assertNoDupNames [ident | (Proc _ ident _ _ _) <- procs]
+      pushProcSymTable (constructProcSymTable procs)
+      aProcs <- mapM aProc procs
+      popProcSymTable
+      return $ AGoatProgram aProc
+
+-- assertMainProc :: SemanticAnalysis ()
+-- assertMainProc
+  -- = do
+      -- lookupProc "main"
+      case result of
+        Just _ -> return ()
+        Nothing -> semanticError $ GlobalError "missing main procedure"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 getExprType :: VarSymTable -> Expr -> BaseType
