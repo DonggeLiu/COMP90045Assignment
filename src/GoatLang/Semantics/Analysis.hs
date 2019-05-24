@@ -17,7 +17,7 @@ module GoatLang.Semantics.Analysis where
 
 import Data.List (sort, group)
 
-import GoatLang.AST
+import GoatLang.Syntax.AST
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
 import GoatLang.Semantics.SymbolTable
@@ -27,24 +27,8 @@ import OzLang.Code
 
 -- Summary of TODO items from throughout file:
 --
--- When we do semantic analysis:
---
--- - genCodeExprInto assumes that all expressions are completely well-types
---   Semantic analysis will need to come in and actually provide that guarantee.
---
--- - Of course, we will want to change from using a recursive function to
---   calculate expression types to precomputing these types during semantic
---   analysis and embedding them within the Expression AST nodes themselves.
---
--- - Idea: Annotate the AST with additional 'float cast' nodes to avoid having
---   a separate case for every operation when the arguments might be an int and
---   a float. E.g. an annotated AST requiring a cast, such as for the expression
---   `4 + 0.2`, could look as follows:
---   ```
---   Add FloatType
---     (FloatCast (IntConst 4))
---     (FloatConst 0.2)
---   ```
+-- TODO:
+-- 
 
 -- analyseFullProgram
 -- Top level function: use the analysers defined below to convert a Goat Program
@@ -69,6 +53,7 @@ aGoatProgram (GoatProgram procs)
       aProcs <- mapM aProc procs
       popProcSymTable
       return $ AGoatProgram aProcs
+
 
 -- TODO: Sticking to the plan, do error checking later.
 -- 
@@ -124,6 +109,7 @@ aParam (Param pos passBy baseType ident@(Id _ name))
       let attrs = ParamAttr { paramStackSlot = stackSlot }
       return $ AParam passBy baseType ident attrs
 
+
 aDecl :: Decl -> SemanticAnalysis ADecl
 aDecl (Decl pos baseType ident@(Id _ name) dim)
   = do
@@ -133,18 +119,22 @@ aDecl (Decl pos baseType ident@(Id _ name) dim)
       let attrs = DeclAttr { declStackSlots = allSlots }
       return $ ADecl baseType ident dim attrs
 
+
 aStmt :: Stmt -> SemanticAnalysis AStmt
 aStmt (Asg pos scalar expr)
   = do
-      -- TODO: Type checking
       aScalar' <- aScalar scalar
       aExpr' <- aExpr expr
-      return $ AAsg aScalar' aExpr'
+      aExpr'' <- case (getScalarType aScalar', getExprType aExpr') of
+        (IntType, IntType) -> return aExpr'
+        (BoolType, BoolType) -> return aExpr'
+        (FloatType, IntType) -> return $ AFloatCast aExpr'
+        (FloatType, FloatType) -> return aExpr'
+      return $ AAsg aScalar' aExpr''
 
 aStmt (Read pos scalar)
   = do
       aScalar' <- aScalar scalar
-      -- TODO: must be declared
       let (Id _ name) = scalarIdent scalar
       Just record <- lookupVar name
       let builtin = lookupReadBuiltin (varType record)
@@ -168,6 +158,7 @@ aStmt (Call pos ident@(Id _ name) args)
       Just record <- lookupProc name
       -- TODO: Check arity matches up
       -- TODO: Check types of arguments match params
+      -- TODO: in the case of pass by value, introduce float casts if necessary!
       -- TODO: Check only scalars in reference param positions.
       let passBys = [ passBy | (Param _ passBy _ _) <- procParams record ]
       let attrs = CallAttr { callPassBys = passBys }
@@ -263,8 +254,6 @@ aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
                              , matrixBaseType = varType record
                              }
       return $ AMatrix ident aExprI aExprJ attrs
-
-
 
 
 getExprType :: AExpr -> BaseType

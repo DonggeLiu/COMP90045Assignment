@@ -1,4 +1,4 @@
-module GoatLang.Parser where
+module GoatLang.Syntax.Parser where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -18,8 +18,8 @@ module GoatLang.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
-import GoatLang.AST
-import GoatLang.Token
+import GoatLang.Syntax.AST
+import GoatLang.Syntax.Tokens
 
 -- ----------------------------------------------------------------------------
 -- Program parsing

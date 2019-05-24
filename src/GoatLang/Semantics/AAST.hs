@@ -15,7 +15,7 @@ module GoatLang.Semantics.AAST where
 --
 -- ----------------------------------------------------------------------------
 
-import GoatLang.AST
+import GoatLang.Syntax.AST
 import OzLang.Code
 
 data AGoatProgram

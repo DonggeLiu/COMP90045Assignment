@@ -1,4 +1,4 @@
-module GoatLang.PrettyPrint where
+module GoatLang.Syntax.Printer where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -28,13 +28,10 @@ import Util.CodeWriter
 -- You can think of it as kind of like an opposite of Parsec---Complete
 -- with some helpful code writers and code writer combinators defined for
 -- us by Util.CodeWriter.
-
-import GoatLang.AST
-
-
 --
 -- Okay, let's get to it!                              (∩ᄑ_ᄑ)⊃━･`ﾟ*･｡*･☆
 
+import GoatLang.Syntax.AST
 
 
 -- ----------------------------------------------------------------------------

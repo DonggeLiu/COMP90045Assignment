@@ -17,8 +17,8 @@ module GoatLang.Semantics.CodeGen where
 
 import Control.Monad (mapM_, when)
 
-import GoatLang.AST
--- import GoatLang.PrettyPrint
+import GoatLang.Syntax.AST
+-- import GoatLang.Printer
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.CodeGenMonad
 import OzLang.Code

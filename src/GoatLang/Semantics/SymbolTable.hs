@@ -17,7 +17,7 @@ module GoatLang.Semantics.SymbolTable where
 
 import Data.Map.Strict (Map, fromList, size, (!?), elems)
 
-import GoatLang.AST
+import GoatLang.Syntax.AST
 
 import OzLang.Code
 

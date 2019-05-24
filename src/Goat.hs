@@ -20,20 +20,17 @@ import System.Environment
 import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
-
 import Text.Parsec
 import Text.Parsec.Error
 
 import Util.ColourParTTY
 import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
 
-
-import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (printGoatProgramColoured)
+import GoatLang.Syntax.Parser (parseProgram)
+import GoatLang.Syntax.Printer (printGoatProgramColoured)
 import GoatLang.Semantics.CodeGen (genCodeFullProgram)
 import GoatLang.Semantics.Analysis (analyseFullProgram)
 import GoatLang.Semantics.Error (SemanticError)
-
 import OzLang.Print (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------

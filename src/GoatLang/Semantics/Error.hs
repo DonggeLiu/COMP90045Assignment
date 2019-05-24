@@ -15,7 +15,7 @@ module GoatLang.Semantics.Error where
 --
 -- ----------------------------------------------------------------------------
 
-import GoatLang.AST (Pos)
+import GoatLang.Syntax.AST (Pos)
 
 data SemanticError
   = SemanticError Pos String

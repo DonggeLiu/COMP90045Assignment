@@ -1,4 +1,4 @@
-module GoatLang.Token where
+module GoatLang.Syntax.Tokens where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
