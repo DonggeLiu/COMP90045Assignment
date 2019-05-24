@@ -35,22 +35,22 @@ import OzLang.Code
 -- (an AST) into an annotated Goat Program (an AAST).
 analyseFullProgram :: GoatProgram -> Either [SemanticError] AGoatProgram
 analyseFullProgram goatProgram
-  = analyse (aGoatProgram goatProgram)
+  = analyse (analyseGoatProgram goatProgram)
 
 
 -- ----------------------------------------------------------------------------
 -- Static analysers for various program parts
 -- ----------------------------------------------------------------------------
 
-aGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
-aGoatProgram (GoatProgram procs)
+analyseGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
+analyseGoatProgram (GoatProgram procs)
   = do
       -- assertNoDupNames [ident | (Proc _ ident _ _ _) <- procs]
       -- TODO: Maybe we could construct the symbol table monadicaly in an
       -- initial pass for easier error detection and reporting.
       pushProcSymTable (constructProcSymTable procs)
       -- assertMainProc procs -- one procedure should be called main (arity 0)
-      aProcs <- mapM aProc procs
+      aProcs <- mapM analyseProc procs
       popProcSymTable
       return $ AGoatProgram aProcs
 
@@ -81,8 +81,8 @@ aGoatProgram (GoatProgram procs)
 --           else semanticError $ GlobalError "main must not take arguments"
 --         Nothing -> semanticError $ GlobalError "missing main procedure"
 
-aProc :: Proc -> SemanticAnalysis AProc
-aProc (Proc pos ident params decls stmts)
+analyseProc :: Proc -> SemanticAnalysis AProc
+analyseProc (Proc pos ident params decls stmts)
   = do
       -- compute the procedure's main attribute: required frame size
       let varSymTable = constructVarSymTable params decls
@@ -90,17 +90,17 @@ aProc (Proc pos ident params decls stmts)
       
       -- set the environment and analyse the procedure's components
       pushVarSymTable varSymTable
-      aParams <- mapM aParam params
-      aDecls <- mapM aDecl decls
-      aStmts <- mapM aStmt stmts
+      aParams <- mapM analyseParam params
+      aDecls <- mapM analyseDecl decls
+      aStmts <- mapM analyseStmt stmts
       popVarSymTable
 
       -- done!
       return $ AProc ident aParams aDecls aStmts attrs
 
 
-aParam :: Param -> SemanticAnalysis AParam
-aParam (Param pos passBy baseType ident@(Id _ name))
+analyseParam :: Param -> SemanticAnalysis AParam
+analyseParam (Param pos passBy baseType ident@(Id _ name))
   = do
       -- TODO: Switch back to lookup by Id?
       -- TODO: Make sure this is actually in the table of course...
@@ -110,8 +110,8 @@ aParam (Param pos passBy baseType ident@(Id _ name))
       return $ AParam passBy baseType ident attrs
 
 
-aDecl :: Decl -> SemanticAnalysis ADecl
-aDecl (Decl pos baseType ident@(Id _ name) dim)
+analyseDecl :: Decl -> SemanticAnalysis ADecl
+analyseDecl (Decl pos baseType ident@(Id _ name) dim)
   = do
       Just varRecord <- lookupVar name
       let startSlot = varStackSlot varRecord
@@ -120,40 +120,42 @@ aDecl (Decl pos baseType ident@(Id _ name) dim)
       return $ ADecl baseType ident dim attrs
 
 
-aStmt :: Stmt -> SemanticAnalysis AStmt
-aStmt (Asg pos scalar expr)
+analyseStmt :: Stmt -> SemanticAnalysis AStmt
+analyseStmt (Asg pos scalar expr)
   = do
-      aScalar' <- aScalar scalar
-      aExpr' <- aExpr expr
-      aExpr'' <- case (getScalarType aScalar', getExprType aExpr') of
-        (IntType, IntType) -> return aExpr'
-        (BoolType, BoolType) -> return aExpr'
-        (FloatType, IntType) -> return $ AFloatCast aExpr'
-        (FloatType, FloatType) -> return aExpr'
-      return $ AAsg aScalar' aExpr''
+      aScalar <- analyseScalar scalar
+      aExpr <- analyseExpr expr
+      -- we may need to add a cast to the expression in case of float := int
+      -- TODO: otherwise we could perform some type checking here.
+      aExpr' <- case (scalarType aScalar, exprType aExpr) of
+        (IntType, IntType) -> return aExpr
+        (BoolType, BoolType) -> return aExpr
+        (FloatType, IntType) -> return $ AFloatCast aExpr
+        (FloatType, FloatType) -> return aExpr
+      return $ AAsg aScalar aExpr'
 
-aStmt (Read pos scalar)
+analyseStmt (Read pos scalar)
   = do
-      aScalar' <- aScalar scalar
+      aScalar <- analyseScalar scalar
       let (Id _ name) = scalarIdent scalar
       Just record <- lookupVar name
       let builtin = lookupReadBuiltin (varType record)
       let attrs = ReadAttr { readBuiltin = builtin }
-      return $ ARead aScalar' attrs
+      return $ ARead aScalar attrs
 
-aStmt (WriteExpr pos expr)
+analyseStmt (WriteExpr pos expr)
   = do
-      aExpr' <- aExpr expr
-      let builtin = lookupPrintBuiltin (getExprType aExpr')
+      aExpr <- analyseExpr expr
+      let builtin = lookupPrintBuiltin (exprType aExpr)
       let attrs = WriteExprAttr { writeExprBuiltin = builtin }
-      return $ AWriteExpr aExpr' attrs
+      return $ AWriteExpr aExpr attrs
 
-aStmt (WriteString pos string)
+analyseStmt (WriteString pos string)
   = return $ AWriteString string
 
-aStmt (Call pos ident@(Id _ name) args)
+analyseStmt (Call pos ident@(Id _ name) args)
   = do
-      aArgs <- mapM aExpr args
+      aArgs <- mapM analyseExpr args
       -- TODO: Check that procedure is defined
       Just record <- lookupProc name
       -- TODO: Check arity matches up
@@ -164,65 +166,67 @@ aStmt (Call pos ident@(Id _ name) args)
       let attrs = CallAttr { callPassBys = passBys }
       return $ ACall ident aArgs attrs
 
-aStmt (If pos cond thenStmts)
+analyseStmt (If pos cond thenStmts)
   = do
-      aCond <- aExpr cond
+      aCond <- analyseExpr cond
       -- TODO: check boolean
-      aThenStmts <- mapM aStmt thenStmts
+      aThenStmts <- mapM analyseStmt thenStmts
       return $ AIf aCond aThenStmts
 
-aStmt (IfElse pos cond thenStmts elseStmts)
+analyseStmt (IfElse pos cond thenStmts elseStmts)
   = do
-      aCond <- aExpr cond
+      aCond <- analyseExpr cond
       -- TODO: check boolean
-      aThenStmts <- mapM aStmt thenStmts
-      aElseStmts <- mapM aStmt elseStmts
+      aThenStmts <- mapM analyseStmt thenStmts
+      aElseStmts <- mapM analyseStmt elseStmts
       return $ AIfElse aCond aThenStmts aElseStmts
 
-aStmt (While pos cond doStmts)
+analyseStmt (While pos cond doStmts)
   = do
-      aCond <- aExpr cond
+      aCond <- analyseExpr cond
       -- TODO: check boolean
-      aDoStmts <- mapM aStmt doStmts
+      aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
 
 
 
-aExpr :: Expr -> SemanticAnalysis AExpr
+analyseExpr :: Expr -> SemanticAnalysis AExpr
 
-aExpr (ScalarExpr pos scalar)
-  = fmap AScalarExpr (aScalar scalar)
+analyseExpr (ScalarExpr pos scalar)
+  = fmap AScalarExpr (analyseScalar scalar)
 
-aExpr (BoolConst pos bool)
+analyseExpr (BoolConst pos bool)
   = return $ ABoolConst bool
 
-aExpr (FloatConst pos float)
+analyseExpr (FloatConst pos float)
   = return $ AFloatConst float
 
-aExpr (IntConst pos int)
+analyseExpr (IntConst pos int)
   = return $ AIntConst int
 
 -- unary negation (must be bool) or negative (must be non-bool)
-aExpr (UnExpr pos op expr)
+analyseExpr (UnExpr pos op expr)
   = do
-      aExpr' <- aExpr expr
-      let (instr, resultType) = lookupUnInstr op (getExprType aExpr')
+      aExpr <- analyseExpr expr
+      let (instr, resultType) = lookupUnInstr op (exprType aExpr)
       let attrs = UnExprAttr { unExprInstr = instr
                              , unExprResultType = resultType
                              }
-      return $ AUnExpr op aExpr' attrs
+      return $ AUnExpr op aExpr attrs
 
-aExpr (BinExpr pos op lExpr rExpr)
+analyseExpr (BinExpr pos op lExpr rExpr)
   = do
-      aLExpr <- aExpr lExpr
-      aRExpr <- aExpr rExpr
+      aLExpr <- analyseExpr lExpr
+      aRExpr <- analyseExpr rExpr
       let (instr, aLExpr', aRExpr', resType) = lookupBinInstr op aLExpr aRExpr
       let attrs = BinExprAttr { binExprInstr = instr
                               , binExprResultType = resType
                               }
       return $ ABinExpr op aLExpr' aRExpr' attrs
 
-aScalar (Single pos ident@(Id _ name))
+
+analyseScalar :: Scalar -> SemanticAnalysis AScalar
+analyseScalar (Single pos ident@(Id _ name))
   = do
       Just record <- lookupVar name
       -- TODO: assert variable exists, correct shape (single), etc.
@@ -231,21 +235,21 @@ aScalar (Single pos ident@(Id _ name))
                              , singleBaseType = varType record
                              }
       return $ ASingle ident attrs
-aScalar (Array pos ident@(Id _ name) exprI)
+analyseScalar (Array pos ident@(Id _ name) exprI)
   = do
       -- TODO: assert index is int type
-      aExprI <- aExpr exprI
+      aExprI <- analyseExpr exprI
       Just record <- lookupVar name
       -- TODO: assert variable exists, correct shape (array), etc.
       let attrs = ArrayAttr { arrayStartSlot = varStackSlot record
                             , arrayBaseType = varType record
                             }
       return $ AArray ident aExprI attrs
-aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
+analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
   = do
       -- TODO: assert indices are both int type
-      aExprI <- aExpr exprI
-      aExprJ <- aExpr exprJ
+      aExprI <- analyseExpr exprI
+      aExprJ <- analyseExpr exprJ
       Just record <- lookupVar name
       -- TODO: assert variable exists, correct shape (matrix), etc.
       let (Dim2 _ rowWidth) = varShape record
@@ -255,33 +259,41 @@ aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
                              }
       return $ AMatrix ident aExprI aExprJ attrs
 
-
-getExprType :: AExpr -> BaseType
-getExprType (AScalarExpr scalar)
-  = getScalarType scalar
-getExprType (ABoolConst _)
+-- exprType
+-- Infer the result type of an annotated expression. Not recursive, because we
+-- already annotated each expression with enough information to know its result
+-- type! Woo!
+exprType :: AExpr -> BaseType
+exprType (AScalarExpr scalar)
+  = scalarType scalar
+exprType (ABoolConst _)
   = BoolType
-getExprType (AFloatConst _)
+exprType (AFloatConst _)
   = FloatType
-getExprType (AIntConst _)
+exprType (AIntConst _)
   = IntType
-getExprType (ABinExpr op lExpr rExpr attrs)
+exprType (ABinExpr op lExpr rExpr attrs)
   = binExprResultType attrs
-getExprType (AUnExpr op expr attrs)
+exprType (AUnExpr op expr attrs)
   = unExprResultType attrs
-getExprType (AFloatCast expr)
+exprType (AFloatCast expr)
   = FloatType
 
-getScalarType :: AScalar -> BaseType
-getScalarType (ASingle _ attrs)
+-- scalarType
+-- Infer the base type of an annotated scalar reference. It doesn't involve the
+-- symbol table because we have already annotated each scalar with its base
+-- type! Woo hoo!
+scalarType :: AScalar -> BaseType
+scalarType (ASingle _ attrs)
   = singleBaseType attrs
-getScalarType (AArray _ _ attrs)
+scalarType (AArray _ _ attrs)
   = arrayBaseType attrs
-getScalarType (AMatrix _ _ _ attrs)
+scalarType (AMatrix _ _ _ attrs)
   = matrixBaseType attrs
 
 
-
+-- lookupReadBuiltin
+-- Given a target type, what Oz builtin function should we use to Read one?
 lookupReadBuiltin :: BaseType -> BuiltinFunc
 lookupReadBuiltin BoolType
   = ReadBool
@@ -290,6 +302,8 @@ lookupReadBuiltin IntType
 lookupReadBuiltin FloatType
   = ReadReal
 
+-- lookupPrintBuiltin
+-- Given a value type, what Oz builtin function should we use to Print one?
 lookupPrintBuiltin :: BaseType -> BuiltinFunc
 lookupPrintBuiltin BoolType
   = PrintBool
@@ -299,12 +313,22 @@ lookupPrintBuiltin FloatType
   = PrintReal
 
 
-
+-- Shortcuts for certain Oz instruction names which are really data constructor
+-- functions requiring registers to be supplied before they become actual
+-- instructions.
+-- Instructions for unary operations (neg_int, neg_real, not) require two
+-- registers: a target and a source.
 type UnInstruction
   = Reg -> Reg -> Instruction
+-- Instructions for unary operations (add_int, add_real, etc.) require three
+-- registers: a target and two soruces (one for each operand).
 type BinInstruction
   = Reg -> Reg -> Reg -> Instruction
 
+-- lookupUnInstr
+-- This is a lookup table to find the instructions corresponding to a particular
+-- unary operation and argument type. It returns the instruction constructor and
+-- also the BaseType representing the result of the instruction.
 lookupUnInstr :: UnOp -> BaseType -> (UnInstruction, BaseType)
 lookupUnInstr Not BoolType
   = (NotInstr, BoolType)
@@ -312,16 +336,25 @@ lookupUnInstr Neg IntType
   = (NegIntInstr, IntType)
 lookupUnInstr Neg FloatType
   = (NegRealInstr, FloatType)
--- TODO: consider other (erroneous) types
+-- TODO: consider other (erroneous) types. They should return some kind of error
+-- here (BEFORE runtime haha)
 
+-- lookupBinInstr
+-- This is a lookup table to find the instructions corresponding to a particular
+-- binary operation and argument types. It returns the instruction constructor
+-- and also the BaseType representing the result of the instruction. Since the
+-- operation may require adding a cast to either input expression (such as for
+-- `1 + 1.0` which should become `float(1) + 1.0`) we also return alternative
+-- argument expressions (these will be the same as the input expressions, or
+-- they will be the expression wrapped in an extra cast).
 lookupBinInstr :: BinOp -> AExpr -> AExpr
                   -> (BinInstruction, AExpr, AExpr, BaseType)
 lookupBinInstr op lExpr rExpr
   = (instr, lExpr', rExpr', resultType)
   where
     -- find the types of both operands
-    lType = getExprType lExpr
-    rType = getExprType rExpr
+    lType = exprType lExpr
+    rType = exprType rExpr
 
     -- look up the approprate instruction for this combination of types
     (instr, lExpr', rExpr') = case (lType, rType) of
@@ -345,6 +378,7 @@ lookupBinInstr op lExpr rExpr
       | otherwise = BoolType
     arithmetic = (`elem` [Add, Sub, Mul, Div])
 
+-- lookupOpIntOrReal
 -- Look up the appropriate Oz Instruction for an int and a real argument
 -- (NOTE: Equ and NEq are not allowed!)
 lookupOpIntOrReal :: BinOp -> BinInstruction
@@ -365,6 +399,7 @@ lookupOpIntOrReal GTh
 lookupOpIntOrReal GEq
   = GEqRealInstr
 
+-- lookupOpInt
 -- Look up the appropriate Oz Instruction for two int arguments (arithmetic
 -- and comparisons are allowed)
 lookupOpInt :: BinOp -> BinInstruction
@@ -389,22 +424,7 @@ lookupOpInt GTh
 lookupOpInt GEq
   = GEqIntInstr
 
--- Look up the appropriate value for two boolean arguments (only comparisons
--- are allowed)
-lookupOpBool :: BinOp -> BinInstruction
-lookupOpBool Equ
-  = EquIntInstr
-lookupOpBool NEq
-  = NEqIntInstr
-lookupOpBool LTh
-  = LThIntInstr
-lookupOpBool LEq
-  = LEqIntInstr
-lookupOpBool GTh
-  = GThIntInstr
-lookupOpBool GEq
-  = GEqIntInstr
-
+-- lookupOpReal
 -- Look up the appropriate Oz Instruction for two real arguments:
 -- (arithmetic and comparisons are allowed)
 lookupOpReal :: BinOp -> BinInstruction
@@ -428,3 +448,27 @@ lookupOpReal GTh
   = GThRealInstr
 lookupOpReal GEq
   = GEqRealInstr
+
+-- lookupOpBool
+-- Look up the appropriate value for two boolean arguments (only comparisons
+-- and logical relations are allowed)
+-- Logical operations will actually be skipped at runtime for specific code
+-- that creates short-circuit evaluation. For now, we use dummy instructions
+-- `AndInstr` and `OrInstr` so that these expressions can still be annotated.
+lookupOpBool :: BinOp -> BinInstruction
+lookupOpBool Equ
+  = EquIntInstr
+lookupOpBool NEq
+  = NEqIntInstr
+lookupOpBool LTh
+  = LThIntInstr
+lookupOpBool LEq
+  = LEqIntInstr
+lookupOpBool GTh
+  = GThIntInstr
+lookupOpBool GEq
+  = GEqIntInstr
+lookupOpBool And
+  = AndInstr
+lookupOpBool Or
+  = OrInstr
