@@ -60,12 +60,16 @@ data AScalar
 data SingleAttr
   = SingleAttr { singlePassBy :: PassBy
                , singleStackSlot :: Slot
+               , singleBaseType :: BaseType
                }
 data ArrayAttr
-  = ArrayAttr { arrayStartSlot :: Slot }
+  = ArrayAttr { arrayStartSlot :: Slot
+              , arrayBaseType :: BaseType
+              }
 data MatrixAttr
   = MatrixAttr { matrixStartSlot :: Slot 
                , matrixRowWidth :: Int
+               , matrixBaseType :: BaseType
                }
 
 data AExpr

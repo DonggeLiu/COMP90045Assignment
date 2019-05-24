@@ -243,6 +243,7 @@ aScalar (Single pos ident@(Id _ name))
       -- TODO: assert variable exists, correct shape (single), etc.
       let attrs = SingleAttr { singlePassBy = varPassBy record
                              , singleStackSlot = varStackSlot record
+                             , singleBaseType = varType record
                              }
       return $ ASingle ident attrs
 aScalar (Array pos ident@(Id _ name) exprI)
@@ -251,7 +252,9 @@ aScalar (Array pos ident@(Id _ name) exprI)
       aExprI <- aExpr exprI
       Just record <- lookupVar name
       -- TODO: assert variable exists, correct shape (array), etc.
-      let attrs = ArrayAttr { arrayStartSlot = varStackSlot record }
+      let attrs = ArrayAttr { arrayStartSlot = varStackSlot record
+                            , arrayBaseType = varType record
+                            }
       return $ AArray ident aExprI attrs
 aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
   = do
@@ -263,6 +266,7 @@ aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
       let (Dim2 _ rowWidth) = varShape record
       let attrs = MatrixAttr { matrixStartSlot = varStackSlot record
                              , matrixRowWidth = rowWidth
+                             , matrixBaseType = varType record
                              }
       return $ AMatrix ident aExprI aExprJ attrs
 
@@ -270,7 +274,7 @@ aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
 
 getExprType :: AExpr -> BaseType
 getExprType (AScalarExpr scalar)
-  = error "not yet implemented" -- TODO
+  = getScalarType scalar
 getExprType (ABoolConst _)
   = BoolType
 getExprType (AFloatConst _)
@@ -284,35 +288,13 @@ getExprType (AUnExpr op expr attrs)
 getExprType (AFloatCast expr)
   = FloatType
 
-
--- getExprType :: VarSymTable -> Expr -> BaseType
--- getExprType _ (BoolConst _ _)
---   = BoolType
--- getExprType _ (FloatConst _ _)
---   = FloatType
--- getExprType _ (IntConst _ _)
---   = IntType
--- getExprType varSymTable (BinExpr _ operator left right)
---   | arithmetic operator = case types of
---       (IntType, IntType) -> IntType
---       otherwise -> FloatType
---   | otherwise = BoolType
---   where
---     arithmetic = (`elem` [Add, Sub, Mul, Div])
---     types = (getExprType varSymTable left, getExprType varSymTable right)
-
--- getExprType varSymTable (UnExpr _ operator operand)
---   = getExprType varSymTable operand
--- getExprType varSymTable (ScalarExpr _ scalar)
---   = getScalarType varSymTable scalar
-
--- getScalarType :: VarSymTable -> Scalar -> BaseType
--- getScalarType varSymTable (Single ident _)
---   = varType $ lookupVarRecord varSymTable ident
--- getScalarType varSymTable (Array ident iExpr _)
---   = varType $ lookupVarRecord varSymTable ident
--- getScalarType varSymTable (Matrix ident iExpr jExpr _)
---   = varType $ lookupVarRecord varSymTable ident
+getScalarType :: AScalar -> BaseType
+getScalarType (ASingle _ attrs)
+  = singleBaseType attrs
+getScalarType (AArray _ _ attrs)
+  = arrayBaseType attrs
+getScalarType (AMatrix _ _ _ attrs)
+  = matrixBaseType attrs
 
 
 
