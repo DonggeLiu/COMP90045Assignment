@@ -22,7 +22,7 @@ import GoatLang.AST
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.CodeGenMonad
 -- import GoatLang.Semantics.SymbolTable
-import GoatLang.OzCode
+import OzLang.Code
 
 
 -- Summary of TODO items from throughout file:

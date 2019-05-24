@@ -33,7 +33,8 @@ import GoatLang.PrettyPrint (printGoatProgramColoured)
 import GoatLang.Semantics.CodeGen (genCodeFullProgram)
 import GoatLang.Semantics.Analysis (analyseFullProgram)
 import GoatLang.Semantics.Error (SemanticError)
-import GoatLang.OzCode (printOzProgramColoured)
+
+import OzLang.Print (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point

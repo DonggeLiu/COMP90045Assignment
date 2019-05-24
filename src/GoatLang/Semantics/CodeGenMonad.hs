@@ -20,7 +20,7 @@ import Control.Monad.State
 import Util.DiffList
 
 import GoatLang.AST
-import GoatLang.OzCode
+import OzLang.Code
 
 
 -- ----------------------------------------------------------------------------

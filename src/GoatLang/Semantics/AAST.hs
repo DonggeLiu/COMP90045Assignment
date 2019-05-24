@@ -16,7 +16,7 @@ module GoatLang.Semantics.AAST where
 -- ----------------------------------------------------------------------------
 
 import GoatLang.AST
-import GoatLang.OzCode
+import OzLang.Code
 
 data AGoatProgram
   = AGoatProgram [AProc]

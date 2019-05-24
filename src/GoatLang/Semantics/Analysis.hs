@@ -8,7 +8,7 @@ import GoatLang.Semantics.AnalysisMonad
 import GoatLang.Semantics.SymbolTable
 import GoatLang.Semantics.Error
 
-import GoatLang.OzCode
+import OzLang.Code
 
 -- TODO:
 -- restructure project along the lines of:
@@ -17,8 +17,6 @@ import GoatLang.OzCode
 -- import GoatLang.Syntax.Printer
 -- import GoatLang.Syntax.Tokens
 -- import GoatLang.Semantics.(...)
--- import OzLang.Code  -- types for instructions, slots, registers, etc.
--- import OzLang.Print -- functions for pretty-printing writing Oz programs
 
 
 -- analyseFullProgram

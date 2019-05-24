@@ -13,7 +13,7 @@
 #                                                                             #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-SOURCES=*.hs GoatLang/*.hs Util/*.hs GoatLang/*/*.hs # OzLang/*.hs
+SOURCES=*.hs GoatLang/*.hs Util/*.hs GoatLang/*/*.hs OzLang/*.hs
 Goat: $(SOURCES)
 	ghc Goat.hs
 
