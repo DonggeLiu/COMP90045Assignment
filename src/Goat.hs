@@ -30,7 +30,9 @@ import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
 
 import GoatLang.Parser (parseProgram)
 import GoatLang.PrettyPrint (printGoatProgramColoured)
-import GoatLang.CodeGen (genCode)
+import GoatLang.Semantics.CodeGen (genCodeFullProgram)
+import GoatLang.Semantics.Analysis (analyseFullProgram)
+import GoatLang.Semantics.Error (SemanticError)
 import GoatLang.OzCode (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
@@ -61,9 +63,14 @@ main
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
-      -- when (null flags || flagIsSet 'x' flags) $ do
-      --     let code = genCode ast
-      --     printOzProgramColoured (detectColourScheme flags) code
+      when (null flags || flagIsSet 'x' flags) $ do
+          -- static semantic analysis
+          let result = analyseFullProgram ast
+          aast <- case result of
+            Left errs -> semanticErrorsExit sourceCode errs
+            Right aast -> return aast
+          let code = genCodeFullProgram aast
+          printOzProgramColoured (detectColourScheme flags) code
 
 
 detectColourScheme :: [Flag] -> ColourScheme
@@ -104,7 +111,15 @@ showErrorMessagesDefaults
   = showErrorMessages
       "or" "unknown parse error" "expecting" "unexpected" "end of input"
 
--- TODO: Something similar for semantic errors
+-- semanticErrorsExit
+-- Display semantic error diagnostic information to the user, including the
+-- relevant section of the source program, then exit (with failure).
+semanticErrorsExit :: String -> [SemanticError] -> IO a
+semanticErrorsExit src errs
+  = do
+      putStrLn $ red1 "Semantic error(s):"
+      mapM print errs
+      exitWith (ExitFailure 3)
 
 
 -- ----------------------------------------------------------------------------

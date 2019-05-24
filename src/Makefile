@@ -51,7 +51,6 @@ itests: Goat tests/testall.sh $(SAMPLE_ROOT) $(SAMPLE_DIRS) $(ALL_SAMPLES)
 MILES_DIR = tests/samples/stage3-miles
 miles: Goat tests/milestones.sh $(MILES_DIR) 
 	bash tests/milestones.sh
-	rm -rf *.o *.hi */*.o */*.hi Goat submission
 
 
 # Makefile stuff:

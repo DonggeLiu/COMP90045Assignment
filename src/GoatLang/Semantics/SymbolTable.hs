@@ -32,9 +32,9 @@ data VarSymTable
   = VarSymTable (Map String VarRecord)
 
 data ProcRecord
-  = ProcRecord { procFrameSize :: FrameSize
-               , procParams :: [Param]
+  = ProcRecord { procParams :: [Param]
                , procVarSymTable :: VarSymTable
+               -- , procFrameSize :: FrameSize
                }
 
 data VarRecord
@@ -76,9 +76,9 @@ constructProcMapping :: Proc -> (String, ProcRecord)
 constructProcMapping (Proc _ (Id _ name) params decls _)
   = (name, record)
     where
-      record = ProcRecord { procFrameSize = FrameSize frameSize
-                          , procParams = params
+      record = ProcRecord { procParams = params
                           , procVarSymTable = varSymTable
+                          -- , procFrameSize = FrameSize frameSize
                           }
       varSymTable = constructVarSymTable params decls
       frameSize = numSlots varSymTable

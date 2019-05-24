@@ -6,6 +6,7 @@ import Control.Monad.State
 import Util.DiffList
 
 import GoatLang.AST (Pos)
+import GoatLang.Semantics.Error
 import GoatLang.Semantics.SymbolTable
 
 
@@ -46,13 +47,6 @@ analyse programAnalyser
 -- ----------------------------------------------------------------------------
 -- Reporting errors to the Semantic Analysis
 -- ----------------------------------------------------------------------------
-
--- (TODO: Probably move types to GoatLang.Semantics.Errors along with
--- formatting functions for them?)
-data SemanticError
-  = SemanticError Pos String
-  | GlobalError String
-
 
 -- semanticError
 -- Append a semantic error to the analysis' list of semantic errors.

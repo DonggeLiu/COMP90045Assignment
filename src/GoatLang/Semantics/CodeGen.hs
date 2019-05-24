@@ -270,7 +270,7 @@ genCodeExprInto :: Reg -> AExpr -> CodeGen ()
 -- analysis will need to come in and actually provide that guarantee at some
 -- point.
 
--- Base cases: float, int and bool constants:
+-- Base cases 1-3: float, int and bool constants:
 
 genCodeExprInto reg (AIntConst int)
   = instr $ IntConstInstr reg int
@@ -284,15 +284,47 @@ genCodeExprInto reg (ABoolConst True)
 genCodeExprInto reg (ABoolConst False)
   = instr $ IntConstInstr reg 0
 
+-- Base case 4: Scalar expressions:
+
+-- For scalar expressions of Single variables we need to be careful about
+-- whether the stack slot holds a reference (for pass by reference variables)
+-- or a value (for pass by value variables and local variables).
+genCodeExprInto reg (AScalarExpr (ASingle _ attrs))
+  = case (singlePassBy attrs) of
+      Val -> instr $ LoadInstr reg (singleStackSlot attrs)
+      Ref -> do
+          instr $ LoadInstr reg (singleStackSlot attrs)
+          instr $ LoadIndirectInstr reg reg
+
+-- All non-Single variables (Arrays/Matrices) must already be values, but we
+-- will need to generate code for caulcating the scalar address offset from the
+-- variable's start address by the result of some integer expression(s).
+-- Luckily, for both Arrays an Matrices, the pattern of loading the value given
+-- the offset address is similar. See `genCodeOffsetAddrInto` for computing the
+-- offset address.
+genCodeExprInto reg (AScalarExpr scalar)
+  = do
+      -- go and calculate the offset-address into the register
+      genCodeOffsetAddrInto reg scalar
+      -- then load into the register the value stored at that address
+      instr $ LoadIndirectInstr reg reg
 
 
--- Recursive cases: binary and unary operations involving nested expressions:
+-- Recursive case 1: Float cast involving nested expression:
+genCodeExprInto reg (AFloatCast expr)
+  = do
+      genCodeExprInto reg expr
+      instr $ IntToRealInstr reg reg
+
+-- Recursive case 2: unary operations involving nested expressions:
 genCodeExprInto reg (AUnExpr _ expr attrs)
   = do
       genCodeExprInto reg expr
       instr $ (unExprInstr attrs) reg reg
 
--- Binary operations: First, treat the non-strict operations specially:
+-- Recursive case 3: binary operations (non-strict or strict)
+
+-- First, treat the non-strict operations specially:
 
 -- 'And' will not actually use oz's 'and' instruction (which is strict).
 -- Instead, we'll:
@@ -328,29 +360,3 @@ genCodeExprInto reg (ABinExpr _ lExpr rExpr attrs)
       genCodeExprInto reg lExpr
       genCodeExprInto (succ reg) rExpr
       instr $ (binExprInstr attrs) reg reg (succ reg)
-
-
--- Scalar expressions:
-
--- For scalar expressions of Single variables we need to be careful about
--- whether the stack slot holds a reference (for pass by reference variables)
--- or a value (for pass by value variables and local variables).
-genCodeExprInto reg (AScalarExpr (ASingle _ attrs))
-  = case (singlePassBy attrs) of
-      Val -> instr $ LoadInstr reg (singleStackSlot attrs)
-      Ref -> do
-          instr $ LoadInstr reg (singleStackSlot attrs)
-          instr $ LoadIndirectInstr reg reg
-
--- All non-Single variables (Arrays/Matrices) must already be values, but we
--- will need to generate code for caulcating the scalar address offset from the
--- variable's start address by the result of some integer expression(s).
--- Luckily, for both Arrays an Matrices, the pattern of loading the value given
--- the offset address is similar. See `genCodeOffsetAddrInto` for computing the
--- offset address.
-genCodeExprInto reg (AScalarExpr scalar)
-  = do
-      -- go and calculate the offset-address into the register
-      genCodeOffsetAddrInto reg scalar
-      -- then load into the register the value stored at that address
-      instr $ LoadIndirectInstr reg reg
