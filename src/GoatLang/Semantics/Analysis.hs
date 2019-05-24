@@ -160,11 +160,23 @@ analyseStmt (Call pos ident@(Id _ name) args)
       Just record <- lookupProc name
       -- TODO: Check arity matches up
       -- TODO: Check types of arguments match params
-      -- TODO: in the case of pass by value, introduce float casts if necessary!
       -- TODO: Check only scalars in reference param positions.
       let passBys = [ passBy | (Param _ passBy _ _) <- procParams record ]
       let attrs = CallAttr { callPassBys = passBys }
-      return $ ACall ident aArgs attrs
+
+      -- in the case of pass by value, introduce float casts if necessary:
+      let aArgs' = zipWith castArg (procParams record) aArgs
+      return $ ACall ident aArgs' attrs
+    where
+      castArg :: Param -> AExpr -> AExpr
+      castArg (Param _ Val FloatType _) arg
+        = case (exprType arg) of
+            IntType -> AFloatCast arg
+            FloatType -> arg
+            -- BoolType -> -- ERROR!
+      castArg _ arg
+        = arg
+
 
 analyseStmt (If pos cond thenStmts)
   = do
@@ -187,7 +199,6 @@ analyseStmt (While pos cond doStmts)
       -- TODO: check boolean
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
-
 
 
 analyseExpr :: Expr -> SemanticAnalysis AExpr

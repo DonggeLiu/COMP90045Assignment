@@ -11,6 +11,7 @@ end
 proc expecting_float(val float input)
 begin
     write input;
+    write "\n";
 end
 
 # expected output:

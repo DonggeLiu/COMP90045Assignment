@@ -33,10 +33,7 @@ data VarSymTable
   = VarSymTable (Map String VarRecord)
 
 data ProcRecord
-  = ProcRecord { procParams :: [Param]
-               , procVarSymTable :: VarSymTable
-               -- , procFrameSize :: FrameSize
-               }
+  = ProcRecord { procParams :: [Param] }
 
 data VarRecord
   = VarRecord { varShape :: Dim
@@ -77,13 +74,7 @@ constructProcMapping :: Proc -> (String, ProcRecord)
 constructProcMapping (Proc _ (Id _ name) params decls _)
   = (name, record)
     where
-      record = ProcRecord { procParams = params
-                          , procVarSymTable = varSymTable
-                          -- , procFrameSize = FrameSize frameSize
-                          }
-      varSymTable = constructVarSymTable params decls
-      frameSize = numSlots varSymTable
-
+      record = ProcRecord { procParams = params }
 
 -- constructVarSymTable
 -- Given lists of decls and params, generate slots for params and decls, and
