@@ -1,9 +1,9 @@
-module GoatLang.Semantics.Symbols where
+module GoatLang.Semantics.SymbolTable where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
 --
---                      GOAT - Symbol Table
+--                        GOAT - Symbol Tables
 --
 -- Well-chosen team name:              pli-dream-team-twentee-nineteen
 -- Well-chosen team members:
@@ -19,6 +19,11 @@ import Data.Map.Strict (Map, fromList, size, (!?), elems)
 
 import GoatLang.AST
 import GoatLang.OzCode
+
+
+-- ----------------------------------------------------------------------------
+-- Types for symbol tables and their contents
+-- ----------------------------------------------------------------------------
 
 data ProcSymTable
   = ProcSymTable (Map String ProcRecord)
@@ -39,21 +44,26 @@ data VarRecord
               , varStackSlot :: Slot
               }
 
--- numSlots
--- Simply return the number of slots for a Variable Symbol Table
-numSlots :: VarSymTable -> Int
-numSlots (VarSymTable m)
-  = sum $ map (numSlotsDim . varShape) (elems m)
+-- ----------------------------------------------------------------------------
+-- Querying symbol tables
+-- ----------------------------------------------------------------------------
 
 -- lookupVarRecord
--- Simply lookup the VarRecord for a given Variable's Id.
+-- Simply lookup the VarRecord for a given Variable's name.
 lookupVarRecord :: VarSymTable -> String -> Maybe VarRecord
 lookupVarRecord (VarSymTable m) name
   = m !? name
 
+-- lookupProcRecord
+-- Simply lookup the ProcRecord for a given Procedure's name.
 lookupProcRecord :: ProcSymTable -> String -> Maybe ProcRecord
 lookupProcRecord (ProcSymTable m) name
   = m !? name
+
+
+-- ----------------------------------------------------------------------------
+-- Building symbol tables
+-- ----------------------------------------------------------------------------
 
 constructProcSymTable :: [Proc] -> ProcSymTable
 constructProcSymTable procs
@@ -62,8 +72,8 @@ constructProcSymTable procs
       procMap = fromList procMappings
       procMappings = map constructProcMapping procs
 
-constructProcMapping :: Proc -> (Id, ProcRecord)
-constructProcMapping (Proc (Id _ name) params decls _ _)
+constructProcMapping :: Proc -> (String, ProcRecord)
+constructProcMapping (Proc _ (Id _ name) params decls _)
   = (name, record)
     where
       record = ProcRecord { procFrameSize = FrameSize frameSize
@@ -96,8 +106,8 @@ constructVarSymTable params decls
 
 -- constructParamVarMapping
 -- Take a Param and a slot and return a tuple with its id and a VarRecord
-constructParamVarMapping :: Param -> Slot -> (Id, VarRecord)
-constructParamVarMapping (Param passby basetype (Id _ name) _) slot
+constructParamVarMapping :: Param -> Slot -> (String, VarRecord)
+constructParamVarMapping (Param _ passby basetype (Id _ name)) slot
   = (name, record)
     where
       record = VarRecord { varShape = Dim0
@@ -109,15 +119,27 @@ constructParamVarMapping (Param passby basetype (Id _ name) _) slot
 
 -- constructDeclVarMapping
 -- Take a Decl and return a tuple with its id and a VarRecord
-constructDeclVarMapping :: Decl -> Slot -> (Id, VarRecord)
-constructDeclVarMapping (Decl basetype ident dim _) slot
-  = (ident, record)
+constructDeclVarMapping :: Decl -> Slot -> (String, VarRecord)
+constructDeclVarMapping (Decl _ basetype (Id _ name) dim) slot
+  = (name, record)
     where
       record = VarRecord { varShape = dim
                          , varType = basetype
                          , varPassBy = Val
                          , varStackSlot = slot
                          }
+
+
+
+
+
+-- TODO: Maybe move some of these to semantic analysis module?
+
+-- numSlots
+-- Simply return the number of slots for a Variable Symbol Table
+numSlots :: VarSymTable -> Int
+numSlots (VarSymTable m)
+  = sum $ map (numSlotsDim . varShape) (elems m)
 
 
 -- declStartSlotsFrom
@@ -133,7 +155,7 @@ declStartSlotsFrom (Slot start) decls
 -- numSlotsDecl
 -- Gets the number of slots required for a given declared variable.
 numSlotsDecl :: Decl -> Int
-numSlotsDecl (Decl _ _ dim _)
+numSlotsDecl (Decl _ _ _ dim)
   = numSlotsDim dim
 
 
