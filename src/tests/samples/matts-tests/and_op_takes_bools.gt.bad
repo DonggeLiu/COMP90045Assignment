@@ -1,0 +1,5 @@
+proc main()
+begin
+    write true && (1.0 / 0);
+    # ^ semantic error: && takes Bools
+end
