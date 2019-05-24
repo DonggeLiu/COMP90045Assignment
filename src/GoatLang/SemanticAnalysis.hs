@@ -21,11 +21,7 @@ import GoatLang.AAST
 -- import OzLang.Code -- Slots, Reg Instr
 -- import OzLang.Print -- writing Oz programs
 
-
-
-
-
--- We'll use a state monad to simplify construction of Oz programs
+-- We'll use a state monad to simplify semantic analysis
 type SemanticAnalysis a
   = State SemanticAnalysisState a
 
@@ -40,14 +36,10 @@ data SemanticError
   = GlobalError String
 
 semanticError :: SemanticError -> SemanticAnalysis
-semanticError error
+semanticError err
   = do
       state <- get
-      put $ state {errors = errors `snoc` error}
-
-
-
-
+      put $ state {errors = errors `snoc` err}
 
 -- analyse
 analyse :: GoatProgram -> Either [SemanticError] AGoatProgram
@@ -58,31 +50,38 @@ analyse goatProgram
                                        , varSymTableStack = []
                                        , semanticErrors = mempty
                                        }
-    
     -- run the analysis monad an extract any errors
     (aGoatProgram, endState) = runState (aGoatProgram goatProgram) startState
     errors = semanticErrors endState
 
-
 aGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
 aGoatProgram (GoatProgram procs)
   = do
-      -- assertMainProc procs
-      -- assertNoDupNames [ident | (Proc _ ident _ _ _) <- procs]
+      assertNoDupNames [ident | (Proc _ ident _ _ _) <- procs]
       pushProcSymTable (constructProcSymTable procs)
+      assertMainProc procs
       aProcs <- mapM aProc procs
       popProcSymTable
       return $ AGoatProgram aProc
 
--- assertMainProc :: SemanticAnalysis ()
--- assertMainProc
-  -- = do
-      -- lookupProc "main"
+assertNoDupNames :: [Ident] -> SemanticAnalysis ()
+assertNoDupNames names
+  = do
+      if names == nub names then return ()
+        -- TODO: better error messaging
+        else semanticError $ GlobalError "duplicate identifiers found"
+
+assertMainProc :: SemanticAnalysis ()
+assertMainProc
+  = do
+      state <- get
+      let result = lookupProc (head $ procSymTableStack state) "main"
       case result of
-        Just _ -> return ()
+        Just record -> if null (procParams record) then return ()
+          else semanticError $ GlobalError "main must not take arguments"
         Nothing -> semanticError $ GlobalError "missing main procedure"
 
-
+aProc :: Proc -> AProc
 
 
 
@@ -222,7 +221,7 @@ getScalarType varSymTable (Matrix ident iExpr jExpr _)
 -- let allSlots = take (declNumSlots dim) [startSlot..]
 
 -- For semantic analysis:
--- case exprType of 
+-- case exprType of
 --   IntType -> instr $ (lookupOpInt op) reg reg (succ reg)
 --   BoolType -> instr $ (lookupOpBool op) reg reg (succ reg)
 --   FloatType -> instr $ (lookupOpReal op) reg reg (succ reg)
