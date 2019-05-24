@@ -197,12 +197,6 @@ aStmt (While pos cond doStmts)
 
 
 
-
-
--- ----------------------------------------------------------------------------
--- Mockups
--- ----------------------------------------------------------------------------
-
 aExpr :: Expr -> SemanticAnalysis AExpr
 
 aExpr (ScalarExpr pos scalar)
@@ -269,6 +263,7 @@ aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
                              , matrixBaseType = varType record
                              }
       return $ AMatrix ident aExprI aExprJ attrs
+
 
 
 
