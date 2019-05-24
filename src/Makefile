@@ -13,10 +13,11 @@
 #                                                                             #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-Goat: *.hs GoatLang/*.hs Util/*.hs
+SOURCES=*.hs GoatLang/*.hs Util/*.hs GoatLang/*/*.hs # OzLang/*.hs
+Goat: $(SOURCES)
 	ghc Goat.hs
 
-submission: clean *.hs GoatLang/*.hs Util/*.hs _SubmissionMakefile Makefile
+submission: clean $(SOURCES) _SubmissionMakefile Makefile
 	mkdir submission
 	tar -cvf submission/src.tar Goat.hs GoatLang/*.hs Util/*.hs
 	cp _SubmissionMakefile submission/Makefile
@@ -56,6 +57,6 @@ miles: Goat tests/milestones.sh $(MILES_DIR)
 # Makefile stuff:
 
 clean: clean_utests
-	rm -rf *.o *.hi */*.o */*.hi Goat submission
+	rm -rf *.o *.hi */*.o */*.hi */*/*.o */*/*.hi Goat submission
 
 .PHONY: clean tests itests utests clean_utests submission miles

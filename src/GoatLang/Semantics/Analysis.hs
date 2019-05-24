@@ -122,17 +122,14 @@ aStmt (Read pos scalar)
       -- TODO: must be declared
       let (Id _ name) = scalarIdent scalar
       Just record <- lookupVar name
-      builtin <- case (varType record) of
-          BoolType -> return ReadBool
-          IntType -> return ReadInt
-          FloatType -> return ReadReal
+      let builtin = lookupReadBuiltin (varType record)
       let attrs = ReadAttr { readBuiltin = builtin }
       return $ ARead aScalar' attrs
 
 aStmt (WriteExpr pos expr)
   = do
       aExpr' <- aExpr expr
-      builtin <- lookupPrintBuiltin aExpr'
+      let builtin = lookupPrintBuiltin (getExprType aExpr')
       let attrs = WriteExprAttr { writeExprBuiltin = builtin }
       return $ AWriteExpr aExpr' attrs
 
@@ -146,6 +143,7 @@ aStmt (Call pos ident@(Id _ name) args)
       Just record <- lookupProc name
       -- TODO: Check arity matches up
       -- TODO: Check types of arguments match params
+      -- TODO: Check only scalars in reference param positions.
       let passBys = [ passBy | (Param _ passBy _ _) <- procParams record ]
       let attrs = CallAttr { callPassBys = passBys }
       return $ ACall ident aArgs attrs
@@ -203,11 +201,19 @@ getExprType (AUnExpr op expr attrs)
 getExprType (AFloatCast expr)
   = FloatType
 
-lookupPrintBuiltin expr
-  = case getExprType expr of
-      BoolType -> return PrintBool
-      IntType -> return PrintInt
-      FloatType -> return PrintReal
+lookupReadBuiltin BoolType
+  = ReadBool
+lookupReadBuiltin IntType
+  = ReadInt
+lookupReadBuiltin FloatType
+  = ReadReal
+
+lookupPrintBuiltin BoolType
+  = PrintBool
+lookupPrintBuiltin IntType
+  = PrintInt
+lookupPrintBuiltin FloatType
+  = PrintReal
 
 -- getExprType :: VarSymTable -> Expr -> BaseType
 -- getExprType _ (BoolConst _ _)
