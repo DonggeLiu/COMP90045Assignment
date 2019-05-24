@@ -1,46 +1,25 @@
-module GoatLang.SemanticAnalysis
+module GoatLang.Semantics.Analysis
 where
-
-import Control.Monad.State
-
-import Util.DiffList
 
 import GoatLang.AST
 import GoatLang.AAST
 import GoatLang.SymbolTable
 
 -- TODO:
+-- restructure project along the lines of:
 -- import GoatLang.Syntax.AST
 -- import GoatLang.Syntax.Parser
 -- import GoatLang.Syntax.Printer
 -- import GoatLang.Syntax.Tokens
--- import GoatLang.Semantics.AAST
--- import GoatLang.Semantics.Errors
--- import GoatLang.Semantics.Static
--- import GoatLang.Semantics.Dynamic
--- import GoatLang.Semantics.CodeGen
--- import OzLang.Code -- Slots, Reg Instr
--- import OzLang.Print -- writing Oz programs
+-- import GoatLang.Semantics.AAST     -- annotated abstract syntax tree
+-- import GoatLang.Semantics.Static   -- static semantics (this file)
+-- import GoatLang.Semantics.Analysis -- the semantic analysis monad and helpers
+                                      -- including errors and symbol table?
+-- import GoatLang.Semantics.Dynamic  -- dynamic semantics (code generation)
+-- import GoatLang.Semantics.CodeGen  -- the code generation monad and helpers
+-- import OzLang.Code  -- types for instructions, slots, registers, etc.
+-- import OzLang.Print -- functions for pretty-printing writing Oz programs
 
--- We'll use a state monad to simplify semantic analysis
-type SemanticAnalysis a
-  = State SemanticAnalysisState a
-
-data SemanticAnalysisState
-  = SemanticAnalysisState { procSymTableStack :: [ProcSymTable]
-                          , varSymTableStack :: [VarSymTable]
-                          , semanticErrors :: DiffList SemanticError
-                          }
-
-data SemanticError
-  = SemanticError Pos String
-  | GlobalError String
-
-semanticError :: SemanticError -> SemanticAnalysis
-semanticError err
-  = do
-      state <- get
-      put $ state {errors = errors `snoc` err}
 
 -- analyse
 analyse :: GoatProgram -> Either [SemanticError] AGoatProgram
@@ -67,26 +46,38 @@ aGoatProgram (GoatProgram procs)
 
 assertNoDupNames :: [Ident] -> SemanticAnalysis ()
 assertNoDupNames names
-  = do
-      if names == nub names then return ()
-        -- TODO: better error messaging
-        else semanticError $ GlobalError "duplicate identifiers found"
+  = when (names /= nub names)
+      semanticError $ GlobalError "duplicate identifiers found"
+      -- TODO: better error messaging
 
 assertMainProc :: SemanticAnalysis ()
 assertMainProc
   = do
-      state <- get
-      let result = lookupProc (head $ procSymTableStack state) "main"
-      case result of
+      maybeMain <- lookupProc "main"
+      
+      case maybeMain of
         Just record -> if null (procParams record) then return ()
           else semanticError $ GlobalError "main must not take arguments"
         Nothing -> semanticError $ GlobalError "missing main procedure"
 
-aProc :: Proc -> AProc
+aProc :: Proc -> SemanticAnalysis AProc
+aProc (Proc pos ident params decls stmt)
 
 
+lookupProc :: Id -> SemanticAnalysis (Maybe ProcRecord)
+lookupProc (Id _ name)
+  = do
+      state <- get
+      return $ lookupProcStack (procSymTableStack state) name
 
 
+lookupProcStack :: [ProcSymTable] -> String -> Maybe ProcRecord
+lookupProcStack [] name
+  = Nothing
+lookupProcStack (table:stack) name
+  = case (lookupProcRecord table name) of
+      Nothing -> lookupProcStack stack name
+      justRecord -> justRecord
 
 
 

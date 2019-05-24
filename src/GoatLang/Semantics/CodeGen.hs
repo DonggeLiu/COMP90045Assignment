@@ -1,4 +1,4 @@
-module GoatLang.CodeGen where
+module GoatLang.Semantics.CodeGen where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
@@ -16,15 +16,13 @@ module GoatLang.CodeGen where
 -- ----------------------------------------------------------------------------
 
 import Control.Monad (mapM_, when)
-import Control.Monad.State
-
-import Util.DiffList
 
 import GoatLang.AST
-import GoatLang.OzCode
--- import GoatLang.SymbolTable
-import GoatLang.AAST
 -- import GoatLang.PrettyPrint
+import GoatLang.Semantics.AAST
+import GoatLang.Semantics.CodeGenMonad
+-- import GoatLang.Semantics.SymbolTable
+import GoatLang.OzCode
 
 
 -- Summary of TODO items from throughout file:
@@ -49,100 +47,12 @@ import GoatLang.AAST
 --   ```
 
 
--- ----------------------------------------------------------------------------
--- CodeGen State Monad
--- ----------------------------------------------------------------------------
-
--- We'll use a state monad to simplify construction of Oz programs
-type CodeGen a
-  = State CodeGenState a
-
--- The state monad will store a label counter (an int) and a (difference) list
--- of OzLines (instructions or peudo-instructions; see OzCode module).
-data CodeGenState
-  = CodeGenState LabelCounter (DiffList OzLine)
-
-type LabelCounter
-  = Int
-
-
--- genCode
+-- genCodeFullProgram
 -- Top level function: use the code generators defined below to convert an
 -- annotated Goat Program (an AAST) into an Oz Program (a list of Oz lines).
-genCode :: AGoatProgram -> OzProgram
-genCode goatProgram
-  = ozProgram
-  where
-    -- start with label counter at 0 and an empty list of program lines
-    start = CodeGenState 0 (mempty :: DiffList OzLine)
-
-    -- run the code generators an extract the completed difference list of lines
-    ((), CodeGenState _ lines) = runState (genCodeGoatProgram goatProgram) start
-
-    -- convert the result into an Oz program
-    ozProgram = OzProgram (listify lines)
-
-
-
--- Internal helper functions for interacting directly with the CodeGen state:
-
--- getLabelCounter
--- Extract the label counter from the monad's state and return.
-getLabelCounter :: CodeGen LabelCounter
-getLabelCounter
-  = do
-      CodeGenState labelCounter _ <- get
-      return labelCounter
-
--- incLabelCounter
--- Add 1 to the label counter in the monad's state.
-incLabelCounter :: CodeGen ()
-incLabelCounter
-  = do
-      CodeGenState labelCounter instrs <- get
-      put $ CodeGenState (labelCounter + 1) instrs
-
--- appendLine
--- Append a new oz line to the monad's (difference) list of oz lines
--- (conceptually adding it to the end of the program-so-far).
-appendLine :: OzLine -> CodeGen ()
-appendLine line
-  = do
-      CodeGenState labelCounter lines <- get
-      put $ CodeGenState labelCounter (lines `snoc` line)
-      -- NOTE: snoc is 'backwards cons': append a single thing to a diff list
-
-
--- External helper functions for indirectly using the CodeGen state:
-
--- getNewBlockLabel
--- Increment the internal label counter and return a fresh block label.
-getNewBlockLabel :: CodeGen Label
-getNewBlockLabel
-  = do
-      labelCounter <- getLabelCounter
-      incLabelCounter
-      return (BlockLabel labelCounter)
-
--- instr
--- Append an Instruction to the program's lines.
-instr :: Instruction -> CodeGen ()
-instr instruction
-  = appendLine $ Instr instruction
-
--- label
--- Append a Label to the program's lines (as a pseudo-instruction).
-label :: Label -> CodeGen ()
-label lab
-  = appendLine $ Label lab
-
--- comment
--- Append a Comment to the program's lines (as a pseudo-instruction).
-comment :: String -> CodeGen ()
-comment text
-  = appendLine $ Comment text
-
-
+genCodeFullProgram :: AGoatProgram -> OzProgram
+genCodeFullProgram goatProgram
+  = genCode (genCodeGoatProgram goatProgram)
 
 
 -- ----------------------------------------------------------------------------

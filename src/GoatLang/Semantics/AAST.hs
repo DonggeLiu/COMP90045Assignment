@@ -1,4 +1,4 @@
-module GoatLang.AAST where
+module GoatLang.Semantics.AAST where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1

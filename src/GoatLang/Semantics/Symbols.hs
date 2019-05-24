@@ -1,4 +1,4 @@
-module GoatLang.SymbolTable where
+module GoatLang.Semantics.Symbols where
 
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 1
