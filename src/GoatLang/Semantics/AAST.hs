@@ -77,6 +77,10 @@ data AExpr
   | AUnExpr UnOp AExpr UnExprAttr
   | AFloatCast AExpr
 data BinExprAttr
-  = BinExprAttr { binExprInstr :: (Reg -> Reg -> Reg -> Instruction) }
+  = BinExprAttr { binExprInstr :: (Reg -> Reg -> Reg -> Instruction)
+                , binExprResultType :: BaseType
+                }
 data UnExprAttr
-  = UnExprAttr { unExprInstr :: (Reg -> Reg -> Instruction) }
+  = UnExprAttr { unExprInstr :: (Reg -> Reg -> Instruction)
+               , unExprResultType :: BaseType
+               }

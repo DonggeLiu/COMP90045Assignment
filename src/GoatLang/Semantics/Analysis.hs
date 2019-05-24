@@ -203,12 +203,70 @@ aStmt (While pos cond doStmts)
 -- Mockups
 -- ----------------------------------------------------------------------------
 
-aExpr _
-  = return $ AFloatCast (AIntConst 42)
-aScalar (Single pos ident)
-  = return $ ASingle ident $ SingleAttr { singlePassBy = Val
-                                        , singleStackSlot = Slot 0
-                                        }
+aExpr :: Expr -> SemanticAnalysis AExpr
+
+aExpr (ScalarExpr pos scalar)
+  = fmap AScalarExpr (aScalar scalar)
+
+aExpr (BoolConst pos bool)
+  = return $ ABoolConst bool
+
+aExpr (FloatConst pos float)
+  = return $ AFloatConst float
+
+aExpr (IntConst pos int)
+  = return $ AIntConst int
+
+-- unary negation (must be bool) or negative (must be non-bool)
+aExpr (UnExpr pos op expr)
+  = do
+      aExpr' <- aExpr expr
+      let (instr, resultType) = lookupUnInstr op (getExprType aExpr')
+      let attrs = UnExprAttr { unExprInstr = instr
+                             , unExprResultType = resultType
+                             }
+      return $ AUnExpr op aExpr' attrs
+
+aExpr (BinExpr pos op lExpr rExpr)
+  = do
+      aLExpr <- aExpr lExpr
+      aRExpr <- aExpr rExpr
+      let (instr, aLExpr', aRExpr', resType) = lookupBinInstr op aLExpr aRExpr
+      let attrs = BinExprAttr { binExprInstr = instr
+                              , binExprResultType = resType
+                              }
+      return $ ABinExpr op aLExpr' aRExpr' attrs
+
+aScalar (Single pos ident@(Id _ name))
+  = do
+      Just record <- lookupVar name
+      -- TODO: assert variable exists, correct shape (single), etc.
+      let attrs = SingleAttr { singlePassBy = varPassBy record
+                             , singleStackSlot = varStackSlot record
+                             }
+      return $ ASingle ident attrs
+aScalar (Array pos ident@(Id _ name) exprI)
+  = do
+      -- TODO: assert index is int type
+      aExprI <- aExpr exprI
+      Just record <- lookupVar name
+      -- TODO: assert variable exists, correct shape (array), etc.
+      let attrs = ArrayAttr { arrayStartSlot = varStackSlot record }
+      return $ AArray ident aExprI attrs
+aScalar (Matrix pos ident@(Id _ name) exprI exprJ)
+  = do
+      -- TODO: assert indices are both int type
+      aExprI <- aExpr exprI
+      aExprJ <- aExpr exprJ
+      Just record <- lookupVar name
+      -- TODO: assert variable exists, correct shape (matrix), etc.
+      let (Dim2 _ rowWidth) = varShape record
+      let attrs = MatrixAttr { matrixStartSlot = varStackSlot record
+                             , matrixRowWidth = rowWidth
+                             }
+      return $ AMatrix ident aExprI aExprJ attrs
+
+
 
 getExprType :: AExpr -> BaseType
 getExprType (AScalarExpr scalar)
@@ -220,25 +278,12 @@ getExprType (AFloatConst _)
 getExprType (AIntConst _)
   = IntType
 getExprType (ABinExpr op lExpr rExpr attrs)
-  = error "not yet implemented" -- TODO
+  = binExprResultType attrs
 getExprType (AUnExpr op expr attrs)
-  = error "not yet implemented" -- TODO
+  = unExprResultType attrs
 getExprType (AFloatCast expr)
   = FloatType
 
-lookupReadBuiltin BoolType
-  = ReadBool
-lookupReadBuiltin IntType
-  = ReadInt
-lookupReadBuiltin FloatType
-  = ReadReal
-
-lookupPrintBuiltin BoolType
-  = PrintBool
-lookupPrintBuiltin IntType
-  = PrintInt
-lookupPrintBuiltin FloatType
-  = PrintReal
 
 -- getExprType :: VarSymTable -> Expr -> BaseType
 -- getExprType _ (BoolConst _ _)
@@ -271,135 +316,149 @@ lookupPrintBuiltin FloatType
 
 
 
+lookupReadBuiltin :: BaseType -> BuiltinFunc
+lookupReadBuiltin BoolType
+  = ReadBool
+lookupReadBuiltin IntType
+  = ReadInt
+lookupReadBuiltin FloatType
+  = ReadReal
 
--- -- genCodeBinOp
--- -- Action to generate code for an arbitrary binary operation from two registers
--- -- into a third destination register, given the known types of the values in the
--- -- two
--- genCodeBinOp :: Reg -> Reg -> Reg -> BinOp -> BaseType -> BaseType -> CodeGen ()
-
--- -- If both
--- genCodeBinOp destReg lReg rReg op IntType IntType
---   = instr $ (lookupOpInt op) destReg lReg rReg
-
--- genCodeBinOp destReg lReg rReg op BoolType BoolType
---   = instr $ (lookupOpBool op) destReg lReg rReg
-
--- genCodeBinOp destReg lReg rReg op FloatType FloatType
---   = instr $ (lookupOpReal op) destReg lReg rReg
-
--- -- Finally, maybe we have one int value and one real value:
--- genCodeBinOp destReg lReg rReg op lType rType
---   = do
---       -- ensure both arguments are formatted as reals
---       realify lReg lType
---       realify rReg rType
---       instr $ (lookupOpIntOrReal op) destReg lReg rReg
+lookupPrintBuiltin :: BaseType -> BuiltinFunc
+lookupPrintBuiltin BoolType
+  = PrintBool
+lookupPrintBuiltin IntType
+  = PrintInt
+lookupPrintBuiltin FloatType
+  = PrintReal
 
 
--- -- Look up the appropriate Oz Instruction for an int and a real argument
--- -- (NOTE: Equ and NEq are not allowed!)
--- lookupOpIntOrReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
--- lookupOpIntOrReal Add
---   = AddRealInstr
--- lookupOpIntOrReal Sub
---   = SubRealInstr
--- lookupOpIntOrReal Mul
---   = MulRealInstr
--- lookupOpIntOrReal Div
---   = DivRealInstr
--- lookupOpIntOrReal LTh
---   = LThRealInstr
--- lookupOpIntOrReal LEq
---   = LEqRealInstr
--- lookupOpIntOrReal GTh
---   = GThRealInstr
--- lookupOpIntOrReal GEq
---   = GEqRealInstr
 
+type UnInstruction
+  = Reg -> Reg -> Instruction
+type BinInstruction
+  = Reg -> Reg -> Reg -> Instruction
 
--- -- There are only two cases for unary operations:
--- -- Logical `Not`:
--- genCodeExprInto reg (AUnExpr Not expr _)
---   = do
---       genCodeExprInto reg expr
---       instr $ NotInstr reg reg
+lookupUnInstr :: UnOp -> BaseType -> (UnInstruction, BaseType)
+lookupUnInstr Not BoolType
+  = (NotInstr, BoolType)
+lookupUnInstr Neg IntType
+  = (NegIntInstr, IntType)
+lookupUnInstr Neg FloatType
+  = (NegRealInstr, FloatType)
+-- TODO: consider other (erroneous) types
 
--- -- And arithmetic `Neg` (which could be applied to either a real value or an
--- -- int value):
--- genCodeExprInto reg (AUnExpr _ expr attrs)
---   = do
---       genCodeExprInto reg expr
---       instr $ (unExprInstr attrs) reg reg
+lookupBinInstr :: BinOp -> AExpr -> AExpr
+                  -> (BinInstruction, AExpr, AExpr, BaseType)
+lookupBinInstr op lExpr rExpr
+  = (instr, lExpr', rExpr', resultType)
+  where
+    -- find the types of both operands
+    lType = getExprType lExpr
+    rType = getExprType rExpr
 
--- for semantic analysis:
--- let allSlots = take (declNumSlots dim) [startSlot..]
+    -- look up the approprate instruction for this combination of types
+    (instr, lExpr', rExpr') = case (lType, rType) of
+        (BoolType, BoolType) -> (lookupOpBool op, lExpr, rExpr)
+        (IntType, IntType) -> (lookupOpInt op, lExpr, rExpr)
+        (FloatType, FloatType) -> (lookupOpReal op, lExpr, rExpr)
+        (FloatType, IntType) -> (lookupOpIntOrReal op, lExpr, rExprReal)
+        (IntType, FloatType) -> (lookupOpIntOrReal op, lExprReal, rExpr)
+    -- TODO: do proper checking / handle error cases (bad op for types 
+    -- e.g. Equ for Float and Int or bad type combo e.g. Float and Bool)
 
--- -- For semantic analysis:
--- -- case exprType of
--- --   IntType -> instr $ (lookupOpInt op) reg reg (succ reg)
--- --   BoolType -> instr $ (lookupOpBool op) reg reg (succ reg)
--- --   FloatType -> instr $ (lookupOpReal op) reg reg (succ reg)
--- -- Look up the appropriate Oz Instruction for two int arguments (arithmetic
--- -- and comparisons are allowed)
--- lookupOpInt :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
--- lookupOpInt Add
---   = AddIntInstr
--- lookupOpInt Sub
---   = SubIntInstr
--- lookupOpInt Mul
---   = MulIntInstr
--- lookupOpInt Div
---   = DivIntInstr
--- lookupOpInt Equ
---   = EquIntInstr
--- lookupOpInt NEq
---   = NEqIntInstr
--- lookupOpInt LTh
---   = LThIntInstr
--- lookupOpInt LEq
---   = LEqIntInstr
--- lookupOpInt GTh
---   = GThIntInstr
--- lookupOpInt GEq
---   = GEqIntInstr
+    -- cast, if necessary
+    lExprReal = AFloatCast lExpr
+    rExprReal = AFloatCast rExpr
 
--- -- Look up the appropriate value for two boolean arguments (only comparisons
--- -- are allowed)
--- lookupOpBool :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
--- lookupOpBool Equ
---   = EquIntInstr
--- lookupOpBool NEq
---   = NEqIntInstr
--- lookupOpBool LTh
---   = LThIntInstr
--- lookupOpBool LEq
---   = LEqIntInstr
--- lookupOpBool GTh
---   = GThIntInstr
--- lookupOpBool GEq
---   = GEqIntInstr
+    -- and determine the result type of this operation
+    resultType 
+      | arithmetic op = case (lType, rType) of
+          (IntType, IntType) -> IntType
+          otherwise -> FloatType
+      | otherwise = BoolType
+    arithmetic = (`elem` [Add, Sub, Mul, Div])
 
--- -- Look up the appropriate Oz Instruction for two real arguments:
--- -- (arithmetic and comparisons are allowed)
--- lookupOpReal :: BinOp -> (Reg -> Reg -> Reg -> Instruction)
--- lookupOpReal Add
---   = AddRealInstr
--- lookupOpReal Sub
---   = SubRealInstr
--- lookupOpReal Mul
---   = MulRealInstr
--- lookupOpReal Div
---   = DivRealInstr
--- lookupOpReal Equ
---   = EquRealInstr
--- lookupOpReal NEq
---   = NEqRealInstr
--- lookupOpReal LTh
---   = LThRealInstr
--- lookupOpReal LEq
---   = LEqRealInstr
--- lookupOpReal GTh
---   = GThRealInstr
--- lookupOpReal GEq
---   = GEqRealInstr
+-- Look up the appropriate Oz Instruction for an int and a real argument
+-- (NOTE: Equ and NEq are not allowed!)
+lookupOpIntOrReal :: BinOp -> BinInstruction
+lookupOpIntOrReal Add
+  = AddRealInstr
+lookupOpIntOrReal Sub
+  = SubRealInstr
+lookupOpIntOrReal Mul
+  = MulRealInstr
+lookupOpIntOrReal Div
+  = DivRealInstr
+lookupOpIntOrReal LTh
+  = LThRealInstr
+lookupOpIntOrReal LEq
+  = LEqRealInstr
+lookupOpIntOrReal GTh
+  = GThRealInstr
+lookupOpIntOrReal GEq
+  = GEqRealInstr
+
+-- Look up the appropriate Oz Instruction for two int arguments (arithmetic
+-- and comparisons are allowed)
+lookupOpInt :: BinOp -> BinInstruction
+lookupOpInt Add
+  = AddIntInstr
+lookupOpInt Sub
+  = SubIntInstr
+lookupOpInt Mul
+  = MulIntInstr
+lookupOpInt Div
+  = DivIntInstr
+lookupOpInt Equ
+  = EquIntInstr
+lookupOpInt NEq
+  = NEqIntInstr
+lookupOpInt LTh
+  = LThIntInstr
+lookupOpInt LEq
+  = LEqIntInstr
+lookupOpInt GTh
+  = GThIntInstr
+lookupOpInt GEq
+  = GEqIntInstr
+
+-- Look up the appropriate value for two boolean arguments (only comparisons
+-- are allowed)
+lookupOpBool :: BinOp -> BinInstruction
+lookupOpBool Equ
+  = EquIntInstr
+lookupOpBool NEq
+  = NEqIntInstr
+lookupOpBool LTh
+  = LThIntInstr
+lookupOpBool LEq
+  = LEqIntInstr
+lookupOpBool GTh
+  = GThIntInstr
+lookupOpBool GEq
+  = GEqIntInstr
+
+-- Look up the appropriate Oz Instruction for two real arguments:
+-- (arithmetic and comparisons are allowed)
+lookupOpReal :: BinOp -> BinInstruction
+lookupOpReal Add
+  = AddRealInstr
+lookupOpReal Sub
+  = SubRealInstr
+lookupOpReal Mul
+  = MulRealInstr
+lookupOpReal Div
+  = DivRealInstr
+lookupOpReal Equ
+  = EquRealInstr
+lookupOpReal NEq
+  = NEqRealInstr
+lookupOpReal LTh
+  = LThRealInstr
+lookupOpReal LEq
+  = LEqRealInstr
+lookupOpReal GTh
+  = GThRealInstr
+lookupOpReal GEq
+  = GEqRealInstr
