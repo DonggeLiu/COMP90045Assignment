@@ -7,6 +7,7 @@ import Util.DiffList
 
 import GoatLang.AST
 import GoatLang.AAST
+import GoatLang.SymbolTable
 
 -- TODO:
 -- import GoatLang.Syntax.AST
@@ -33,7 +34,7 @@ data SemanticAnalysisState
 
 data SemanticError
   = SemanticError Pos String
-  = GlobalError String
+  | GlobalError String
 
 semanticError :: SemanticError -> SemanticAnalysis
 semanticError err
