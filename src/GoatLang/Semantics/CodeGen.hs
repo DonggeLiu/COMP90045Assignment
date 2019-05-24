@@ -1,7 +1,7 @@
 module GoatLang.Semantics.CodeGen where
 
 -- ----------------------------------------------------------------------------
---    COMP90045 Programming Language Implementation, Assignment Stage 1
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
 --
 --                      GOAT - Oz Code Generator
 --
@@ -21,30 +21,7 @@ import GoatLang.AST
 -- import GoatLang.PrettyPrint
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.CodeGenMonad
--- import GoatLang.Semantics.SymbolTable
 import OzLang.Code
-
-
--- Summary of TODO items from throughout file:
---
--- When we do semantic analysis:
---
--- - genCodeExprInto assumes that all expressions are completely well-types
---   Semantic analysis will need to come in and actually provide that guarantee.
---
--- - Of course, we will want to change from using a recursive function to
---   calculate expression types to precomputing these types during semantic
---   analysis and embedding them within the Expression AST nodes themselves.
---
--- - Idea: Annotate the AST with additional 'float cast' nodes to avoid having
---   a separate case for every operation when the arguments might be an int and
---   a float. E.g. an annotated AST requiring a cast, such as for the expression
---   `4 + 0.2`, could look as follows:
---   ```
---   Add FloatType
---     (FloatCast (IntConst 4))
---     (FloatConst 0.2)
---   ```
 
 
 -- genCodeFullProgram

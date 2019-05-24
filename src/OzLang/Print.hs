@@ -1,7 +1,7 @@
 module OzLang.Print where
 
 -- ----------------------------------------------------------------------------
---    COMP90045 Programming Language Implementation, Assignment Stage 1
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
 --
 --                          GOAT - Oz Code Printing
 --

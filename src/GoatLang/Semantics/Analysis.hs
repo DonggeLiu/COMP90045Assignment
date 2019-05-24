@@ -1,5 +1,20 @@
 module GoatLang.Semantics.Analysis where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
+--
+--                       GOAT - Static semantic analysis
+--
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
+
 import Data.List (sort, group)
 
 import GoatLang.AST
@@ -10,14 +25,26 @@ import GoatLang.Semantics.Error
 
 import OzLang.Code
 
--- TODO:
--- restructure project along the lines of:
--- import GoatLang.Syntax.AST
--- import GoatLang.Syntax.Parser
--- import GoatLang.Syntax.Printer
--- import GoatLang.Syntax.Tokens
--- import GoatLang.Semantics.(...)
-
+-- Summary of TODO items from throughout file:
+--
+-- When we do semantic analysis:
+--
+-- - genCodeExprInto assumes that all expressions are completely well-types
+--   Semantic analysis will need to come in and actually provide that guarantee.
+--
+-- - Of course, we will want to change from using a recursive function to
+--   calculate expression types to precomputing these types during semantic
+--   analysis and embedding them within the Expression AST nodes themselves.
+--
+-- - Idea: Annotate the AST with additional 'float cast' nodes to avoid having
+--   a separate case for every operation when the arguments might be an int and
+--   a float. E.g. an annotated AST requiring a cast, such as for the expression
+--   `4 + 0.2`, could look as follows:
+--   ```
+--   Add FloatType
+--     (FloatCast (IntConst 4))
+--     (FloatConst 0.2)
+--   ```
 
 -- analyseFullProgram
 -- Top level function: use the analysers defined below to convert a Goat Program

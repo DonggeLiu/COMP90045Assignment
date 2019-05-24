@@ -1,9 +1,22 @@
 module GoatLang.Semantics.Error where
 
-import GoatLang.AST
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
+--
+--                 GOAT - Representing semantic errors
+--
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
 
--- (TODO: Probably move types to GoatLang.Semantics.Errors along with
--- formatting functions for them?)
+import GoatLang.AST (Pos)
+
 data SemanticError
   = SemanticError Pos String
   | GlobalError String

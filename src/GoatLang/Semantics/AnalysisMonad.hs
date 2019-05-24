@@ -1,11 +1,24 @@
 module GoatLang.Semantics.AnalysisMonad where
 
+-- ----------------------------------------------------------------------------
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
+--
+--           GOAT - Monadic helpers for static semantic analysis
+--
+-- Well-chosen team name:              pli-dream-team-twentee-nineteen
+-- Well-chosen team members:
+-- * Alan Ung                          alanu
+-- * David Stern                       dibstern
+-- * Dongge Liu                        donggel
+-- * Mariam Shahid                     mariams
+-- * Matthew Farrugia-Roberts          farrugiam
+--
+-- ----------------------------------------------------------------------------
 
 import Control.Monad.State
 
 import Util.DiffList
 
-import GoatLang.AST (Pos)
 import GoatLang.Semantics.Error
 import GoatLang.Semantics.SymbolTable
 

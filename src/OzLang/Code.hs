@@ -1,7 +1,7 @@
 module OzLang.Code where
 
 -- ----------------------------------------------------------------------------
---    COMP90045 Programming Language Implementation, Assignment Stage 1
+--    COMP90045 Programming Language Implementation, Assignment Stage 3
 --
 --                          GOAT - Oz Code Constants
 --
@@ -15,9 +15,8 @@ module OzLang.Code where
 --
 -- ----------------------------------------------------------------------------
 
-
 -- ----------------------------------------------------------------------------
--- Internal representation of an Oz program
+-- Fundamental Oz program concepts
 -- ----------------------------------------------------------------------------
 
 newtype FrameSize
@@ -42,6 +41,21 @@ data Label
   = ProcLabel String
   | BlockLabel Int
   deriving (Show, Eq)
+
+data BuiltinFunc
+  = ReadBool
+  | ReadReal
+  | ReadInt
+  | PrintBool
+  | PrintReal
+  | PrintInt
+  | PrintStr
+  deriving (Show, Eq)
+
+
+-- ----------------------------------------------------------------------------
+-- Representation of an entire Oz program as a list of (pseudo) instructions
+-- ----------------------------------------------------------------------------
 
 data OzProgram
   = OzProgram [OzLine]
@@ -113,14 +127,3 @@ data Instruction
   | DebugSlotInstr Slot
   | DebugStackInstr
   deriving (Show, Eq)
-
-data BuiltinFunc
-  = ReadBool
-  | ReadReal
-  | ReadInt
-  | PrintBool
-  | PrintReal
-  | PrintInt
-  | PrintStr
-  deriving (Show, Eq)
-
