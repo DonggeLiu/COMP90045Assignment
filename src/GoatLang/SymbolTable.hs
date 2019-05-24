@@ -15,16 +15,16 @@ module GoatLang.SymbolTable where
 --
 -- ----------------------------------------------------------------------------
 
-import Data.Map.Strict (Map, fromList, size, (!), elems)
+import Data.Map.Strict (Map, fromList, size, (!?), elems)
 
 import GoatLang.AST
 import GoatLang.OzCode
 
 data ProcSymTable
-  = ProcSymTable (Map Id ProcRecord)
+  = ProcSymTable (Map String ProcRecord)
 
 data VarSymTable
-  = VarSymTable (Map Id VarRecord)
+  = VarSymTable (Map String VarRecord)
 
 data ProcRecord
   = ProcRecord { procFrameSize :: FrameSize
@@ -47,13 +47,13 @@ numSlots (VarSymTable m)
 
 -- lookupVarRecord
 -- Simply lookup the VarRecord for a given Variable's Id.
-lookupVarRecord :: VarSymTable -> Id -> VarRecord
-lookupVarRecord (VarSymTable m) ident
-  = m ! ident
+lookupVarRecord :: VarSymTable -> String -> Maybe VarRecord
+lookupVarRecord (VarSymTable m) name
+  = m !? name
 
-lookupProcRecord :: ProcSymTable -> Id -> ProcRecord
-lookupProcRecord (ProcSymTable m) ident
-  = m ! ident
+lookupProcRecord :: ProcSymTable -> String -> Maybe ProcRecord
+lookupProcRecord (ProcSymTable m) name
+  = m !? name
 
 constructProcSymTable :: [Proc] -> ProcSymTable
 constructProcSymTable procs
@@ -63,8 +63,8 @@ constructProcSymTable procs
       procMappings = map constructProcMapping procs
 
 constructProcMapping :: Proc -> (Id, ProcRecord)
-constructProcMapping (Proc ident params decls _ _)
-  = (ident, record)
+constructProcMapping (Proc (Id _ name) params decls _ _)
+  = (name, record)
     where
       record = ProcRecord { procFrameSize = FrameSize frameSize
                           , procParams = params
@@ -97,8 +97,8 @@ constructVarSymTable params decls
 -- constructParamVarMapping
 -- Take a Param and a slot and return a tuple with its id and a VarRecord
 constructParamVarMapping :: Param -> Slot -> (Id, VarRecord)
-constructParamVarMapping (Param passby basetype ident _) slot
-  = (ident, record)
+constructParamVarMapping (Param passby basetype (Id _ name) _) slot
+  = (name, record)
     where
       record = VarRecord { varShape = Dim0
                          , varType = basetype
