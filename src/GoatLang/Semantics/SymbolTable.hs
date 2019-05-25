@@ -78,7 +78,6 @@ insertProcRecord name record (ProcSymTable procMap)
 
 
 
-
 emptyVarSymTable :: VarSymTable
 emptyVarSymTable
   = VarSymTable empty 0
@@ -90,24 +89,4 @@ insertVarRecord name record (VarSymTable varMap numSlots)
 allocateSlots :: Int -> VarSymTable -> VarSymTable
 allocateSlots numNewSlots (VarSymTable varMap currentNumSlots)
   = VarSymTable varMap (currentNumSlots + numNewSlots)
-
-
-
-
-
--- -- declStartSlotsFrom
--- -- Determine appropriate starting slots for a series of declarations, starting
--- -- from a given slot. The resulting list contains n+1 slots where n is the
--- -- number of declarations: the last slot is the next available slot after the
--- -- slots for all the decls.
--- declStartSlotsFrom :: Slot -> [Decl] -> [Slot]
--- declStartSlotsFrom (Slot start) decls
---   = map Slot $ scanl (+) start $ map numSlotsDecl decls
-
-
--- -- numSlotsDecl
--- -- Gets the number of slots required for a given declared variable.
--- numSlotsDecl :: Decl -> Int
--- numSlotsDecl (Decl _ _ _ dim)
---   = numSlotsDim dim
 

@@ -1,0 +1,10 @@
+proc main()
+begin
+    call bar();
+    # ^ semantic error: defined procedure, but not enough args
+end
+proc bar(val int one, ref int two)
+begin
+    write one;
+    write two;
+end

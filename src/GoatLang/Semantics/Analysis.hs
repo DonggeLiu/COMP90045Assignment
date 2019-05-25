@@ -42,15 +42,19 @@ analyseFullProgram goatProgram
 -- Static analysers for various program parts
 -- ----------------------------------------------------------------------------
 
+-- analyseGoatProgram
+-- Complete a semantic analysis of a full goat program, ensuring that it meets
+-- all static semantic requirements.
 analyseGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
 analyseGoatProgram (GoatProgram procs)
   = do
-      -- construct the global procedure table in a first pass over the program:
+      -- construct the global procedure table in a first pass over the program's
+      -- list of procedures
       pushProcSymTable
       mapM_ defineProc procs
 
-      -- there must be a procedure of arity 0 called main:
-      assertMainProc procs
+      -- check: there must be a procedure with arity 0 (no params) called main
+      assertMainProc
 
       -- now, with this procedure symbol table, analyse the contents of each
       -- procedure definition
@@ -62,8 +66,14 @@ analyseGoatProgram (GoatProgram procs)
       -- nested procedure definitions)
       popProcSymTable
 
+      -- analysis complete!
       return $ AGoatProgram aProcs
 
+-- defineProc
+-- Add a new procedure record to the currently active procedure table so that
+-- future procedure calls can find out about its parameters.
+-- Detects if a procedure of the same name has already been defined, reporting
+-- an error and overwriting the previous definition.
 defineProc :: Proc -> SemanticAnalysis ()
 defineProc (Proc pos ident@(Id _ name) params _ _)
   = do
@@ -74,8 +84,12 @@ defineProc (Proc pos ident@(Id _ name) params _ _)
       -- definitions
       addProcMapping name newRecord
 
-assertMainProc :: [Proc] -> SemanticAnalysis ()
-assertMainProc procs
+-- assertMainProc
+-- Enforce the static requirement that a procedure called 'main' exists in the
+-- program. This should be called after 'defineProc' ahs been used to set up
+-- the procedure symbol table.
+assertMainProc :: SemanticAnalysis ()
+assertMainProc
   = do
       maybeMainRecord <- lookupProc "main"
       case maybeMainRecord of
@@ -83,12 +97,10 @@ assertMainProc procs
         Nothing -> semanticError $ GlobalError $
           "missing main procedure definition"
         -- and, if it exists, it must have arity 0 (no parameters)
-        Just record -> 
-          if (null $ procParams record)
-            then return ()
-            else semanticError $ SemanticError
-              (procDefnPos record)
-              "main procedure must have no parameters"
+        Just mainRecord -> assert (null $ procParams mainRecord) $
+          SemanticError
+            (procDefnPos mainRecord)
+            "main procedure must have no parameters"
 
 
 analyseProc :: Proc -> SemanticAnalysis AProc
@@ -207,16 +219,23 @@ analyseStmt (WriteString pos string)
 analyseStmt (Call pos ident@(Id _ name) args)
   = do
       aArgs <- mapM analyseExpr args
-      -- TODO: Check that procedure is defined
-      Just record <- lookupProc name
-      -- TODO: Check arity matches up
+      maybeProcRecord <- lookupProc name
+      params <- case maybeProcRecord of
+        Nothing -> do
+          semanticError $ SemanticError pos $
+            "call undefined procedure " ++ show name
+          return []
+        Just procRecord -> return (procParams procRecord)
+      assert (length params == length args) $ SemanticError pos $
+        "call with incorrect number of arguments (expected " ++
+        show (length params) ++ " but got " ++ show (length args) ++ ")"
       -- TODO: Check types of arguments match params
       -- TODO: Check only scalars in reference param positions.
-      let passBys = [ passBy | (Param _ passBy _ _) <- procParams record ]
+      let passBys = [ passBy | (Param _ passBy _ _) <- params ]
       let attrs = CallAttr { callPassBys = passBys }
 
       -- in the case of pass by value, introduce float casts if necessary:
-      let aArgs' = zipWith castArg (procParams record) aArgs
+      let aArgs' = zipWith castArg params aArgs
       return $ ACall ident aArgs' attrs
     where
       castArg :: Param -> AExpr -> AExpr

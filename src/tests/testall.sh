@@ -66,6 +66,32 @@ for testin in "$SAMPLE_ROOT"/**/*.gt.bad; do
 done
 printf "DONE! num tests: "; ls -1 "$SAMPLE_ROOT"/**/*.gt.bad | wc -l
 
+
+# Run GOAT to analyse all the baad (semantic) goat programs
+# (*.gt.semantic-error) under SAMPLE_ROOT, and ensure your compiler rejects
+# them (and sends the right error code)
+echo "TEST: parser should reject any ill-formed goat programs..."
+for testin in "$SAMPLE_ROOT"/**/*.gt.semantic-error; do
+    # running goat:
+    "$GOAT" -x "$testin" > ".temp.gt" 2>&1
+    
+    if [ $? == 0 ]; then
+        # if it succeeded, we have a problem! There should have been an error
+        echo -e "${FAIL}: parsing $testin succeeded, but should have rejected:"
+        if [ -f "$testin.out" ]; then
+            cat "$testin.out" | sed 's/^/  /'
+        else
+            echo "  ($testin.out missing---no example error message)"
+        fi
+    fi
+    # if it failed, that's good! the error message is not specified, though, so
+    # we need not compare it.
+done
+printf "DONE! num tests: "; ls -1 "$SAMPLE_ROOT"/**/*.gt.semantic-error | wc -l
+
+
+
+
 # clean up temporary files:
 rm ".temp.gt"
 

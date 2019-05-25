@@ -60,6 +60,35 @@ analyse programAnalyser
 
 
 -- ----------------------------------------------------------------------------
+-- Low-level access to the components of the state (wrapping get and put)
+-- ----------------------------------------------------------------------------
+
+getFromState :: (SemanticAnalysisState -> a) -> SemanticAnalysis a
+getFromState accessor
+  = do
+      state <- get
+      return $ accessor state
+
+setVarSymTableStack :: [VarSymTable] -> SemanticAnalysis ()
+setVarSymTableStack newStack
+  = do
+      state <- get
+      put $ state { varSymTableStack = newStack }
+
+setProcSymTableStack :: [ProcSymTable] -> SemanticAnalysis ()
+setProcSymTableStack newStack
+  = do
+      state <- get
+      put $ state { procSymTableStack = newStack }
+
+setSemanticErrors :: DiffList SemanticError -> SemanticAnalysis ()
+setSemanticErrors newErrors
+  = do
+      state <- get
+      put $ state { semanticErrors = newErrors }
+
+
+-- ----------------------------------------------------------------------------
 -- Reporting errors to the Semantic Analysis
 -- ----------------------------------------------------------------------------
 
@@ -68,29 +97,42 @@ analyse programAnalyser
 semanticError :: SemanticError -> SemanticAnalysis ()
 semanticError err
   = do
-      state <- get
-      put $ state {semanticErrors = (semanticErrors state) `snoc` err}
+      errs <- getFromState semanticErrors
+      setSemanticErrors $ errs `snoc` err
+
+-- assert
+-- Append a semantic error to the analysis' list of semantic errors unless
+-- a condition is satisfied. Reflect common usage of semanticError.
+assert :: Bool -> SemanticError -> SemanticAnalysis ()
+assert cond err
+  = if (not cond) then (semanticError err) else (return ())
 
 
 -- ----------------------------------------------------------------------------
--- Manipulating the stacks of symbol tables
+-- Manipulating the procedure symbol table
 -- ----------------------------------------------------------------------------
 
 pushProcSymTable :: SemanticAnalysis ()
 pushProcSymTable
   = do
-      state <- get
-      let newSymTable = emptyProcSymTable
-      let currentStack = procSymTableStack state
-      put $ state { procSymTableStack = newSymTable : currentStack }
+      currentStack <- getFromState procSymTableStack
+      setProcSymTableStack $ emptyProcSymTable : currentStack
+
+popProcSymTable :: SemanticAnalysis ProcSymTable
+popProcSymTable
+  = do
+      -- NOTE: Runtime error if stack is empty:
+      (topProcSymTable:restOfStack) <- getFromState procSymTableStack
+      setProcSymTableStack restOfStack
+      return topProcSymTable
+
 
 addProcMapping :: String -> ProcRecord -> SemanticAnalysis ()
 addProcMapping name newRecord
   = do
       -- extract the top symbol table from the stack
-      state <- get
       -- NOTE: Runtime error if stack is empty:
-      let (topTable:restOfStack) = procSymTableStack state
+      (topTable:restOfStack) <- getFromState procSymTableStack
       
       -- check to make sure a procedure of the same name has not been defined
       -- already (within the current scope i.e. top proc symbol table)
@@ -105,80 +147,67 @@ addProcMapping name newRecord
 
       -- define the procedure anyway and continue to analyse the program
       let newTopTable = insertProcRecord name newRecord topTable
-      put $ state { procSymTableStack = newTopTable:restOfStack }
-
-popProcSymTable :: SemanticAnalysis ProcSymTable
-popProcSymTable
-  = do
-      state <- get
-      -- NOTE: Runtime error if stack is empty:
-      let (topProcSymTable:restOfStack) = procSymTableStack state
-      put $ state { procSymTableStack = restOfStack }
-      return topProcSymTable
+      setProcSymTableStack $ newTopTable : restOfStack
 
 
+-- ----------------------------------------------------------------------------
+-- Manipulating the variable symbol table
+-- ----------------------------------------------------------------------------
 
 pushVarSymTable :: SemanticAnalysis ()
 pushVarSymTable
   = do
-      state <- get
-      let newSymTable = emptyVarSymTable
-      let currentStack = varSymTableStack state
-      put $ state { varSymTableStack = newSymTable : currentStack }
+      currentStack <- getFromState varSymTableStack
+      setVarSymTableStack $ emptyVarSymTable : currentStack
+
+popVarSymTable :: SemanticAnalysis VarSymTable
+popVarSymTable
+  = do
+      -- NOTE: Runtime error if stack is empty:
+      (topVarSymTable:restOfStack) <- getFromState varSymTableStack
+      setVarSymTableStack restOfStack
+      return topVarSymTable
+
 
 addVarMapping :: String -> VarRecord -> SemanticAnalysis ()
 addVarMapping name newRecord
   = do
       -- extract the top symbol table from the stack
-      state <- get
       -- NOTE: Runtime error if stack is empty:
-      let (topTable:restOfStack) = varSymTableStack state
-      
+      (topTable:restOfStack) <- getFromState varSymTableStack
+
       -- check to make sure a local variable of the same name has not been defnd
       -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
       let maybeExistingRecord = lookupVarRecord topTable name
       case maybeExistingRecord of
         Nothing -> return ()
-        Just existingRecord -> semanticError $
+        Just existingRecord -> semanticError $ 
           RepeatedDefinitionError 
             (varDefnPos newRecord)
             (varDefnPos existingRecord)
             ("repeat definition of local variable " ++ show name)
-      
+
       -- in any case, we will continue with this definition for the remainder
       -- of this scope
       let newTopTable = insertVarRecord name newRecord topTable
-      put $ state { varSymTableStack = newTopTable:restOfStack }
+      setVarSymTableStack $ newTopTable : restOfStack
 
 getRequiredFrameSize :: SemanticAnalysis FrameSize
 getRequiredFrameSize
   = do
-      state <- get
       -- NOTE: Runtime error if stack is empty:
-      let (topTable:_) = varSymTableStack state
-      let (VarSymTable _ numSlots) = topTable
+      (VarSymTable _ numSlots : _) <- getFromState varSymTableStack
       return $ FrameSize numSlots
 
 allocateStackSlots :: Int -> SemanticAnalysis Slot
 allocateStackSlots numSlots
   = do
-      state <- get
       -- NOTE: Runtime error if stack is empty:
-      let (topTable:restOfStack) = varSymTableStack state
+      (topTable:restOfStack) <- getFromState varSymTableStack
       let (VarSymTable _ currentNumSlots) = topTable
       let newTopTable = allocateSlots numSlots topTable
-      put $ state { varSymTableStack = newTopTable:restOfStack }
+      setVarSymTableStack $ newTopTable : restOfStack
       return $ Slot currentNumSlots
-
-popVarSymTable :: SemanticAnalysis VarSymTable
-popVarSymTable
-  = do
-      state <- get
-      -- NOTE: Runtime error if stack is empty:
-      let (topVarSymTable:restOfStack) = varSymTableStack state
-      put $ state { varSymTableStack = restOfStack }
-      return topVarSymTable
-
 
 
 -- ----------------------------------------------------------------------------
