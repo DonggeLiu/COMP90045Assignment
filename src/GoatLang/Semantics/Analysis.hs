@@ -251,23 +251,38 @@ analyseStmt (Call pos ident@(Id _ name) args)
 
 analyseStmt (If pos cond thenStmts)
   = do
+      -- analyse condition type
       aCond <- analyseExpr cond
-      -- TODO: check boolean
+      assert (exprType aCond == BoolType) $ SemanticError pos $
+        "incorrect type for condition (expected " ++
+        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
+        ")"
+      
       aThenStmts <- mapM analyseStmt thenStmts
       return $ AIf aCond aThenStmts
 
 analyseStmt (IfElse pos cond thenStmts elseStmts)
   = do
+      -- analyse condition type
       aCond <- analyseExpr cond
-      -- TODO: check boolean
+      assert (exprType aCond == BoolType) $ SemanticError pos $
+        "incorrect type for condition (expected " ++
+        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
+        ")"
+      
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
       return $ AIfElse aCond aThenStmts aElseStmts
 
 analyseStmt (While pos cond doStmts)
   = do
+      -- analyse condition type
       aCond <- analyseExpr cond
-      -- TODO: check boolean
+      assert (exprType aCond == BoolType) $ SemanticError pos $
+        "incorrect type for condition (expected " ++
+        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
+        ")"
+      
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
 
@@ -480,6 +495,12 @@ type BinInstruction
 lookupUnInstr :: UnOp -> BaseType -> (UnInstruction, BaseType)
 lookupUnInstr Not BoolType
   = (NotInstr, BoolType)
+{-
+lookupUnInstr Not _
+  = do 
+    semanticError $ GlobalError $ "Type for unary operator `Not` must be bool";
+    return $ (NotInstr, BoolType)
+-}
 lookupUnInstr Neg IntType
   = (NegIntInstr, IntType)
 lookupUnInstr Neg FloatType
