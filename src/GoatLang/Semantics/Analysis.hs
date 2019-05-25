@@ -15,8 +15,6 @@ module GoatLang.Semantics.Analysis where
 --
 -- ----------------------------------------------------------------------------
 
-import Data.List (sort, group)
-
 import GoatLang.Syntax.AST
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
@@ -189,20 +187,22 @@ analyseStmt (Asg pos scalar expr)
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
-      -- TODO: otherwise we could perform some type checking here.
-      aExpr' <- case (scalarType aScalar, exprType aExpr) of
-        (IntType, IntType) -> return aExpr
-        (BoolType, BoolType) -> return aExpr
-        (FloatType, IntType) -> return $ AFloatCast aExpr
-        (FloatType, FloatType) -> return aExpr
+      aExpr' <- if (scalarType aScalar == FloatType && exprType aExpr == IntType)
+        then return $ AFloatCast aExpr
+        else return $ aExpr
+
+      -- we may only assign an expression with matching result type
+      assert (scalarType aScalar == exprType aExpr') $ SemanticError pos $
+        "incorrect expression result type for assignment (expected " ++
+        show (scalarType aScalar) ++ " but got " ++ show (exprType aExpr') ++
+        ")"
+
       return $ AAsg aScalar aExpr'
 
 analyseStmt (Read pos scalar)
   = do
       aScalar <- analyseScalar scalar
-      let (Id _ name) = scalarIdent scalar
-      Just record <- lookupVar name
-      let builtin = lookupReadBuiltin (varType record)
+      let builtin = lookupReadBuiltin (scalarType aScalar)
       let attrs = ReadAttr { readBuiltin = builtin }
       return $ ARead aScalar attrs
 
@@ -224,6 +224,7 @@ analyseStmt (Call pos ident@(Id _ name) args)
         Nothing -> do
           semanticError $ SemanticError pos $
             "call undefined procedure " ++ show name
+          -- error recovery: just assume the procedure takes no arguments
           return []
         Just procRecord -> return (procParams procRecord)
       assert (length params == length args) $ SemanticError pos $
@@ -309,34 +310,100 @@ analyseExpr (BinExpr pos op lExpr rExpr)
 analyseScalar :: Scalar -> SemanticAnalysis AScalar
 analyseScalar (Single pos ident@(Id _ name))
   = do
-      Just record <- lookupVar name
-      -- TODO: assert variable exists, correct shape (single), etc.
-      let attrs = SingleAttr { singlePassBy = varPassBy record
-                             , singleStackSlot = varStackSlot record
-                             , singleBaseType = varType record
+      -- lookup the indentifier, hopefully if exists
+      maybeRecord <- lookupVar name
+      record <- case maybeRecord of 
+        Just record -> return record
+        Nothing -> do
+          semanticError $ SemanticError pos $
+            "reference undeclared single variable " ++ show name
+          -- error recovery: continue, assuming that the variable exists and
+          -- has some default attributes:
+          return $ dummyVarRecord { varShape = Dim0 }
+      
+      -- ensure that the dimensionality is correct (Dim0):
+      record' <- case (varShape record) of
+        Dim0 -> return $ record
+        otherwise -> do
+          semanticError $ SemanticError pos $
+            "accessing array/matrix variable as if it were a single"
+          -- error recovery: continue, assuming that it's a single.
+          return $ record { varShape = Dim0 }
+      
+      let attrs = SingleAttr { singlePassBy = varPassBy record'
+                             , singleStackSlot = varStackSlot record'
+                             , singleBaseType = varType record'
                              }
       return $ ASingle ident attrs
 analyseScalar (Array pos ident@(Id _ name) exprI)
   = do
-      -- TODO: assert index is int type
       aExprI <- analyseExpr exprI
-      Just record <- lookupVar name
-      -- TODO: assert variable exists, correct shape (array), etc.
-      let attrs = ArrayAttr { arrayStartSlot = varStackSlot record
-                            , arrayBaseType = varType record
+      assert (exprType aExprI == IntType) $ SemanticError pos $
+        "array index must be an integer expression (got: " ++
+        show (exprType aExprI) ++")"
+
+      -- lookup the indentifier, hopefully if exists
+      maybeRecord <- lookupVar name
+      record <- case maybeRecord of 
+        Just record -> return record
+        Nothing -> do
+          semanticError $ SemanticError pos $
+            "reference undeclared array variable " ++ show name
+          -- error recovery: continue, assuming that the array exists and
+          -- has some default attributes:
+          return $ dummyVarRecord { varShape = Dim1 1 }
+
+      -- ensure that the dimensionality is correct (Dim1):
+      record' <- case (varShape record) of
+        (Dim1 _) -> return $ record
+        otherwise -> do
+          semanticError $ SemanticError pos $
+            "accessing single/matrix variable as if it were an array"
+          -- error recovery: continue, assuming that it's an array.
+          return $ record { varShape = Dim1 1 }
+
+      let attrs = ArrayAttr { arrayStartSlot = varStackSlot record'
+                            , arrayBaseType = varType record'
                             }
       return $ AArray ident aExprI attrs
 analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
   = do
-      -- TODO: assert indices are both int type
+      -- analyse first index expression
       aExprI <- analyseExpr exprI
+      assert (exprType aExprI == IntType) $ SemanticError pos $
+        "first matrix index must be an integer expression (got: " ++
+        show (exprType aExprI) ++")"
+      
+      -- analyse second index expression
       aExprJ <- analyseExpr exprJ
-      Just record <- lookupVar name
-      -- TODO: assert variable exists, correct shape (matrix), etc.
-      let (Dim2 _ rowWidth) = varShape record
-      let attrs = MatrixAttr { matrixStartSlot = varStackSlot record
+      assert (exprType aExprJ == IntType) $ SemanticError pos $
+        "second matrix index must be an integer expression (got: " ++
+        show (exprType aExprJ) ++")"
+      
+      -- lookup the indentifier, hopefully if exists
+      maybeRecord <- lookupVar name
+      record <- case maybeRecord of 
+        Just record -> return record
+        Nothing -> do
+          semanticError $ SemanticError pos $
+            "reference undeclared matrix variable " ++ show name
+          -- error recovery: continue, assuming that the matrix exists and
+          -- has some default attributes:
+          return $ dummyVarRecord { varShape = Dim2 1 1 }
+
+      -- ensure that the dimensionality is correct (Dim2):
+      record' <- case (varShape record) of
+        (Dim2 _ _) -> return $ record
+        otherwise -> do
+          semanticError $ SemanticError pos $
+            "accessing single/array variable as if it were a matrix"
+          -- error recovery: continue, assuming that it's a matrix.
+          return $ record { varShape = Dim2 1 1 }
+
+      let (Dim2 _ rowWidth) = varShape record'
+      let attrs = MatrixAttr { matrixStartSlot = varStackSlot record'
                              , matrixRowWidth = rowWidth
-                             , matrixBaseType = varType record
+                             , matrixBaseType = varType record'
                              }
       return $ AMatrix ident aExprI aExprJ attrs
 

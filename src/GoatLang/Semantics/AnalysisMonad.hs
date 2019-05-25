@@ -15,6 +15,7 @@ module GoatLang.Semantics.AnalysisMonad where
 --
 -- ----------------------------------------------------------------------------
 
+import Control.Monad (when)
 import Control.Monad.State
 
 import Util.DiffList
@@ -105,7 +106,7 @@ semanticError err
 -- a condition is satisfied. Reflect common usage of semanticError.
 assert :: Bool -> SemanticError -> SemanticAnalysis ()
 assert cond err
-  = if (not cond) then (semanticError err) else (return ())
+  = when (not cond) $ semanticError err
 
 
 -- ----------------------------------------------------------------------------

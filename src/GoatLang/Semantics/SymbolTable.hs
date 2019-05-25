@@ -63,6 +63,14 @@ lookupProcRecord :: ProcSymTable -> String -> Maybe ProcRecord
 lookupProcRecord (ProcSymTable procMap) name
   = procMap !? name
 
+dummyVarRecord :: VarRecord
+dummyVarRecord
+  = VarRecord { varShape = Dim0
+              , varType = IntType
+              , varPassBy = Val
+              , varStackSlot = Slot 0
+              , varDefnPos = NoPos
+              }
 
 -- ----------------------------------------------------------------------------
 -- Building symbol tables

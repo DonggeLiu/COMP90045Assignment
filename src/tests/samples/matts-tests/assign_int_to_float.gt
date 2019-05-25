@@ -1,0 +1,6 @@
+proc main()
+    float f;
+begin
+    f := 42;
+    # ^ but this is okay!
+end

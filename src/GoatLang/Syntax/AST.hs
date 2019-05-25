@@ -15,11 +15,14 @@ module GoatLang.Syntax.AST where
 --
 -- ----------------------------------------------------------------------------
 
-import Text.Parsec.Pos
-
 -- The position in the Goat source file.
--- Type provided by Parsec - contains the SourceName, Line and Column.
-type Pos = SourcePos
+data Pos
+  = NoPos
+  | Pos { sourceFile :: String
+        , lineNumber :: Int
+        , colNumber  :: Int
+        }
+  deriving (Show, Eq)
 
 
 class ASTNode node
@@ -123,15 +126,6 @@ data Scalar
     deriving (Show, Eq)
 instance ASTNode Scalar
 
--- scalarExpr
--- Helper function to provide convenient access to a scalar's identifier
-scalarIdent :: Scalar -> Id
-scalarIdent (Single _ ident)
-  = ident
-scalarIdent (Array _ ident _)
-  = ident
-scalarIdent (Matrix _ ident _ _)
-  = ident
 
 -- Expressions can take 6 different forms, as indicated below.
 data Expr

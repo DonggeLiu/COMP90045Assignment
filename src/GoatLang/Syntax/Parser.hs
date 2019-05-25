@@ -56,7 +56,7 @@ pGoatProgram
 pProc :: Parser Proc
 pProc
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "proc"
       ident <- pIdent
       params <- parens (commaSep pParam)
@@ -74,7 +74,7 @@ pProc
 pIdent :: Parser Id
 pIdent
   = do
-      pos <- getPosition
+      pos <- getPos
       name <- identifier
       return $ Id pos name
   <?> "identifier"
@@ -83,7 +83,7 @@ pIdent
 pParam :: Parser Param
 pParam
   = do
-      pos <- getPosition
+      pos <- getPos
       passBy <- pPassBy
       baseType <- pBaseType
       ident <- pIdent
@@ -107,7 +107,7 @@ pBaseType
 pDecl :: Parser Decl
 pDecl
   = do
-      pos <- getPosition
+      pos <- getPos
       baseType <- pBaseType
       ident <- pIdent
       dim <- pDim
@@ -150,7 +150,7 @@ pAsg, pRead, pWrite, pCall, pIfOptElse, pWhile :: Parser Stmt
 -- ASGN        -> SCALAR ":=" EXPR ";"
 pAsg
   = do
-      pos <- getPosition
+      pos <- getPos
       scalar <- pScalar
       reservedOp ":="
       expr <- pExpr
@@ -160,7 +160,7 @@ pAsg
 -- READ        -> "read" SCALAR ";"
 pRead
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "read"
       scalar <- pScalar
       semi
@@ -170,7 +170,7 @@ pRead
 -- EXPR_OR_STR -> EXPR | string
 pWrite
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "write"
       exprOrStr <- (fmap Left pExpr) <|> (fmap Right stringLiteral)
       semi
@@ -182,7 +182,7 @@ pWrite
 -- EXPRS       -> (EXPR ",")* EXPR | ε
 pCall
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "call"
       ident <- pIdent
       args <- parens (commaSep pExpr)
@@ -193,7 +193,7 @@ pCall
 -- OPT_ELSE    -> "else" STMT+ | ε
 pIfOptElse
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "if"
       cond <- pExpr
       reserved "then"
@@ -207,7 +207,7 @@ pIfOptElse
 -- WHILE       -> "while" EXPR "do" STMT+ "od"
 pWhile
   = do
-      pos <- getPosition
+      pos <- getPos
       reserved "while"
       cond <- pExpr
       reserved "do"
@@ -221,7 +221,7 @@ pWhile
 pScalar :: Parser Scalar
 pScalar
   = do
-      pos <- getPosition
+      pos <- getPos
       ident <- pIdent
       -- see 'suffixMaybe' combinator definition and motivation, below
       subscript <- suffixMaybe pExpr
@@ -304,14 +304,14 @@ pTerm
 pScalarExpr :: Parser Expr
 pScalarExpr
   = do
-      pos <- getPosition
+      pos <- getPos
       scalar <- pScalar
       return $ ScalarExpr pos scalar
 
 pIntOrFloatConst :: Parser Expr
 pIntOrFloatConst
   = do
-      pos <- getPosition
+      pos <- getPos
       numberLiteral <- integerOrFloat
       case numberLiteral of
         Left int  -> return $ IntConst pos int
@@ -320,7 +320,7 @@ pIntOrFloatConst
 pBoolConst :: Parser Expr
 pBoolConst
   = do
-      pos <- getPosition
+      pos <- getPos
       choice [ reserved "true"  >> return (BoolConst pos True)
              , reserved "false" >> return (BoolConst pos False)
              ]
@@ -363,13 +363,13 @@ relation name op
 pUnOp :: String -> UnOp -> Parser (Expr -> Expr)
 pUnOp name op
   =  do
-      pos <- getPosition
+      pos <- getPos
       reservedOp name
       return $ UnExpr pos op
 
 pBinOp :: String -> BinOp -> Parser (Expr -> Expr -> Expr)
 pBinOp name op
   = do
-      pos <- getPosition
+      pos <- getPos
       reservedOp name
       return $ BinExpr pos op

@@ -21,6 +21,8 @@ import qualified Text.Parsec.Token as Token
 
 import Util.Combinators ((<:>), (<++>), sepByMN)
 
+import GoatLang.Syntax.AST (Pos(..))
+
 -- ----------------------------------------------------------------------------
 -- First, a parser type to simplify type signatures
 -- ----------------------------------------------------------------------------
@@ -173,3 +175,11 @@ integerOrFloat
 commaSepMN :: Int -> Int -> (Parser a) -> Parser [a]
 commaSepMN
   = sepByMN comma
+
+
+
+getPos :: Parser Pos
+getPos
+  = do
+    pos <- getPosition
+    return (Pos (sourceName pos) (sourceLine pos) (sourceColumn pos))
