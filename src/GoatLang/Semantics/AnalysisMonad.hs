@@ -22,6 +22,8 @@ import Util.DiffList
 import GoatLang.Semantics.Error
 import GoatLang.Semantics.SymbolTable
 
+import OzLang.Code
+
 
 -- ----------------------------------------------------------------------------
 -- Semantic Analysis State Monad
@@ -83,12 +85,26 @@ pushProcSymTable
       put $ state { procSymTableStack = newSymTable : currentStack }
 
 addProcMapping :: String -> ProcRecord -> SemanticAnalysis ()
-addProcMapping name record
+addProcMapping name newRecord
   = do
+      -- extract the top symbol table from the stack
       state <- get
       -- NOTE: Runtime error if stack is empty:
       let (topTable:restOfStack) = procSymTableStack state
-      let newTopTable = insertProcRecord name record topTable
+      
+      -- check to make sure a procedure of the same name has not been defined
+      -- already (within the current scope i.e. top proc symbol table)
+      let maybeExistingRecord = lookupProcRecord topTable name
+      case maybeExistingRecord of
+        Nothing -> return ()
+        Just existingRecord -> semanticError $
+          RepeatedDefinitionError 
+            (procDefnPos newRecord)
+            (procDefnPos existingRecord)
+            ("repeat definition of procedure " ++ show name)
+
+      -- define the procedure anyway and continue to analyse the program
+      let newTopTable = insertProcRecord name newRecord topTable
       put $ state { procSymTableStack = newTopTable:restOfStack }
 
 popProcSymTable :: SemanticAnalysis ProcSymTable
@@ -102,12 +118,57 @@ popProcSymTable
 
 
 
-pushVarSymTable :: VarSymTable -> SemanticAnalysis ()
-pushVarSymTable newSymTable
+pushVarSymTable :: SemanticAnalysis ()
+pushVarSymTable
   = do
       state <- get
-      put $ state { varSymTableStack = newSymTable : varSymTableStack state }
+      let newSymTable = emptyVarSymTable
+      let currentStack = varSymTableStack state
+      put $ state { varSymTableStack = newSymTable : currentStack }
 
+addVarMapping :: String -> VarRecord -> SemanticAnalysis ()
+addVarMapping name newRecord
+  = do
+      -- extract the top symbol table from the stack
+      state <- get
+      -- NOTE: Runtime error if stack is empty:
+      let (topTable:restOfStack) = varSymTableStack state
+      
+      -- check to make sure a local variable of the same name has not been defnd
+      -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
+      let maybeExistingRecord = lookupVarRecord topTable name
+      case maybeExistingRecord of
+        Nothing -> return ()
+        Just existingRecord -> semanticError $
+          RepeatedDefinitionError 
+            (varDefnPos newRecord)
+            (varDefnPos existingRecord)
+            ("repeat definition of local variable " ++ show name)
+      
+      -- in any case, we will continue with this definition for the remainder
+      -- of this scope
+      let newTopTable = insertVarRecord name newRecord topTable
+      put $ state { varSymTableStack = newTopTable:restOfStack }
+
+getRequiredFrameSize :: SemanticAnalysis FrameSize
+getRequiredFrameSize
+  = do
+      state <- get
+      -- NOTE: Runtime error if stack is empty:
+      let (topTable:_) = varSymTableStack state
+      let (VarSymTable _ numSlots) = topTable
+      return $ FrameSize numSlots
+
+allocateStackSlots :: Int -> SemanticAnalysis Slot
+allocateStackSlots numSlots
+  = do
+      state <- get
+      -- NOTE: Runtime error if stack is empty:
+      let (topTable:restOfStack) = varSymTableStack state
+      let (VarSymTable _ currentNumSlots) = topTable
+      let newTopTable = allocateSlots numSlots topTable
+      put $ state { varSymTableStack = newTopTable:restOfStack }
+      return $ Slot currentNumSlots
 
 popVarSymTable :: SemanticAnalysis VarSymTable
 popVarSymTable
@@ -137,6 +198,7 @@ lookupProcStack (table:stack) name
   = case (lookupProcRecord table name) of
       Nothing -> lookupProcStack stack name
       justRecord -> justRecord
+
 
 lookupVar :: String -> SemanticAnalysis (Maybe VarRecord)
 lookupVar name

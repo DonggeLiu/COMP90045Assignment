@@ -70,19 +70,8 @@ defineProc (Proc pos ident@(Id _ name) params _ _)
       let newRecord = ProcRecord { procParams = params
                                  , procDefnPos = pos
                                  }
-      -- check to make sure a procedure of the same name has not been defined
-      -- already (NOTE: will check ALL proc symbol tables; if we extend to allow
-      -- nested procedure definitions then this may not be intended behaviour)
-      maybeExistingRecord <- lookupProc name
-      case maybeExistingRecord of
-        Nothing -> return ()
-        Just existingRecord -> semanticError $
-          RepeatedDefinitionError 
-            (procDefnPos newRecord)
-            (procDefnPos existingRecord)
-            ("repeat definition of procedure " ++ show name)
-      -- define the procedure and continue to analyse the program
-      -- (error recovery: just let the second definition override the first)
+      -- define this procedure within the curent scope, checking for repeated
+      -- definitions
       addProcMapping name newRecord
 
 assertMainProc :: [Proc] -> SemanticAnalysis ()
@@ -100,45 +89,86 @@ assertMainProc procs
             else semanticError $ SemanticError
               (procDefnPos record)
               "main procedure must have no parameters"
-        
+
 
 analyseProc :: Proc -> SemanticAnalysis AProc
 analyseProc (Proc pos ident params decls stmts)
   = do
-      -- compute the procedure's main attribute: required frame size
-      let varSymTable = constructVarSymTable params decls
-      let attrs = ProcAttr { procFrameSize = FrameSize $ numSlots varSymTable }
+      -- construct the local variable symbol table in a first pass over the 
+      -- params and declarations:
+      pushVarSymTable
+      aParams <- mapM declareAnalyseParam params
+      aDecls <- mapM declareAnalyseDecl decls
+
+      -- after allocating space for all params and decls on the stack (above),
+      -- prepare the annotations for this procedure (the main attribute
+      -- is the frame size)
+      frameSize <- getRequiredFrameSize
+      let attrs = ProcAttr { procFrameSize = frameSize }
       
-      -- set the environment and analyse the procedure's components
-      pushVarSymTable varSymTable
-      aParams <- mapM analyseParam params
-      aDecls <- mapM analyseDecl decls
+      -- with this environment set up, analyse the procedure's component
+      -- statements:
       aStmts <- mapM analyseStmt stmts
+
+      -- we're finished with this var sym table; clear it for future procedures
       popVarSymTable
 
       -- done!
       return $ AProc ident aParams aDecls aStmts attrs
 
 
-analyseParam :: Param -> SemanticAnalysis AParam
-analyseParam (Param pos passBy baseType ident@(Id _ name))
+declareAnalyseParam :: Param -> SemanticAnalysis AParam
+declareAnalyseParam (Param pos passBy baseType ident@(Id _ name))
   = do
-      -- TODO: Switch back to lookup by Id?
-      -- TODO: Make sure this is actually in the table of course...
-      Just varRecord <- lookupVar name
-      let stackSlot = varStackSlot varRecord
+      -- allocate stack space for this local variable (all params only take
+      -- a single stack slot)
+      stackSlot <- allocateStackSlots 1
+
+      -- prepare the variable record for the symbol table
+      let newRecord = VarRecord { varShape = Dim0
+                                , varType = baseType
+                                , varPassBy = passBy
+                                , varStackSlot = stackSlot
+                                , varDefnPos = pos
+                                }
+      -- add this variable to the symbol table for the current scope, checking
+      -- for duplicate definitions:
+      addVarMapping name newRecord
+      -- now prepare the annotated param for code generation:
       let attrs = ParamAttr { paramStackSlot = stackSlot }
       return $ AParam passBy baseType ident attrs
 
 
-analyseDecl :: Decl -> SemanticAnalysis ADecl
-analyseDecl (Decl pos baseType ident@(Id _ name) dim)
+declareAnalyseDecl :: Decl -> SemanticAnalysis ADecl
+declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
   = do
-      Just varRecord <- lookupVar name
-      let startSlot = varStackSlot varRecord
-      let allSlots = take (numSlotsDim dim) [startSlot..]
+      -- allocate stack space for this local variable:
+      let numRequiredSlots = numSlotsDim dim
+      startSlot <- allocateStackSlots numRequiredSlots
+      -- prepare the variable record for the symbol table
+      let newRecord = VarRecord { varShape = dim
+                                , varType = baseType
+                                , varPassBy = Val
+                                , varStackSlot = startSlot
+                                , varDefnPos = pos
+                                }
+      -- add this variable to the symbol table for the current scope, checking
+      -- for duplicate definitions:
+      addVarMapping name newRecord
+      -- now prepare the annotated declaration for code generation:
+      let allSlots = take (numRequiredSlots) [startSlot..]
       let attrs = DeclAttr { declStackSlots = allSlots }
       return $ ADecl baseType ident dim attrs
+    where
+      -- numSlotsDim
+      -- Helper function: Calculate the size implied by the dimensionality
+      numSlotsDim :: Dim -> Int
+      numSlotsDim Dim0
+        = 1
+      numSlotsDim (Dim1 n)
+        = n
+      numSlotsDim (Dim2 n m)
+        = n * m
 
 
 analyseStmt :: Stmt -> SemanticAnalysis AStmt
