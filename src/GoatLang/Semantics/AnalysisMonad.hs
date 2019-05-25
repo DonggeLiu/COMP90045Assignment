@@ -123,7 +123,8 @@ popProcSymTable :: SemanticAnalysis ProcSymTable
 popProcSymTable
   = do
       -- NOTE: Runtime error if stack is empty:
-      (topProcSymTable:restOfStack) <- getFromState procSymTableStack
+      symTableStack <- getFromState procSymTableStack
+      let (topProcSymTable:restOfStack) = symTableStack
       setProcSymTableStack restOfStack
       return topProcSymTable
 
@@ -133,7 +134,8 @@ addProcMapping name newRecord
   = do
       -- extract the top symbol table from the stack
       -- NOTE: Runtime error if stack is empty:
-      (topTable:restOfStack) <- getFromState procSymTableStack
+      symTableStack <- getFromState procSymTableStack
+      let (topTable:restOfStack) = symTableStack
       
       -- check to make sure a procedure of the same name has not been defined
       -- already (within the current scope i.e. top proc symbol table)
@@ -165,7 +167,8 @@ popVarSymTable :: SemanticAnalysis VarSymTable
 popVarSymTable
   = do
       -- NOTE: Runtime error if stack is empty:
-      (topVarSymTable:restOfStack) <- getFromState varSymTableStack
+      symTableStack <- getFromState varSymTableStack
+      let (topVarSymTable:restOfStack) = symTableStack
       setVarSymTableStack restOfStack
       return topVarSymTable
 
@@ -175,7 +178,8 @@ addVarMapping name newRecord
   = do
       -- extract the top symbol table from the stack
       -- NOTE: Runtime error if stack is empty:
-      (topTable:restOfStack) <- getFromState varSymTableStack
+      symTableStack <- getFromState varSymTableStack
+      let (topTable:restOfStack) = symTableStack
 
       -- check to make sure a local variable of the same name has not been defnd
       -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
@@ -197,14 +201,16 @@ getRequiredFrameSize :: SemanticAnalysis FrameSize
 getRequiredFrameSize
   = do
       -- NOTE: Runtime error if stack is empty:
-      (VarSymTable _ numSlots : _) <- getFromState varSymTableStack
+      symTableStack <- getFromState varSymTableStack
+      let (VarSymTable _ numSlots : _) = symTableStack
       return $ FrameSize numSlots
 
 allocateStackSlots :: Int -> SemanticAnalysis Slot
 allocateStackSlots numSlots
   = do
       -- NOTE: Runtime error if stack is empty:
-      (topTable:restOfStack) <- getFromState varSymTableStack
+      symTableStack <- getFromState varSymTableStack
+      let (topTable:restOfStack) = symTableStack
       let (VarSymTable _ currentNumSlots) = topTable
       let newTopTable = allocateSlots numSlots topTable
       setVarSymTableStack $ newTopTable : restOfStack
