@@ -15,7 +15,7 @@ module GoatLang.Semantics.SymbolTable where
 --
 -- ----------------------------------------------------------------------------
 
-import Data.Map.Strict (Map, fromList, size, (!?), elems)
+import Data.Map.Strict (Map, fromList, size, (!?), elems, insert, empty)
 
 import GoatLang.Syntax.AST
 
@@ -26,14 +26,16 @@ import OzLang.Code
 -- Types for symbol tables and their contents
 -- ----------------------------------------------------------------------------
 
-data ProcSymTable
+newtype ProcSymTable
   = ProcSymTable (Map String ProcRecord)
 
-data VarSymTable
+newtype VarSymTable
   = VarSymTable (Map String VarRecord)
 
 data ProcRecord
-  = ProcRecord { procParams :: [Param] }
+  = ProcRecord { procParams :: [Param]
+               , procDefnPos :: Pos
+               }
 
 data VarRecord
   = VarRecord { varShape :: Dim
@@ -63,18 +65,14 @@ lookupProcRecord (ProcSymTable m) name
 -- Building symbol tables
 -- ----------------------------------------------------------------------------
 
-constructProcSymTable :: [Proc] -> ProcSymTable
-constructProcSymTable procs
-  = ProcSymTable procMap
-    where
-      procMap = fromList procMappings
-      procMappings = map constructProcMapping procs
+emptyProcSymTable :: ProcSymTable
+emptyProcSymTable
+  = ProcSymTable empty
 
-constructProcMapping :: Proc -> (String, ProcRecord)
-constructProcMapping (Proc _ (Id _ name) params decls _)
-  = (name, record)
-    where
-      record = ProcRecord { procParams = params }
+insertProcRecord :: String -> ProcRecord -> ProcSymTable -> ProcSymTable
+insertProcRecord name record (ProcSymTable procMap)
+  = ProcSymTable $ insert name record procMap
+
 
 -- constructVarSymTable
 -- Given lists of decls and params, generate slots for params and decls, and

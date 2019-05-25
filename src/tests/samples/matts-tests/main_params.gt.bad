@@ -1,0 +1,5 @@
+proc main(val int x)
+#         ^ semantic error: main should not take parameters
+begin
+    write "hello\n";
+end

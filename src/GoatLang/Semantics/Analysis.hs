@@ -45,41 +45,62 @@ analyseFullProgram goatProgram
 analyseGoatProgram :: GoatProgram -> SemanticAnalysis AGoatProgram
 analyseGoatProgram (GoatProgram procs)
   = do
-      -- assertNoDupNames [ident | (Proc _ ident _ _ _) <- procs]
-      -- TODO: Maybe we could construct the symbol table monadicaly in an
-      -- initial pass for easier error detection and reporting.
-      pushProcSymTable (constructProcSymTable procs)
-      -- assertMainProc procs -- one procedure should be called main (arity 0)
+      -- construct the global procedure table in a first pass over the program:
+      pushProcSymTable
+      mapM_ defineProc procs
+
+      -- there must be a procedure of arity 0 called main:
+      assertMainProc procs
+
+      -- now, with this procedure symbol table, analyse the contents of each
+      -- procedure definition
       aProcs <- mapM analyseProc procs
+      
+      -- we're done with the procedure symbol table (NOTE: there is only ever
+      -- at most a single procedure table, but we use a stack to keep the
+      -- analysis program general and clean, and would allow easy extensions to
+      -- nested procedure definitions)
       popProcSymTable
+
       return $ AGoatProgram aProcs
 
+defineProc :: Proc -> SemanticAnalysis ()
+defineProc (Proc pos ident@(Id _ name) params _ _)
+  = do
+      let newRecord = ProcRecord { procParams = params
+                                 , procDefnPos = pos
+                                 }
+      -- check to make sure a procedure of the same name has not been defined
+      -- already (NOTE: will check ALL proc symbol tables; if we extend to allow
+      -- nested procedure definitions then this may not be intended behaviour)
+      maybeExistingRecord <- lookupProc name
+      case maybeExistingRecord of
+        Nothing -> return ()
+        Just existingRecord -> semanticError $
+          RepeatedDefinitionError 
+            (procDefnPos newRecord)
+            (procDefnPos existingRecord)
+            ("repeat definition of procedure " ++ show name)
+      -- define the procedure and continue to analyse the program
+      -- (error recovery: just let the second definition override the first)
+      addProcMapping name newRecord
 
--- TODO: Sticking to the plan, do error checking later.
--- 
--- assertNoDupNames :: [Id] -> SemanticAnalysis ()
--- assertNoDupNames ids
---   = do
---       let dupNames = filter (\ns -> length ns > 1) $ group $ sort ids
---       mapM_ reportDupNames dupNames
-
--- reportDupNames :: [Id] -> SemanticAnalysis ()
--- reportDupNames ids
---   = do
---       let (Id origPos name) = head ids
---       let repeats = [pos | (Id pos _) <- tail ids]
---       semanticError $ RepeatedDefinitionError origPos repeats
---         "Repeated definition(s) of identifier " ++ show name
-
-
--- assertMainProc :: [Proc] -> SemanticAnalysis ()
--- assertMainProc procs
---   = do
---       maybeMain <- lookupProc "main"
---       case maybeMain of
---         Just record -> if null (procParams record) then return ()
---           else semanticError $ GlobalError "main must not take arguments"
---         Nothing -> semanticError $ GlobalError "missing main procedure"
+assertMainProc :: [Proc] -> SemanticAnalysis ()
+assertMainProc procs
+  = do
+      maybeMainRecord <- lookupProc "main"
+      case maybeMainRecord of
+        -- there must be a procedure called main:
+        Nothing -> semanticError $ GlobalError $
+          "missing main procedure definition"
+        -- and, if it exists, it must have arity 0 (no parameters)
+        Just record -> 
+          if (null $ procParams record)
+            then return ()
+            else semanticError $ SemanticError
+              (procDefnPos record)
+              "main procedure must have no parameters"
+        
 
 analyseProc :: Proc -> SemanticAnalysis AProc
 analyseProc (Proc pos ident params decls stmts)

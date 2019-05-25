@@ -19,7 +19,14 @@ import GoatLang.Syntax.AST (Pos)
 
 data SemanticError
   = SemanticError Pos String
+  | RepeatedDefinitionError Pos Pos String
   | GlobalError String
-  | RepeatedDefinitionError Pos [Pos] String
-  deriving (Show, Eq)
 
+instance Show SemanticError where
+  show (SemanticError pos string)
+    = string ++ " at " ++ show pos
+  show (GlobalError string)
+    = string
+  show (RepeatedDefinitionError pos oldPos string)
+    = string ++ " at: " ++ show pos
+      ++ "\norginal definition at: " ++ show oldPos

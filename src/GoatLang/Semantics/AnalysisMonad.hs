@@ -74,17 +74,40 @@ semanticError err
 -- Manipulating the stacks of symbol tables
 -- ----------------------------------------------------------------------------
 
+pushProcSymTable :: SemanticAnalysis ()
+pushProcSymTable
+  = do
+      state <- get
+      let newSymTable = emptyProcSymTable
+      let currentStack = procSymTableStack state
+      put $ state { procSymTableStack = newSymTable : currentStack }
+
+addProcMapping :: String -> ProcRecord -> SemanticAnalysis ()
+addProcMapping name record
+  = do
+      state <- get
+      -- NOTE: Runtime error if stack is empty:
+      let (topTable:restOfStack) = procSymTableStack state
+      let newTopTable = insertProcRecord name record topTable
+      put $ state { procSymTableStack = newTopTable:restOfStack }
+
+popProcSymTable :: SemanticAnalysis ProcSymTable
+popProcSymTable
+  = do
+      state <- get
+      -- NOTE: Runtime error if stack is empty:
+      let (topProcSymTable:restOfStack) = procSymTableStack state
+      put $ state { procSymTableStack = restOfStack }
+      return topProcSymTable
+
+
+
 pushVarSymTable :: VarSymTable -> SemanticAnalysis ()
 pushVarSymTable newSymTable
   = do
       state <- get
       put $ state { varSymTableStack = newSymTable : varSymTableStack state }
 
-pushProcSymTable :: ProcSymTable -> SemanticAnalysis ()
-pushProcSymTable newSymTable
-  = do
-      state <- get
-      put $ state { procSymTableStack = newSymTable : procSymTableStack state }
 
 popVarSymTable :: SemanticAnalysis VarSymTable
 popVarSymTable
@@ -95,14 +118,6 @@ popVarSymTable
       put $ state { varSymTableStack = restOfStack }
       return topVarSymTable
 
-popProcSymTable :: SemanticAnalysis ProcSymTable
-popProcSymTable
-  = do
-      state <- get
-      -- NOTE: Runtime error if stack is empty:
-      let (topProcSymTable:restOfStack) = procSymTableStack state
-      put $ state { procSymTableStack = restOfStack }
-      return topProcSymTable
 
 
 -- ----------------------------------------------------------------------------

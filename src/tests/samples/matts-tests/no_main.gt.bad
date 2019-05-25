@@ -1,0 +1,6 @@
+proc not_main()
+begin
+    write "hello\n";
+end
+
+# global semantic error: no procedure called main
