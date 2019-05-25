@@ -75,15 +75,25 @@ for testin in "$SAMPLE_ROOT"/**/*.gt.semantic-error; do
     # running goat:
     "$GOAT" -x "$testin" > ".temp.gt" 2>&1
     
-    if [ $? == 0 ]; then
+    case $? in
+    0)
         # if it succeeded, we have a problem! There should have been an error
-        echo -e "${FAIL}: parsing $testin succeeded, but should have rejected:"
+        echo -e "${FAIL}: compiling $testin succeeded, but should have rejected:"
         if [ -f "$testin.out" ]; then
             cat "$testin.out" | sed 's/^/  /'
         else
             echo "  ($testin.out missing---no example error message)"
         fi
-    fi
+    ;;
+    1)
+        # seems like a haskell runtime error. uh oh!
+        echo -e "${FAIL}: compiling $testin broke the compiler:"
+        cat ".temp.gt" | sed 's/^/  /'
+    ;;
+    *)
+        # any other error code is okay, right?
+    ;;
+    esac
     # if it failed, that's good! the error message is not specified, though, so
     # we need not compare it.
 done

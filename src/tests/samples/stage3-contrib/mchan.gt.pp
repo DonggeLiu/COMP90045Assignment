@@ -1,0 +1,30 @@
+proc main ()
+    float a[10, 20];
+    int a_m;
+    int a_n;
+    int x;
+    int m;
+    int n;
+begin
+    write "Please provide an integer: ";
+    read x;
+    a_m := 10;
+    a_n := 20;
+    m := 0;
+    while m < a_m do
+        n := 0;
+        while n < a_n do
+            call mul_by_two(x, a[m, n]);
+            n := n + 1;
+        od
+        m := m + 1;
+    od
+    write "Verifying array contents\n";
+    write a[6, 8];
+    write "\n";
+end
+
+proc mul_by_two (val float in, ref float out)
+begin
+    out := in * 2;
+end
