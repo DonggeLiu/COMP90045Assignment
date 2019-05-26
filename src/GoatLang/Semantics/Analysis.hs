@@ -215,7 +215,7 @@ analyseStmt (WriteExpr pos expr)
 
 analyseStmt (WriteString pos string)
   = return $ AWriteString string
-
+ 
 analyseStmt (Call pos ident@(Id _ name) args)
   = do
       aArgs <- mapM analyseExpr args
@@ -230,7 +230,10 @@ analyseStmt (Call pos ident@(Id _ name) args)
       assert (length params == length args) $ SemanticError pos $
         "call with incorrect number of arguments (expected " ++
         show (length params) ++ " but got " ++ show (length args) ++ ")"
-      -- TODO: Check types of arguments match params
+      
+      -- Check types of arguments match params
+      mapM (\(p,a) -> assertParamTypeMatchesArgs p a) $ zip params aArgs
+
       -- TODO: Check only scalars in reference param positions.
       let passBys = [ passBy | (Param _ passBy _ _) <- params ]
       let attrs = CallAttr { callPassBys = passBys }
@@ -244,10 +247,26 @@ analyseStmt (Call pos ident@(Id _ name) args)
         = case (exprType arg) of
             IntType -> AFloatCast arg
             FloatType -> arg
-            -- BoolType -> -- ERROR!
+            --BoolType -> -- ERROR!
       castArg _ arg
         = arg
-
+      
+      assertParamTypeMatchesArgs :: Param -> AExpr -> SemanticAnalysis ()
+      assertParamTypeMatchesArgs param@(Param _ _ baseType _) arg
+        =  do
+            assert ( baseType == exprType arg) $ SemanticError pos $
+              "call with mismatched paramater and argument types (expected " ++
+              show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
+{-
+      assertParamTypeMatchesArgs :: [Param] -> [Param] -> SemanticAnalysis ()
+      assertParamTypeMatchesArgs (param:params) (arg:args)
+        = case (param:params) of
+            [] -> do
+                  param -> assert ( Type param == Type) $ SemanticError pos $
+                  "call with incorrect number of arguments (expected " ++
+                  show (length params) ++ " but got " ++ show (length args) ++ ")"
+                  assertParamTypeMatchesArgs params args
+-}
 
 analyseStmt (If pos cond thenStmts)
   = do
