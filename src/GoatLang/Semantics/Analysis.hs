@@ -352,12 +352,22 @@ analyseExpr (BinExpr pos op lExpr rExpr)
       aLExpr <- analyseExpr lExpr
       aRExpr <- analyseExpr rExpr
       -- introduce casts, if necessary
-      let aLExpr', aRExpr') = castOperands op aLExpr aRExpr
-    
-      let (instr, resType) = lookupBinInstr op (exprType aLExpr') (exprType aRExpr')
-      let attrs = BinExprAttr { binExprInstr = instr
-                              , binExprResultType = resType
-                              }
+      let (aLExpr', aRExpr') = castOperands op aLExpr aRExpr
+      let lType = exprType aLExpr'
+      let rType = exprType aRExpr'
+      let maybeInstrPair = lookupBinInstr op lType rType
+      attrs <- case maybeInstrPair of
+        Nothing -> do
+          semanticError $ SemanticError pos $ "cannot apply binary " ++
+            "operator " ++ show op ++ " to operands of type " ++
+            show lType ++ " and " ++ show rType
+          return $ BinExprAttr { binExprInstr = SubIntInstr
+                               , binExprResultType = lType
+                               }
+        Just (instr, resultType) -> return $
+          BinExprAttr { binExprInstr = instr
+                      , binExprResultType = resultType
+                      }
       return $ ABinExpr op aLExpr' aRExpr' attrs
 
 
@@ -546,15 +556,15 @@ lookupUnInstr Neg _
 
 -- castOperands
 -- Compute an alternative version of the operands to a binary operation if they
--- will need to be cast to another type for that operation, or return the 
+-- will need to be cast to another type for that operation, or return the
 -- operand expressions unchanged if they will not.
--- (An operand may require a cast to such as for `1 + 1.0` which should become 
+-- (An operand may require a cast to such as for `1 + 1.0` which should become
 -- `float(1) + 1.0`)
 castOperands :: BinOp -> AExpr -> AExpr -> (AExpr, AExpr)
 castOperands op lExpr rExpr
   | op `elem` [Add, Sub, Mul, Div, LTh, LEq, GTh, GEq]
     = case (exprType lExpr, exprType rExpr) of
-        -- arithmetic operations and comparison operations (other than = and !=) 
+        -- arithmetic operations and comparison operations (other than = and !=)
         -- allow either of their operands to be promoted from IntType to
         -- FloatType if the other operand is a FloatType:
         (IntType, FloatType) -> (AFloatCast lExpr, rExpr)
@@ -573,47 +583,47 @@ lookupBinInstr :: BinOp -> BaseType -> BaseType
                   -> Maybe (BinInstruction, BaseType)
 
 -- for int arguments, arithmetic and comparisons are allowed
-lookupBinInstr IntType IntType Add
+lookupBinInstr Add IntType IntType
   = Just (AddIntInstr, IntType)
-lookupBinInstr IntType IntType Sub
+lookupBinInstr Sub IntType IntType
   = Just (SubIntInstr, IntType)
-lookupBinInstr IntType IntType Mul
+lookupBinInstr Mul IntType IntType
   = Just (MulIntInstr, IntType)
-lookupBinInstr IntType IntType Div
+lookupBinInstr Div IntType IntType
   = Just (DivIntInstr, IntType)
-lookupBinInstr IntType IntType Equ
+lookupBinInstr Equ IntType IntType
   = Just (EquIntInstr, BoolType)
-lookupBinInstr IntType IntType NEq
+lookupBinInstr NEq IntType IntType
   = Just (NEqIntInstr, BoolType)
-lookupBinInstr IntType IntType LTh
+lookupBinInstr LTh IntType IntType
   = Just (LThIntInstr, BoolType)
-lookupBinInstr IntType IntType LEq
+lookupBinInstr LEq IntType IntType
   = Just (LEqIntInstr, BoolType)
-lookupBinInstr IntType IntType GTh
+lookupBinInstr GTh IntType IntType
   = Just (GThIntInstr, BoolType)
-lookupBinInstr IntType IntType GEq
+lookupBinInstr GEq IntType IntType
   = Just (GEqIntInstr, BoolType)
 
 -- For float arguments, arithmetic and comparisons are allowed
-lookupBinInstr FloatType FloatType Add
+lookupBinInstr Add FloatType FloatType
   = Just (AddRealInstr, FloatType)
-lookupBinInstr FloatType FloatType Sub
+lookupBinInstr Sub FloatType FloatType
   = Just (SubRealInstr, FloatType)
-lookupBinInstr FloatType FloatType Mul
+lookupBinInstr Mul FloatType FloatType
   = Just (MulRealInstr, FloatType)
-lookupBinInstr FloatType FloatType Div
+lookupBinInstr Div FloatType FloatType
   = Just (DivRealInstr, FloatType)
-lookupBinInstr FloatType FloatType Equ
+lookupBinInstr Equ FloatType FloatType
   = Just (EquRealInstr, BoolType)
-lookupBinInstr FloatType FloatType NEq
+lookupBinInstr NEq FloatType FloatType
   = Just (NEqRealInstr, BoolType)
-lookupBinInstr FloatType FloatType LTh
+lookupBinInstr LTh FloatType FloatType
   = Just (LThRealInstr, BoolType)
-lookupBinInstr FloatType FloatType LEq
+lookupBinInstr LEq FloatType FloatType
   = Just (LEqRealInstr, BoolType)
-lookupBinInstr FloatType FloatType GTh
+lookupBinInstr GTh FloatType FloatType
   = Just (GThRealInstr, BoolType)
-lookupBinInstr FloatType FloatType GEq
+lookupBinInstr GEq FloatType FloatType
   = Just (GEqRealInstr, BoolType)
 
 
@@ -621,21 +631,21 @@ lookupBinInstr FloatType FloatType GEq
 -- Logical operations will actually be skipped at runtime for specific code
 -- that creates short-circuit evaluation. For now, we use dummy instructions
 -- `AndInstr` and `OrInstr` so that these expressions can still be annotated.
-lookupBinInstr BoolType BoolType Equ
+lookupBinInstr Equ BoolType BoolType
   = Just (EquIntInstr, BoolType)
-lookupBinInstr BoolType BoolType NEq
+lookupBinInstr NEq BoolType BoolType
   = Just (NEqIntInstr, BoolType)
-lookupBinInstr BoolType BoolType LTh
+lookupBinInstr LTh BoolType BoolType
   = Just (LThIntInstr, BoolType)
-lookupBinInstr BoolType BoolType LEq
+lookupBinInstr LEq BoolType BoolType
   = Just (LEqIntInstr, BoolType)
-lookupBinInstr BoolType BoolType GTh
+lookupBinInstr GTh BoolType BoolType
   = Just (GThIntInstr, BoolType)
-lookupBinInstr BoolType BoolType GEq
+lookupBinInstr GEq BoolType BoolType
   = Just (GEqIntInstr, BoolType)
-lookupBinInstr BoolType BoolType And
+lookupBinInstr And BoolType BoolType
   = Just (AndInstr, BoolType)
-lookupBinInstr BoolType BoolType Or
+lookupBinInstr Or BoolType BoolType
   = Just (OrInstr, BoolType)
 
 -- Any other combination is not allowed
