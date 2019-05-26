@@ -5,6 +5,7 @@
 
 GOAT="./Goat"
 SAMPLE_ROOT="Tests/samples"
+OZ="../oz/oz"
 
 # Script constants and settings:
 
@@ -25,7 +26,7 @@ echo "TEST: parser should correctly print well-formed goat programs..."
 for testin in "$SAMPLE_ROOT"/**/*.gt; do
     # running goat:
     "$GOAT" -p "$testin" > ".temp.gt" 2>&1
-    
+
     if [ $? == 0 ]; then
         # if it succeeded, compare the output:
         if [ -f "$testin.pp" ]; then
@@ -51,7 +52,7 @@ echo "TEST: parser should reject any SYNTACTICALLY ill-formed goat programs..."
 for testin in "$SAMPLE_ROOT"/**/*.gt.bad; do
     # running goat:
     "$GOAT" -p "$testin" > ".temp.gt" 2>&1
-    
+
     if [ $? == 0 ]; then
         # if it succeeded, we have a problem! There should have been an error
         echo -e "${FAIL}: parsing $testin succeeded, but should have rejected:"
@@ -74,7 +75,7 @@ echo "TEST: parser should reject any SEMANTICALLY ill-formed goat programs..."
 for testin in "$SAMPLE_ROOT"/**/*.gt.semantic-error; do
     # running goat:
     "$GOAT" -x "$testin" > ".temp.gt" 2>&1
-    
+
     case $? in
     0)
         # if it succeeded, we have a problem! There should have been an error
@@ -100,9 +101,43 @@ done
 printf "DONE! num tests: "; ls -1 "$SAMPLE_ROOT"/**/*.gt.semantic-error | wc -l
 
 
+# Run GOAT to compile all the goat programs (*.gt) under SAMPLE_ROOT,
+# run the emulator on resulting Oz code and compare output to that expected.
+echo "TEST: parser should correctly compile well-formed goat programs..."
+tests=0
+failed=0
+for testin in "$SAMPLE_ROOT"/**/*.gt; do
+    if [ -f "$testin.oz" ]; then
+        tests=$((tests+1))
+        # running goat:
+        "$GOAT" -x "$testin" > .temp.oz 2>&1
+
+        if [ $? == 0 ]; then
+            # if it succeeded, run the emulator on the compiled Oz code:
+            "$OZ" .temp.oz < "$testin.in" > .temp.out.dream-team 2>&1
+            "$OZ" "$testin.oz" < "$testin.in" > .temp.out.harald 2>&1
+
+            diff .temp.out.harald .temp.out.dream-team > .temp.diff
+            if [ $? == 1 ]; then
+                failed=$((failed+1))
+                echo -e "${FAIL}: $testin output different:"
+                sed 's/^/  /' .temp.diff
+                echo
+            fi
+        else
+            # if it failed, probably there was a parse error
+            failed=$((failed+1))
+            echo -e "${FAIL}: $testin caused us a compile error:"
+            sed 's/^/  /' .temp.oz
+        fi
+    # else
+    #     echo -e "${WARN}: $testin.oz does not exist!"
+    fi
+done
+printf "DONE! num tests: $tests, num failed: $failed\n";
 
 
 # clean up temporary files:
-rm ".temp.gt"
+rm .temp.*
 
 echo "ALL DONE! (note: no output means all tests passed)."
