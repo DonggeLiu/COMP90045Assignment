@@ -28,7 +28,7 @@ import OzLang.Code
 -- Summary of TODO items from throughout file:
 --
 -- TODO:
--- 
+--
 
 -- analyseFullProgram
 -- Top level function: use the analysers defined below to convert a Goat Program
@@ -59,7 +59,7 @@ analyseGoatProgram (GoatProgram procs)
       -- now, with this procedure symbol table, analyse the contents of each
       -- procedure definition
       aProcs <- mapM analyseProc procs
-      
+
       -- we're done with the procedure symbol table (NOTE: there is only ever
       -- at most a single procedure table, but we use a stack to keep the
       -- analysis program general and clean, and would allow easy extensions to
@@ -106,7 +106,7 @@ assertMainProc
 analyseProc :: Proc -> SemanticAnalysis AProc
 analyseProc (Proc pos ident params decls stmts)
   = do
-      -- construct the local variable symbol table in a first pass over the 
+      -- construct the local variable symbol table in a first pass over the
       -- params and declarations:
       pushVarSymTable
       aParams <- mapM declareAnalyseParam params
@@ -117,7 +117,7 @@ analyseProc (Proc pos ident params decls stmts)
       -- is the frame size)
       frameSize <- getRequiredFrameSize
       let attrs = ProcAttr { procFrameSize = frameSize }
-      
+
       -- with this environment set up, analyse the procedure's component
       -- statements:
       aStmts <- mapM analyseStmt stmts
@@ -217,7 +217,7 @@ analyseStmt (WriteExpr pos expr)
 
 analyseStmt (WriteString pos string)
   = return $ AWriteString string
- 
+
 analyseStmt (Call pos ident@(Id _ name) args)
   = do
       aArgs <- mapM analyseExpr args
@@ -266,7 +266,7 @@ analyseStmt (If pos cond thenStmts)
         "incorrect type for condition (expected " ++
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
-      
+
       aThenStmts <- mapM analyseStmt thenStmts
       return $ AIf aCond aThenStmts
 
@@ -278,7 +278,7 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
         "incorrect type for condition (expected " ++
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
-      
+
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
       return $ AIfElse aCond aThenStmts aElseStmts
@@ -291,7 +291,7 @@ analyseStmt (While pos cond doStmts)
         "incorrect type for condition (expected " ++
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
-      
+
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
 
@@ -307,11 +307,11 @@ assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
         show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
 
       -- Now check that Parameters indicating pass by ref is a Scalar
-      when (passBy == Ref) $ case arg of 
+      when (passBy == Ref) $ case arg of
           AScalarExpr _ -> return ()
-          otherwise     -> semanticError $ SemanticError pos $ 
+          otherwise     -> semanticError $ SemanticError pos $
             "passed non-scalar to reference parameter " ++ show (name)
- 
+
 analyseExpr :: Expr -> SemanticAnalysis AExpr
 
 analyseExpr (ScalarExpr pos scalar)
@@ -330,10 +330,21 @@ analyseExpr (IntConst pos int)
 analyseExpr (UnExpr pos op expr)
   = do
       aExpr <- analyseExpr expr
-      let (instr, resultType) = lookupUnInstr op (exprType aExpr)
-      let attrs = UnExprAttr { unExprInstr = instr
-                             , unExprResultType = resultType
-                             }
+      let maybeInstrPair = lookupUnInstr op (exprType aExpr)
+      attrs <- case maybeInstrPair of
+        Nothing -> do
+          semanticError $ SemanticError pos $ "cannot apply unary " ++
+            "operator " ++ show op ++ " to operand of type " ++
+            show (exprType aExpr)
+          -- for error recovery, default values are given
+          return $ UnExprAttr { unExprInstr = NegIntInstr
+                              , unExprResultType = exprType aExpr
+                              }
+        Just (instr, resultType) -> return $
+          UnExprAttr { unExprInstr = instr
+                     , unExprResultType = resultType
+                     }
+
       return $ AUnExpr op aExpr attrs
 
 analyseExpr (BinExpr pos op lExpr rExpr)
@@ -352,7 +363,7 @@ analyseScalar (Single pos ident@(Id _ name))
   = do
       -- lookup the indentifier, hopefully if exists
       maybeRecord <- lookupVar name
-      record <- case maybeRecord of 
+      record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
@@ -360,7 +371,7 @@ analyseScalar (Single pos ident@(Id _ name))
           -- error recovery: continue, assuming that the variable exists and
           -- has some default attributes:
           return $ dummyVarRecord { varShape = Dim0 }
-      
+
       -- ensure that the dimensionality is correct (Dim0):
       record' <- case (varShape record) of
         Dim0 -> return $ record
@@ -369,7 +380,7 @@ analyseScalar (Single pos ident@(Id _ name))
             "accessing array/matrix variable as if it were a single"
           -- error recovery: continue, assuming that it's a single.
           return $ record { varShape = Dim0 }
-      
+
       let attrs = SingleAttr { singlePassBy = varPassBy record'
                              , singleStackSlot = varStackSlot record'
                              , singleBaseType = varType record'
@@ -384,7 +395,7 @@ analyseScalar (Array pos ident@(Id _ name) exprI)
 
       -- lookup the indentifier, hopefully if exists
       maybeRecord <- lookupVar name
-      record <- case maybeRecord of 
+      record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
@@ -413,16 +424,16 @@ analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
       assert (exprType aExprI == IntType) $ SemanticError pos $
         "first matrix index must be an integer expression (got: " ++
         show (exprType aExprI) ++")"
-      
+
       -- analyse second index expression
       aExprJ <- analyseExpr exprJ
       assert (exprType aExprJ == IntType) $ SemanticError pos $
         "second matrix index must be an integer expression (got: " ++
         show (exprType aExprJ) ++")"
-      
+
       -- lookup the indentifier, hopefully if exists
       maybeRecord <- lookupVar name
-      record <- case maybeRecord of 
+      record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
@@ -517,21 +528,17 @@ type BinInstruction
 -- This is a lookup table to find the instructions corresponding to a particular
 -- unary operation and argument type. It returns the instruction constructor and
 -- also the BaseType representing the result of the instruction.
-lookupUnInstr :: UnOp -> BaseType -> (UnInstruction, BaseType)
+lookupUnInstr :: UnOp -> BaseType -> Maybe (UnInstruction, BaseType)
 lookupUnInstr Not BoolType
-  = (NotInstr, BoolType)
-{-
+  = Just (NotInstr, BoolType)
 lookupUnInstr Not _
-  = do 
-    semanticError $ GlobalError $ "Type for unary operator `Not` must be bool";
-    return $ (NotInstr, BoolType)
--}
+  = Nothing
 lookupUnInstr Neg IntType
-  = (NegIntInstr, IntType)
+  = Just (NegIntInstr, IntType)
 lookupUnInstr Neg FloatType
-  = (NegRealInstr, FloatType)
--- TODO: consider other (erroneous) types. They should return some kind of error
--- here (BEFORE runtime haha)
+  = Just (NegRealInstr, FloatType)
+lookupUnInstr Neg _
+  = Nothing
 
 -- lookupBinInstr
 -- This is a lookup table to find the instructions corresponding to a particular
@@ -557,7 +564,7 @@ lookupBinInstr op lExpr rExpr
         (FloatType, FloatType) -> (lookupOpReal op, lExpr, rExpr)
         (FloatType, IntType) -> (lookupOpIntOrReal op, lExpr, rExprReal)
         (IntType, FloatType) -> (lookupOpIntOrReal op, lExprReal, rExpr)
-    -- TODO: do proper checking / handle error cases (bad op for types 
+    -- TODO: do proper checking / handle error cases (bad op for types
     -- e.g. Equ for Float and Int or bad type combo e.g. Float and Bool)
 
     -- cast, if necessary
@@ -565,7 +572,7 @@ lookupBinInstr op lExpr rExpr
     rExprReal = AFloatCast rExpr
 
     -- and determine the result type of this operation
-    resultType 
+    resultType
       | arithmetic op = case (lType, rType) of
           (IntType, IntType) -> IntType
           otherwise -> FloatType
