@@ -22,7 +22,9 @@ data Pos
         , lineNumber :: Int
         , colNumber  :: Int
         }
-  deriving (Show)
+instance Show Pos where
+  show NoPos = "-:-"
+  show pos = show (lineNumber pos) ++ ":" ++ show (colNumber pos)
 instance Eq Pos where
   a == b = True
 
