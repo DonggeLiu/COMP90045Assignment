@@ -128,7 +128,6 @@ popProcSymTable
       setProcSymTableStack restOfStack
       return topProcSymTable
 
-
 addProcMapping :: String -> ProcRecord -> SemanticAnalysis ()
 addProcMapping name newRecord
   = do
@@ -172,7 +171,7 @@ popVarSymTable
       setVarSymTableStack restOfStack
       return topVarSymTable
 
-
+-- Add a VarRecord to the VarSymTable at the top of the stack
 addVarMapping :: String -> VarRecord -> SemanticAnalysis ()
 addVarMapping name newRecord
   = do
@@ -205,6 +204,8 @@ getRequiredFrameSize
       let (VarSymTable _ numSlots : _) = symTableStack
       return $ FrameSize numSlots
 
+-- Allocate the given number of new slots to the symbol table at the top of 
+-- the VarSymTableStack. 
 allocateStackSlots :: Int -> SemanticAnalysis Slot
 allocateStackSlots numSlots
   = do

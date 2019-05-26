@@ -220,6 +220,8 @@ analyseStmt (Call pos ident@(Id _ name) args)
   = do
       aArgs <- mapM analyseExpr args
       maybeProcRecord <- lookupProc name
+
+      -- Pull the list of Params out of the ProcRecord, if it exists
       params <- case maybeProcRecord of
         Nothing -> do
           semanticError $ SemanticError pos $
@@ -227,15 +229,17 @@ analyseStmt (Call pos ident@(Id _ name) args)
           -- error recovery: just assume the procedure takes no arguments
           return []
         Just procRecord -> return (procParams procRecord)
+
+      -- Check that we have the same no. of args & params
       assert (length params == length args) $ SemanticError pos $
         "call with incorrect number of arguments (expected " ++
         show (length params) ++ " but got " ++ show (length args) ++ ")"
       
-      -- Check types of arguments match params
-      mapM (\(p,a) -> assertParamTypeMatchesArgs p a) $ zip params aArgs
+      -- Checks that parameters and arguments agree
+      mapM (\(p, a) -> assertParamMatchesArgs p a) $ zip params aArgs
 
-      -- TODO: Check only scalars in reference param positions.
-      let passBys = [ passBy | (Param _ passBy _ _) <- params ]
+      -- Get the Call Attributes
+      let passBys = [ passBy | (Param _ passBy _ _) <- params]
       let attrs = CallAttr { callPassBys = passBys }
 
       -- in the case of pass by value, introduce float casts if necessary:
@@ -250,13 +254,7 @@ analyseStmt (Call pos ident@(Id _ name) args)
             --BoolType -> -- ERROR!
       castArg _ arg
         = arg
-      
-      assertParamTypeMatchesArgs :: Param -> AExpr -> SemanticAnalysis ()
-      assertParamTypeMatchesArgs param@(Param _ _ baseType _) arg
-        =  do
-            assert ( baseType == exprType arg) $ SemanticError pos $
-              "call with mismatched paramater and argument types (expected " ++
-              show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
+
 
 analyseStmt (If pos cond thenStmts)
   = do
@@ -295,6 +293,23 @@ analyseStmt (While pos cond doStmts)
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
 
+
+-- assertParamMatchesArgs
+-- Checks the Argument has the same type as the Parameter, and that if the
+-- Parameter is a pass by reference, then the argument is a Scalar.
+assertParamMatchesArgs :: Param -> AExpr -> SemanticAnalysis ()
+assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
+  = do
+      assert ( baseType == exprType arg) $ SemanticError pos $
+        "call with mismatched parameter and argument types (expected " ++
+        show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
+
+      -- Now check that Parameters indicating pass by ref is a Scalar!
+      refParamIsScalar <- case arg of 
+        AScalarExpr _ -> return (passBy == Ref)
+        otherwise     -> return True
+      assert (refParamIsScalar) $ SemanticError pos $
+        "passed Scalar " ++ show (name) ++ " when parameter expected a value"
 
 analyseExpr :: Expr -> SemanticAnalysis AExpr
 
