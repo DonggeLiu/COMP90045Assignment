@@ -540,6 +540,16 @@ lookupUnInstr Neg FloatType
 lookupUnInstr Neg _
   = Nothing
 
+
+castOperands :: BinOp -> AExpr -> AExpr -> (AExpr, AExpr)
+castOperands op lExpr rExpr
+  | op `elem` [Add, Sub, Mul, Div, LTh, LEq, GTh, GEq]
+    = case (exprType lExpr, exprType rExpr) of
+        (IntType, FloatType) -> (AFloatCast lExpr, rExpr)
+        (FloatType, IntType) -> (lExpr, AFloatCast rExpr)
+        otherwise -> (lExpr, rExpr)
+  | otherwise = (lExpr, rExpr)
+
 -- lookupBinInstr
 -- This is a lookup table to find the instructions corresponding to a particular
 -- binary operation and argument types. It returns the instruction constructor
@@ -548,10 +558,10 @@ lookupUnInstr Neg _
 -- `1 + 1.0` which should become `float(1) + 1.0`) we also return alternative
 -- argument expressions (these will be the same as the input expressions, or
 -- they will be the expression wrapped in an extra cast).
-lookupBinInstr :: BinOp -> AExpr -> AExpr
-                  -> (BinInstruction, AExpr, AExpr, BaseType)
-lookupBinInstr op lExpr rExpr
-  = (instr, lExpr', rExpr', resultType)
+lookupBinInstr :: BinOp -> BaseType -> BaseType
+                  -> Maybe (BinInstruction, BaseType)
+lookupBinInstr op lType rType
+  = result
   where
     -- find the types of both operands
     lType = exprType lExpr
@@ -559,11 +569,10 @@ lookupBinInstr op lExpr rExpr
 
     -- look up the approprate instruction for this combination of types
     (instr, lExpr', rExpr') = case (lType, rType) of
-        (BoolType, BoolType) -> (lookupOpBool op, lExpr, rExpr)
-        (IntType, IntType) -> (lookupOpInt op, lExpr, rExpr)
-        (FloatType, FloatType) -> (lookupOpReal op, lExpr, rExpr)
-        (FloatType, IntType) -> (lookupOpIntOrReal op, lExpr, rExprReal)
-        (IntType, FloatType) -> (lookupOpIntOrReal op, lExprReal, rExpr)
+      (BoolType, BoolType) -> (lookupOpBool op, lExpr, rExpr)
+      (IntType, IntType) -> (lookupOpInt op, lExpr, rExpr)
+      (FloatType, FloatType) -> (lookupOpReal op, lExpr, rExpr)
+      otherwise -> Nothing
     -- TODO: do proper checking / handle error cases (bad op for types
     -- e.g. Equ for Float and Int or bad type combo e.g. Float and Bool)
 
