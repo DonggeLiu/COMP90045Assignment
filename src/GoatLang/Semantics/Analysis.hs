@@ -114,7 +114,7 @@ analyseProc proc@(Proc pos ident params decls stmts)
       -- is the frame size)
       frameSize <- getRequiredFrameSize
       let attrs = ProcAttr { procFrameSize = frameSize }
-      
+
       -- with this environment set up, analyse the procedure's component
       -- statements:
       aStmts <- mapM analyseStmt stmts
@@ -145,7 +145,7 @@ declareAnalyseParam param@(Param pos passBy baseType ident)
       addVarMapping ident newRecord
       -- now prepare the annotated param for code generation:
       let attrs = ParamAttr { paramStackSlot = nextFreeSlot
-                            , prettifiedParam = init $ prettify param
+                            , paramPretty = prettify param
                             }
       return $ AParam passBy baseType ident attrs
 
@@ -169,7 +169,7 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
       -- now prepare the annotated declaration for code generation:
       let allSlots = take (numRequiredSlots) [startSlot..]
       let attrs = DeclAttr { declStackSlots = allSlots
-                           , prettifiedDecl = init $ prettify decl
+                           , declPretty = init $ prettify decl
                            }
       return $ ADecl baseType ident dim attrs
     where
@@ -187,7 +187,7 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
 analyseStmt :: Stmt -> SemanticAnalysis AStmt
 analyseStmt asn@(Asg pos scalar expr)
   = do
-      let attrs = AsgAttr { prettifiedAsg = init $ prettify asn }
+      let attrs = AsgAttr { asgPretty = init $ prettify asn }
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
@@ -210,7 +210,7 @@ analyseStmt readscalar@(Read pos scalar)
       aScalar <- analyseScalar scalar
       let builtin = lookupReadBuiltin (scalarType aScalar)
       let attrs = ReadAttr { readBuiltin = builtin
-                           , prettifiedRead = init $ prettify readscalar
+                           , readPretty = init $ prettify readscalar
                            }
       return $ ARead aScalar attrs
 
@@ -219,19 +219,19 @@ analyseStmt writeexpr@(WriteExpr pos expr)
       aExpr <- analyseExpr expr
       let builtin = lookupPrintBuiltin (exprType aExpr)
       let attrs = WriteExprAttr { writeExprBuiltin = builtin
-                                , prettifiedwriteExpr
+                                , writeExprPretty
                                     = init $ prettify writeexpr
                                 }
       return $ AWriteExpr aExpr attrs
 
 analyseStmt writestring@(WriteString pos string)
   = do
-      let attrs = WriteStringAttr { prettifiedWriteString
+      let attrs = WriteStringAttr { writeStringPretty
                                       = init $ prettify writestring
                                   }
-      
+
       return $ AWriteString string attrs
- 
+
 analyseStmt call@(Call pos ident args)
   = do
       aArgs <- mapM analyseExpr args
@@ -254,7 +254,7 @@ analyseStmt call@(Call pos ident args)
       -- Get the Call Attributes
       let passBys = [ passBy | (Param _ passBy _ _) <- params]
       let attrs = CallAttr { callPassBys = passBys
-                           , prettifiedCall = init $ prettify call
+                           , callPretty = init $ prettify call
                            }
 
       -- in the case of pass by value, introduce float casts if necessary:
@@ -282,7 +282,7 @@ analyseStmt (If pos cond thenStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = IfAttr { prettifiedIf = prettify cond}
+      let attrs = IfAttr { ifPretty = prettify cond}
       aThenStmts <- mapM analyseStmt thenStmts
       return $ AIf aCond aThenStmts attrs
 
@@ -294,7 +294,7 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = IfElseAttr { prettifiedIfElse = prettify cond }
+      let attrs = IfElseAttr { ifElsePretty = prettify cond }
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
       return $ AIfElse aCond aThenStmts aElseStmts attrs
@@ -307,7 +307,7 @@ analyseStmt (While pos cond doStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = WhileAttr { prettifiedWhile = prettify cond }
+      let attrs = WhileAttr { whilePretty = prettify cond }
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts attrs
 

@@ -70,7 +70,7 @@ genCodeProc (AProc (Id _ procName) params decls stmts attrs)
 genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
 genCodeRetrieveParamFrom reg (AParam _ _ _ attrs)
   = do
-      comment $ "retrieve " ++ (init $ prettifiedParam attrs)
+      comment $ "retrieve " ++ (paramPretty attrs)
       instr $ StoreInstr (paramStackSlot attrs) reg
 
 
@@ -79,7 +79,7 @@ genCodeRetrieveParamFrom reg (AParam _ _ _ attrs)
 genCodeInitVar :: ADecl -> CodeGen ()
 genCodeInitVar (ADecl baseType _ dim attrs)
   = do
-      comment $ "initialise " ++ (init $ prettifiedDecl attrs)
+      comment $ "initialise " ++ (declPretty attrs)
       -- load the 'zero' value of the correct type into an unused (!) register
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
@@ -95,31 +95,31 @@ genCodeStmt :: AStmt -> CodeGen ()
 
 genCodeStmt (AWriteExpr expr attrs)
   = do
-      comment $ init $ prettifiedWriteExpr attrs
+      comment $ writeExprPretty attrs
       genCodeExprInto (Reg 0) expr
       instr $ CallBuiltinInstr (writeExprBuiltin attrs)
 
 genCodeStmt (AWriteString str attrs)
   = do
-      comment $ init $ prettifiedWriteString attrs
+      comment $ writeStringPretty attrs
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
 genCodeStmt stmt@(ARead scalar attrs)
   = do
-      comment $ init $ prettifiedRead attrs
+      comment $ readPretty attrs
       instr $ CallBuiltinInstr (readBuiltin attrs)
       genCodeStore scalar (Reg 0)
 
 genCodeStmt stmt@(AAsg scalar expr attrs)
   = do
-      comment $ init $ prettifiedAsg attrs
+      comment $ asgPretty attrs
       genCodeExprInto (Reg 0) expr
       genCodeStore scalar (Reg 0)
 
 genCodeStmt (AIf cond thenStmts attrs)
   = do
-      comment $ "if " ++ prettifiedIf attrs
+      comment $ "if " ++ ifPretty attrs
       genCodeExprInto (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
@@ -128,7 +128,7 @@ genCodeStmt (AIf cond thenStmts attrs)
 
 genCodeStmt (AIfElse cond thenStmts elseStmts attrs)
   = do
-      comment $ "if-else " ++ prettifiedIfElse attrs
+      comment $ "if-else " ++ ifElsePretty attrs
       genCodeExprInto (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
@@ -141,7 +141,7 @@ genCodeStmt (AIfElse cond thenStmts elseStmts attrs)
 
 genCodeStmt (AWhile cond stmts attrs)
   = do
-      comment $ "while " ++ prettifiedWhile attrs
+      comment $ "while " ++ whilePretty attrs
       whileLabel <- getNewBlockLabel
       label $ whileLabel
       genCodeExprInto (Reg 0) cond
@@ -153,7 +153,7 @@ genCodeStmt (AWhile cond stmts attrs)
 
 genCodeStmt stmt@(ACall (Id _ procName) args attrs)
   = do
-      comment $ init $ prettifiedCall attrs
+      comment $ callPretty attrs
       sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callPassBys attrs) args
       instr $ CallInstr $ ProcLabel procName
 

@@ -30,14 +30,14 @@ data AParam
   = AParam PassBy BaseType Id ParamAttr
 data ParamAttr
   = ParamAttr { paramStackSlot :: Slot
-              , prettifiedParam :: String
+              , paramPretty :: String
               }
 
 data ADecl
   = ADecl BaseType Id Dim DeclAttr
 data DeclAttr
   = DeclAttr { declStackSlots :: [Slot]
-             , prettifiedDecl :: String
+             , declPretty :: String
              }
 
 
@@ -51,27 +51,27 @@ data AStmt
   | AIfElse AExpr [AStmt] [AStmt] IfElseAttr
   | AWhile AExpr [AStmt] WhileAttr
 data AsgAttr
-  = AsgAttr { prettifiedAsg :: String }
+  = AsgAttr { asgPretty :: String }
 data ReadAttr
   = ReadAttr { readBuiltin :: BuiltinFunc
-             , prettifiedRead :: String
-             }
+             , readPretty :: String
+             }  
 data WriteExprAttr
-  = WriteExprAttr { writeExprBuiltin :: BuiltinFunc 
-                  , prettifiedWriteExpr :: String 
+  = WriteExprAttr { writeExprBuiltin :: BuiltinFunc
+                  , writeExprPretty :: String
                   }
 data WriteStringAttr
-  = WriteStringAttr { prettifiedWriteString :: String }
+  = WriteStringAttr { writeStringPretty :: String }
 data CallAttr
-  = CallAttr { callPassBys :: [PassBy] 
-             , prettifiedCall :: String
+  = CallAttr { callPassBys :: [PassBy]
+             , callPretty :: String
              }
 data IfAttr
-  = IfAttr { prettifiedIf :: String }
+  = IfAttr { ifPretty :: String }
 data IfElseAttr
-  = IfElseAttr { prettifiedIfElse :: String }
+  = IfElseAttr { ifElsePretty :: String }
 data WhileAttr
-  = WhileAttr { prettifiedWhile :: String }
+  = WhileAttr { whilePretty :: String }
 
 
 data AScalar
@@ -88,7 +88,7 @@ data ArrayAttr
               , arrayBaseType :: BaseType
               }
 data MatrixAttr
-  = MatrixAttr { matrixStartSlot :: Slot 
+  = MatrixAttr { matrixStartSlot :: Slot
                , matrixRowWidth :: Int
                , matrixBaseType :: BaseType
                }
