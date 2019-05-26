@@ -351,7 +351,10 @@ analyseExpr (BinExpr pos op lExpr rExpr)
   = do
       aLExpr <- analyseExpr lExpr
       aRExpr <- analyseExpr rExpr
-      let (instr, aLExpr', aRExpr', resType) = lookupBinInstr op aLExpr aRExpr
+      -- introduce casts, if necessary
+      let aLExpr', aRExpr') = castOperands op aLExpr aRExpr
+    
+      let (instr, resType) = lookupBinInstr op (exprType aLExpr') (exprType aRExpr')
       let attrs = BinExprAttr { binExprInstr = instr
                               , binExprResultType = resType
                               }
@@ -541,144 +544,100 @@ lookupUnInstr Neg _
   = Nothing
 
 
+-- castOperands
+-- Compute an alternative version of the operands to a binary operation if they
+-- will need to be cast to another type for that operation, or return the 
+-- operand expressions unchanged if they will not.
+-- (An operand may require a cast to such as for `1 + 1.0` which should become 
+-- `float(1) + 1.0`)
 castOperands :: BinOp -> AExpr -> AExpr -> (AExpr, AExpr)
 castOperands op lExpr rExpr
   | op `elem` [Add, Sub, Mul, Div, LTh, LEq, GTh, GEq]
     = case (exprType lExpr, exprType rExpr) of
+        -- arithmetic operations and comparison operations (other than = and !=) 
+        -- allow either of their operands to be promoted from IntType to
+        -- FloatType if the other operand is a FloatType:
         (IntType, FloatType) -> (AFloatCast lExpr, rExpr)
         (FloatType, IntType) -> (lExpr, AFloatCast rExpr)
-        otherwise -> (lExpr, rExpr)
+        -- any other type combination will not introduce a cast
+        _ -> (lExpr, rExpr)
+  -- other operations do not involve casts
   | otherwise = (lExpr, rExpr)
 
+
 -- lookupBinInstr
--- This is a lookup table to find the instructions corresponding to a particular
--- binary operation and argument types. It returns the instruction constructor
--- and also the BaseType representing the result of the instruction. Since the
--- operation may require adding a cast to either input expression (such as for
--- `1 + 1.0` which should become `float(1) + 1.0`) we also return alternative
--- argument expressions (these will be the same as the input expressions, or
--- they will be the expression wrapped in an extra cast).
+-- Look up the appropriate Oz Instruction for two arguments of a particular type
+-- It returns the instruction constructor and also the BaseType representing the
+-- result of the operation.
 lookupBinInstr :: BinOp -> BaseType -> BaseType
                   -> Maybe (BinInstruction, BaseType)
-lookupBinInstr op lType rType
-  = result
-  where
-    -- find the types of both operands
-    lType = exprType lExpr
-    rType = exprType rExpr
 
-    -- look up the approprate instruction for this combination of types
-    (instr, lExpr', rExpr') = case (lType, rType) of
-      (BoolType, BoolType) -> (lookupOpBool op, lExpr, rExpr)
-      (IntType, IntType) -> (lookupOpInt op, lExpr, rExpr)
-      (FloatType, FloatType) -> (lookupOpReal op, lExpr, rExpr)
-      otherwise -> Nothing
-    -- TODO: do proper checking / handle error cases (bad op for types
-    -- e.g. Equ for Float and Int or bad type combo e.g. Float and Bool)
+-- for int arguments, arithmetic and comparisons are allowed
+lookupBinInstr IntType IntType Add
+  = Just (AddIntInstr, IntType)
+lookupBinInstr IntType IntType Sub
+  = Just (SubIntInstr, IntType)
+lookupBinInstr IntType IntType Mul
+  = Just (MulIntInstr, IntType)
+lookupBinInstr IntType IntType Div
+  = Just (DivIntInstr, IntType)
+lookupBinInstr IntType IntType Equ
+  = Just (EquIntInstr, BoolType)
+lookupBinInstr IntType IntType NEq
+  = Just (NEqIntInstr, BoolType)
+lookupBinInstr IntType IntType LTh
+  = Just (LThIntInstr, BoolType)
+lookupBinInstr IntType IntType LEq
+  = Just (LEqIntInstr, BoolType)
+lookupBinInstr IntType IntType GTh
+  = Just (GThIntInstr, BoolType)
+lookupBinInstr IntType IntType GEq
+  = Just (GEqIntInstr, BoolType)
 
-    -- cast, if necessary
-    lExprReal = AFloatCast lExpr
-    rExprReal = AFloatCast rExpr
+-- For float arguments, arithmetic and comparisons are allowed
+lookupBinInstr FloatType FloatType Add
+  = Just (AddRealInstr, FloatType)
+lookupBinInstr FloatType FloatType Sub
+  = Just (SubRealInstr, FloatType)
+lookupBinInstr FloatType FloatType Mul
+  = Just (MulRealInstr, FloatType)
+lookupBinInstr FloatType FloatType Div
+  = Just (DivRealInstr, FloatType)
+lookupBinInstr FloatType FloatType Equ
+  = Just (EquRealInstr, BoolType)
+lookupBinInstr FloatType FloatType NEq
+  = Just (NEqRealInstr, BoolType)
+lookupBinInstr FloatType FloatType LTh
+  = Just (LThRealInstr, BoolType)
+lookupBinInstr FloatType FloatType LEq
+  = Just (LEqRealInstr, BoolType)
+lookupBinInstr FloatType FloatType GTh
+  = Just (GThRealInstr, BoolType)
+lookupBinInstr FloatType FloatType GEq
+  = Just (GEqRealInstr, BoolType)
 
-    -- and determine the result type of this operation
-    resultType
-      | arithmetic op = case (lType, rType) of
-          (IntType, IntType) -> IntType
-          otherwise -> FloatType
-      | otherwise = BoolType
-    arithmetic = (`elem` [Add, Sub, Mul, Div])
 
--- lookupOpIntOrReal
--- Look up the appropriate Oz Instruction for an int and a real argument
--- (NOTE: Equ and NEq are not allowed!)
-lookupOpIntOrReal :: BinOp -> BinInstruction
-lookupOpIntOrReal Add
-  = AddRealInstr
-lookupOpIntOrReal Sub
-  = SubRealInstr
-lookupOpIntOrReal Mul
-  = MulRealInstr
-lookupOpIntOrReal Div
-  = DivRealInstr
-lookupOpIntOrReal LTh
-  = LThRealInstr
-lookupOpIntOrReal LEq
-  = LEqRealInstr
-lookupOpIntOrReal GTh
-  = GThRealInstr
-lookupOpIntOrReal GEq
-  = GEqRealInstr
-
--- lookupOpInt
--- Look up the appropriate Oz Instruction for two int arguments (arithmetic
--- and comparisons are allowed)
-lookupOpInt :: BinOp -> BinInstruction
-lookupOpInt Add
-  = AddIntInstr
-lookupOpInt Sub
-  = SubIntInstr
-lookupOpInt Mul
-  = MulIntInstr
-lookupOpInt Div
-  = DivIntInstr
-lookupOpInt Equ
-  = EquIntInstr
-lookupOpInt NEq
-  = NEqIntInstr
-lookupOpInt LTh
-  = LThIntInstr
-lookupOpInt LEq
-  = LEqIntInstr
-lookupOpInt GTh
-  = GThIntInstr
-lookupOpInt GEq
-  = GEqIntInstr
-
--- lookupOpReal
--- Look up the appropriate Oz Instruction for two real arguments:
--- (arithmetic and comparisons are allowed)
-lookupOpReal :: BinOp -> BinInstruction
-lookupOpReal Add
-  = AddRealInstr
-lookupOpReal Sub
-  = SubRealInstr
-lookupOpReal Mul
-  = MulRealInstr
-lookupOpReal Div
-  = DivRealInstr
-lookupOpReal Equ
-  = EquRealInstr
-lookupOpReal NEq
-  = NEqRealInstr
-lookupOpReal LTh
-  = LThRealInstr
-lookupOpReal LEq
-  = LEqRealInstr
-lookupOpReal GTh
-  = GThRealInstr
-lookupOpReal GEq
-  = GEqRealInstr
-
--- lookupOpBool
--- Look up the appropriate value for two boolean arguments (only comparisons
--- and logical relations are allowed)
+-- for boolean arguments only comparisons and logical relations are allowed
 -- Logical operations will actually be skipped at runtime for specific code
 -- that creates short-circuit evaluation. For now, we use dummy instructions
 -- `AndInstr` and `OrInstr` so that these expressions can still be annotated.
-lookupOpBool :: BinOp -> BinInstruction
-lookupOpBool Equ
-  = EquIntInstr
-lookupOpBool NEq
-  = NEqIntInstr
-lookupOpBool LTh
-  = LThIntInstr
-lookupOpBool LEq
-  = LEqIntInstr
-lookupOpBool GTh
-  = GThIntInstr
-lookupOpBool GEq
-  = GEqIntInstr
-lookupOpBool And
-  = AndInstr
-lookupOpBool Or
-  = OrInstr
+lookupBinInstr BoolType BoolType Equ
+  = Just (EquIntInstr, BoolType)
+lookupBinInstr BoolType BoolType NEq
+  = Just (NEqIntInstr, BoolType)
+lookupBinInstr BoolType BoolType LTh
+  = Just (LThIntInstr, BoolType)
+lookupBinInstr BoolType BoolType LEq
+  = Just (LEqIntInstr, BoolType)
+lookupBinInstr BoolType BoolType GTh
+  = Just (GThIntInstr, BoolType)
+lookupBinInstr BoolType BoolType GEq
+  = Just (GEqIntInstr, BoolType)
+lookupBinInstr BoolType BoolType And
+  = Just (AndInstr, BoolType)
+lookupBinInstr BoolType BoolType Or
+  = Just (OrInstr, BoolType)
+
+-- Any other combination is not allowed
+lookupBinInstr _ _ _
+  = Nothing
