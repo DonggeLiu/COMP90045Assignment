@@ -70,9 +70,7 @@ genCodeProc (AProc (Id _ procName) params decls stmts attrs)
 genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
 genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
   = do
-      comment $ "retrieving " ++ name
-      -- TODO: Should the number of slots be stored in the attrs, to allow
-      -- passing multi-slot things?
+      -- comment $ "retrieving " ++ name
       instr $ StoreInstr (paramStackSlot attrs) reg
 
 
@@ -150,6 +148,7 @@ genCodeStmt (AWhile cond stmts attrs)
       odLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) odLabel
       mapM_ genCodeStmt stmts
+      instr $ BranchUncondInstr whileLabel
       label $ odLabel
 
 genCodeStmt stmt@(ACall (Id _ procName) args attrs)
@@ -243,18 +242,12 @@ genCodeOffsetAddrInto reg (AMatrix _ exprI exprJ attrs)
 -- Action to generate code that will get the result of an expression into a
 -- target register. Will not touch registers below this target register.
 genCodeExprInto :: Reg -> AExpr -> CodeGen ()
--- TODO: The following code assumes that the expression is well-typed. Semantic
--- analysis will need to come in and actually provide that guarantee at some
--- point.
 
 -- Base cases 1-3: float, int and bool constants:
-
 genCodeExprInto reg (AIntConst int)
   = instr $ IntConstInstr reg int
-
 genCodeExprInto reg (AFloatConst float)
   = instr $ RealConstInstr reg float
-
 -- In Oz we represent True as the integer 1, and false as the integer 0
 genCodeExprInto reg (ABoolConst True)
   = instr $ IntConstInstr reg 1

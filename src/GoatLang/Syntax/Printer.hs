@@ -91,6 +91,8 @@ instance Pretty Stmt where
   writer = writeStmt
 instance Pretty Expr where
   writer = writeExpr
+instance Pretty Id where
+  writer (Id _ name) = writeIdent name
 
 
 -- ----------------------------------------------------------------------------

@@ -22,16 +22,14 @@ data Pos
         , lineNumber :: Int
         , colNumber  :: Int
         }
-  deriving (Show)
+instance Show Pos where
+  show NoPos = "-:-"
+  show pos = show (lineNumber pos) ++ ":" ++ show (colNumber pos)
 instance Eq Pos where
   a == b = True
 
 
 class ASTNode node
--- TODO: where nodePos :: node -> Pos ?
--- Some of the AST nodes would have to be cut.
--- where
---   pos :: node -> Pos
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram
