@@ -98,30 +98,35 @@ genCodeStmt :: AStmt -> CodeGen ()
 genCodeStmt stmt@(AWriteExpr expr attrs)
   = do
       -- comment $ init $ prettify stmt
+      comment $ "write expr"
       genCodeExprInto (Reg 0) expr
       instr $ CallBuiltinInstr (writeExprBuiltin attrs)
 
 genCodeStmt stmt@(AWriteString str)
   = do
       -- comment $ init $ prettify stmt
+      comment $ "write string"
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
 genCodeStmt stmt@(ARead scalar attrs)
   = do
       -- comment $ init $ prettify stmt
+      comment $ "read scalar"
       instr $ CallBuiltinInstr (readBuiltin attrs)
       genCodeStore scalar (Reg 0)
 
 genCodeStmt stmt@(AAsg scalar expr)
   = do
       -- comment $ init $ prettify stmt
+      comment "assignment"
       genCodeExprInto (Reg 0) expr
       genCodeStore scalar (Reg 0)
 
 genCodeStmt (AIf cond thenStmts)
   = do
       -- comment $ "if " ++ prettify cond
+      comment $ "if"
       genCodeExprInto (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
@@ -131,6 +136,7 @@ genCodeStmt (AIf cond thenStmts)
 genCodeStmt (AIfElse cond thenStmts elseStmts)
   = do
       -- comment $ "if-else " ++ prettify cond
+      comment $ "if-else"
       genCodeExprInto (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
@@ -144,17 +150,20 @@ genCodeStmt (AIfElse cond thenStmts elseStmts)
 genCodeStmt (AWhile cond stmts)
   = do
       -- comment $ "while " ++ prettify cond
+      comment $ "while"
       whileLabel <- getNewBlockLabel
       label $ whileLabel
       genCodeExprInto (Reg 0) cond
       odLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) odLabel
       mapM_ genCodeStmt stmts
+      instr $ BranchUncondInstr whileLabel
       label $ odLabel
 
 genCodeStmt stmt@(ACall (Id _ procName) args attrs)
   = do
       -- comment $ init $ prettify stmt
+      comment "call"
       sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callPassBys attrs) args
       instr $ CallInstr $ ProcLabel procName
 
