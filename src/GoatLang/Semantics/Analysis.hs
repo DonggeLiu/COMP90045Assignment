@@ -189,7 +189,9 @@ analyseStmt (Asg pos scalar expr)
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
-      aExpr' <- if (scalarType aScalar == FloatType && exprType aExpr == IntType)
+      let lType = scalarType aScalar
+      let rType = exprType aExpr
+      aExpr' <- if (lType == FloatType && rType == IntType)
         then return $ AFloatCast aExpr
         else return $ aExpr
 
@@ -309,7 +311,7 @@ assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
       -- Now check that Parameters indicating pass by ref is a Scalar
       when (passBy == Ref) $ case arg of
           AScalarExpr _ -> return ()
-          otherwise     -> semanticError $ SemanticError pos $
+          _ -> semanticError $ SemanticError pos $
             "passed non-scalar to reference parameter " ++ show (name)
 
 analyseExpr :: Expr -> SemanticAnalysis AExpr
@@ -388,7 +390,7 @@ analyseScalar (Single pos ident@(Id _ name))
       -- ensure that the dimensionality is correct (Dim0):
       record' <- case (varShape record) of
         Dim0 -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing array/matrix variable as if it were a single"
           -- error recovery: continue, assuming that it's a single.
@@ -420,7 +422,7 @@ analyseScalar (Array pos ident@(Id _ name) exprI)
       -- ensure that the dimensionality is correct (Dim1):
       record' <- case (varShape record) of
         (Dim1 _) -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing single/matrix variable as if it were an array"
           -- error recovery: continue, assuming that it's an array.
@@ -458,7 +460,7 @@ analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
       -- ensure that the dimensionality is correct (Dim2):
       record' <- case (varShape record) of
         (Dim2 _ _) -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing single/array variable as if it were a matrix"
           -- error recovery: continue, assuming that it's a matrix.
@@ -544,13 +546,11 @@ type BinInstruction
 lookupUnInstr :: UnOp -> BaseType -> Maybe (UnInstruction, BaseType)
 lookupUnInstr Not BoolType
   = Just (NotInstr, BoolType)
-lookupUnInstr Not _
-  = Nothing
 lookupUnInstr Neg IntType
   = Just (NegIntInstr, IntType)
 lookupUnInstr Neg FloatType
   = Just (NegRealInstr, FloatType)
-lookupUnInstr Neg _
+lookupUnInstr _ _
   = Nothing
 
 
