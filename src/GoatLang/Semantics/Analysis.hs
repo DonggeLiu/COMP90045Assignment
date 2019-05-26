@@ -15,6 +15,8 @@ module GoatLang.Semantics.Analysis where
 --
 -- ----------------------------------------------------------------------------
 
+import Control.Monad (when)
+
 import GoatLang.Syntax.AST
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
@@ -234,9 +236,6 @@ analyseStmt (Call pos ident@(Id _ name) args)
       assert (length params == length args) $ SemanticError pos $
         "call with incorrect number of arguments (expected " ++
         show (length params) ++ " but got " ++ show (length args) ++ ")"
-      
-      -- Checks that parameters and arguments agree
-      mapM (\(p, a) -> assertParamMatchesArgs p a) $ zip params aArgs
 
       -- Get the Call Attributes
       let passBys = [ passBy | (Param _ passBy _ _) <- params]
@@ -244,14 +243,17 @@ analyseStmt (Call pos ident@(Id _ name) args)
 
       -- in the case of pass by value, introduce float casts if necessary:
       let aArgs' = zipWith castArg params aArgs
+
+      -- Checks that parameters and arguments agree
+      sequence $ zipWith assertParamMatchesArgs params aArgs'
+
       return $ ACall ident aArgs' attrs
     where
       castArg :: Param -> AExpr -> AExpr
       castArg (Param _ Val FloatType _) arg
         = case (exprType arg) of
-            IntType -> AFloatCast arg
-            FloatType -> arg
-            --BoolType -> -- ERROR!
+              IntType -> AFloatCast arg
+              otherwise -> arg
       castArg _ arg
         = arg
 
@@ -304,13 +306,12 @@ assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
         "call with mismatched parameter and argument types (expected " ++
         show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
 
-      -- Now check that Parameters indicating pass by ref is a Scalar!
-      refParamIsScalar <- case arg of 
-        AScalarExpr _ -> return (passBy == Ref)
-        otherwise     -> return True
-      assert (refParamIsScalar) $ SemanticError pos $
-        "passed Scalar " ++ show (name) ++ " when parameter expected a value"
-
+      -- Now check that Parameters indicating pass by ref is a Scalar
+      when (passBy == Ref) $ case arg of 
+          AScalarExpr _ -> return ()
+          otherwise     -> semanticError $ SemanticError pos $ 
+            "passed non-scalar to reference parameter " ++ show (name)
+ 
 analyseExpr :: Expr -> SemanticAnalysis AExpr
 
 analyseExpr (ScalarExpr pos scalar)

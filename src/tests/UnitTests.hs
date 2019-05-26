@@ -336,6 +336,10 @@ writeStringLitTest
     -- tabs and other esc. sequences are not allowed by parser!
     ]
 
+
+
+
+
 main
   = runTestTT $ TestList
     [ generateParserUnitTest integerTest
