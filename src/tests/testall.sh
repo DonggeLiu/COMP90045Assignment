@@ -114,6 +114,8 @@ for testin in "$SAMPLE_ROOT"/**/*.gt; do
 
         if [ $? == 0 ]; then
             # if it succeeded, run the emulator on the compiled Oz code:
+            touch "$testin.in" # in case it doesn't exist yet, create a blank
+                               # input file.
             "$OZ" .temp.oz < "$testin.in" > .temp.out.dream-team 2>&1
             "$OZ" "$testin.oz" < "$testin.in" > .temp.out.harald 2>&1
 
