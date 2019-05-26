@@ -30,10 +30,6 @@ instance Eq Pos where
 
 
 class ASTNode node
--- TODO: where nodePos :: node -> Pos ?
--- Some of the AST nodes would have to be cut.
--- where
---   pos :: node -> Pos
 
 -- The root of a Goat AST is of type GoatProgram. It holds a list of procedures.
 data GoatProgram

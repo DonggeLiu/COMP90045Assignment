@@ -20,6 +20,9 @@ import Control.Monad.State
 
 import Util.DiffList
 
+import GoatLang.Syntax.AST
+import GoatLang.Syntax.Printer
+
 import GoatLang.Semantics.Error
 import GoatLang.Semantics.SymbolTable
 
@@ -128,8 +131,8 @@ popProcSymTable
       setProcSymTableStack restOfStack
       return topProcSymTable
 
-addProcMapping :: String -> ProcRecord -> SemanticAnalysis ()
-addProcMapping name newRecord
+addProcMapping :: Id -> ProcRecord -> SemanticAnalysis ()
+addProcMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
       -- NOTE: Runtime error if stack is empty:
@@ -138,17 +141,17 @@ addProcMapping name newRecord
 
       -- check to make sure a procedure of the same name has not been defined
       -- already (within the current scope i.e. top proc symbol table)
-      let maybeExistingRecord = lookupProcRecord topTable name
+      let maybeExistingRecord = lookupProcRecord topTable ident
       case maybeExistingRecord of
         Nothing -> do
           -- safe to insert new proc record since name is unique (thus far)
-          let newTopTable = insertProcRecord name newRecord topTable
+          let newTopTable = insertProcRecord ident newRecord topTable
           setProcSymTableStack $ newTopTable : restOfStack
         Just existingRecord -> semanticError $
           RepeatedDefinitionError
             (procDefnPos newRecord)
             (procDefnPos existingRecord)
-            ("repeat definition of procedure " ++ show name)
+            ("repeat definition of procedure " ++ prettify ident)
 
 
 -- ----------------------------------------------------------------------------
@@ -171,8 +174,8 @@ popVarSymTable
       return topVarSymTable
 
 -- Add a VarRecord to the VarSymTable at the top of the stack
-addVarMapping :: String -> VarRecord -> SemanticAnalysis ()
-addVarMapping name newRecord
+addVarMapping :: Id -> VarRecord -> SemanticAnalysis ()
+addVarMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
       -- NOTE: Runtime error if stack is empty:
@@ -181,17 +184,17 @@ addVarMapping name newRecord
 
       -- check to make sure a local variable of the same name has not been defnd
       -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
-      let maybeExistingRecord = lookupVarRecord topTable name
+      let maybeExistingRecord = lookupVarRecord topTable ident
       case maybeExistingRecord of
         Nothing -> do
           -- safe to insert record since name is unique (thus far)
-          let newTopTable = insertVarRecord name newRecord topTable
+          let newTopTable = insertVarRecord ident newRecord topTable
           setVarSymTableStack $ newTopTable : restOfStack
         Just existingRecord -> semanticError $
           RepeatedDefinitionError
             (varDefnPos newRecord)
             (varDefnPos existingRecord)
-            ("repeat definition of local variable " ++ show name)
+            ("repeat definition of local variable " ++ prettify ident)
 
 
 getRequiredFrameSize :: SemanticAnalysis FrameSize
@@ -220,31 +223,31 @@ allocateStackSlots numSlots
 -- Querying the stacks of symbol tables
 -- ----------------------------------------------------------------------------
 
-lookupProc :: String -> SemanticAnalysis (Maybe ProcRecord)
-lookupProc name
+lookupProc :: Id -> SemanticAnalysis (Maybe ProcRecord)
+lookupProc ident
   = do
       state <- get
-      return $ lookupProcStack (procSymTableStack state) name
+      return $ lookupProcStack (procSymTableStack state) ident
 
-lookupProcStack :: [ProcSymTable] -> String -> Maybe ProcRecord
-lookupProcStack [] name
+lookupProcStack :: [ProcSymTable] -> Id -> Maybe ProcRecord
+lookupProcStack [] ident
   = Nothing
-lookupProcStack (table:stack) name
-  = case (lookupProcRecord table name) of
-      Nothing -> lookupProcStack stack name
+lookupProcStack (table:stack) ident
+  = case (lookupProcRecord table ident) of
+      Nothing -> lookupProcStack stack ident
       justRecord -> justRecord
 
 
-lookupVar :: String -> SemanticAnalysis (Maybe VarRecord)
-lookupVar name
+lookupVar :: Id -> SemanticAnalysis (Maybe VarRecord)
+lookupVar ident
   = do
       state <- get
-      return $ lookupVarStack (varSymTableStack state) name
+      return $ lookupVarStack (varSymTableStack state) ident
 
-lookupVarStack :: [VarSymTable] -> String -> Maybe VarRecord
-lookupVarStack [] name
+lookupVarStack :: [VarSymTable] -> Id -> Maybe VarRecord
+lookupVarStack [] ident
   = Nothing
-lookupVarStack (table:stack) name
-  = case (lookupVarRecord table name) of
-      Nothing -> lookupVarStack stack name
+lookupVarStack (table:stack) ident
+  = case (lookupVarRecord table ident) of
+      Nothing -> lookupVarStack stack ident
       justRecord -> justRecord

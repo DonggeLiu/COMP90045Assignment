@@ -26,13 +26,11 @@ import OzLang.Code
 -- Types for symbol tables and their contents
 -- ----------------------------------------------------------------------------
 
--- TODO: Switch back to lookup by Id?
-
 data ProcSymTable
-  = ProcSymTable (Map String ProcRecord)
+  = ProcSymTable (Map Id ProcRecord)
 
 data VarSymTable
-  = VarSymTable (Map String VarRecord) Int
+  = VarSymTable (Map Id VarRecord) Int
 
 data ProcRecord
   = ProcRecord { procParams :: [Param]
@@ -53,24 +51,16 @@ data VarRecord
 
 -- lookupVarRecord
 -- Simply lookup the VarRecord for a given Variable's name.
-lookupVarRecord :: VarSymTable -> String -> Maybe VarRecord
+lookupVarRecord :: VarSymTable -> Id -> Maybe VarRecord
 lookupVarRecord (VarSymTable varMap _) name
   = varMap !? name
 
 -- lookupProcRecord
 -- Simply lookup the ProcRecord for a given Procedure's name.
-lookupProcRecord :: ProcSymTable -> String -> Maybe ProcRecord
+lookupProcRecord :: ProcSymTable -> Id -> Maybe ProcRecord
 lookupProcRecord (ProcSymTable procMap) name
   = procMap !? name
 
-dummyVarRecord :: VarRecord
-dummyVarRecord
-  = VarRecord { varShape = Dim0
-              , varType = IntType
-              , varPassBy = Val
-              , varStackSlot = Slot 0
-              , varDefnPos = NoPos
-              }
 
 -- ----------------------------------------------------------------------------
 -- Building symbol tables
@@ -80,7 +70,7 @@ emptyProcSymTable :: ProcSymTable
 emptyProcSymTable
   = ProcSymTable empty
 
-insertProcRecord :: String -> ProcRecord -> ProcSymTable -> ProcSymTable
+insertProcRecord :: Id -> ProcRecord -> ProcSymTable -> ProcSymTable
 insertProcRecord name record (ProcSymTable procMap)
   = ProcSymTable $ insert name record procMap
 
@@ -90,11 +80,10 @@ emptyVarSymTable :: VarSymTable
 emptyVarSymTable
   = VarSymTable empty 0
 
-insertVarRecord :: String -> VarRecord -> VarSymTable -> VarSymTable
+insertVarRecord :: Id -> VarRecord -> VarSymTable -> VarSymTable
 insertVarRecord name record (VarSymTable varMap numSlots)
   = VarSymTable (insert name record varMap) numSlots
 
 allocateSlots :: Int -> VarSymTable -> VarSymTable
 allocateSlots numNewSlots (VarSymTable varMap currentNumSlots)
   = VarSymTable varMap (currentNumSlots + numNewSlots)
-

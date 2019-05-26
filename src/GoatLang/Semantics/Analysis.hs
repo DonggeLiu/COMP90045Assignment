@@ -18,6 +18,8 @@ module GoatLang.Semantics.Analysis where
 import Control.Monad (when)
 
 import GoatLang.Syntax.AST
+import GoatLang.Syntax.Printer (format, prettify)
+
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
 import GoatLang.Semantics.SymbolTable
@@ -25,10 +27,6 @@ import GoatLang.Semantics.Error
 
 import OzLang.Code
 
--- Summary of TODO items from throughout file:
---
--- TODO:
---
 
 -- analyseFullProgram
 -- Top level function: use the analysers defined below to convert a Goat Program
@@ -75,14 +73,14 @@ analyseGoatProgram (GoatProgram procs)
 -- Detects if a procedure of the same name has already been defined, reporting
 -- an error and overwriting the previous definition.
 defineProc :: Proc -> SemanticAnalysis ()
-defineProc (Proc pos ident@(Id _ name) params _ _)
+defineProc (Proc pos ident params _ _)
   = do
       let newRecord = ProcRecord { procParams = params
                                  , procDefnPos = pos
                                  }
       -- define this procedure within the curent scope, checking for repeated
       -- definitions
-      addProcMapping name newRecord
+      addProcMapping ident newRecord
 
 -- assertMainProc
 -- Enforce the static requirement that a procedure called 'main' exists in the
@@ -91,7 +89,7 @@ defineProc (Proc pos ident@(Id _ name) params _ _)
 assertMainProc :: SemanticAnalysis ()
 assertMainProc
   = do
-      maybeMainRecord <- lookupProc "main"
+      maybeMainRecord <- lookupProc (Id NoPos "main")
       case maybeMainRecord of
         -- there must be a procedure called main:
         Nothing -> semanticError $ GlobalError $
@@ -130,7 +128,7 @@ analyseProc (Proc pos ident params decls stmts)
 
 
 declareAnalyseParam :: Param -> SemanticAnalysis AParam
-declareAnalyseParam (Param pos passBy baseType ident@(Id _ name))
+declareAnalyseParam (Param pos passBy baseType ident)
   = do
       -- allocate stack space for this local variable (all params only take
       -- a single stack slot)
@@ -145,14 +143,14 @@ declareAnalyseParam (Param pos passBy baseType ident@(Id _ name))
                                 }
       -- add this variable to the symbol table for the current scope, checking
       -- for duplicate definitions:
-      addVarMapping name newRecord
+      addVarMapping ident newRecord
       -- now prepare the annotated param for code generation:
       let attrs = ParamAttr { paramStackSlot = stackSlot }
       return $ AParam passBy baseType ident attrs
 
 
 declareAnalyseDecl :: Decl -> SemanticAnalysis ADecl
-declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
+declareAnalyseDecl (Decl pos baseType ident dim)
   = do
       -- allocate stack space for this local variable:
       let numRequiredSlots = numSlotsDim dim
@@ -166,7 +164,7 @@ declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
                                 }
       -- add this variable to the symbol table for the current scope, checking
       -- for duplicate definitions:
-      addVarMapping name newRecord
+      addVarMapping ident newRecord
       -- now prepare the annotated declaration for code generation:
       let allSlots = take (numRequiredSlots) [startSlot..]
       let attrs = DeclAttr { declStackSlots = allSlots }
@@ -197,9 +195,9 @@ analyseStmt (Asg pos scalar expr)
 
       -- we may only assign an expression with matching result type
       assert (scalarType aScalar == exprType aExpr') $ SemanticError pos $
-        "incorrect expression result type for assignment (expected " ++
-        show (scalarType aScalar) ++ " but got " ++ show (exprType aExpr') ++
-        ")"
+        "incorrect expression result type for assignment (expected: " ++
+        format (scalarType aScalar) ++ ", actual: " ++
+        format (exprType aExpr') ++ ")"
 
       return $ AAsg aScalar aExpr'
 
@@ -220,24 +218,24 @@ analyseStmt (WriteExpr pos expr)
 analyseStmt (WriteString pos string)
   = return $ AWriteString string
 
-analyseStmt (Call pos ident@(Id _ name) args)
+analyseStmt (Call pos ident args)
   = do
       aArgs <- mapM analyseExpr args
-      maybeProcRecord <- lookupProc name
+      maybeProcRecord <- lookupProc ident
 
       -- Pull the list of Params out of the ProcRecord, if it exists
       params <- case maybeProcRecord of
         Nothing -> do
           semanticError $ SemanticError pos $
-            "call undefined procedure " ++ show name
+            "call undefined procedure " ++ prettify ident
           -- error recovery: just assume the procedure takes no arguments
           return []
         Just procRecord -> return (procParams procRecord)
 
       -- Check that we have the same no. of args & params
       assert (length params == length args) $ SemanticError pos $
-        "call with incorrect number of arguments (expected " ++
-        show (length params) ++ " but got " ++ show (length args) ++ ")"
+        "call with incorrect number of arguments (expected: " ++
+        show (length params) ++ ", actual: " ++ show (length args) ++ ")"
 
       -- Get the Call Attributes
       let passBys = [ passBy | (Param _ passBy _ _) <- params]
@@ -265,9 +263,8 @@ analyseStmt (If pos cond thenStmts)
       -- analyse condition type
       aCond <- analyseExpr cond
       assert (exprType aCond == BoolType) $ SemanticError pos $
-        "incorrect type for condition (expected " ++
-        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
-        ")"
+        "incorrect type for condition (expected: " ++ format BoolType ++
+        ", actual: " ++ format (exprType aCond) ++ ")"
 
       aThenStmts <- mapM analyseStmt thenStmts
       return $ AIf aCond aThenStmts
@@ -277,9 +274,8 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
       -- analyse condition type
       aCond <- analyseExpr cond
       assert (exprType aCond == BoolType) $ SemanticError pos $
-        "incorrect type for condition (expected " ++
-        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
-        ")"
+        "incorrect type for condition (expected: " ++ format BoolType ++
+        ", actual: " ++ format (exprType aCond) ++ ")"
 
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
@@ -290,9 +286,8 @@ analyseStmt (While pos cond doStmts)
       -- analyse condition type
       aCond <- analyseExpr cond
       assert (exprType aCond == BoolType) $ SemanticError pos $
-        "incorrect type for condition (expected " ++
-        show (BoolType) ++ " but got " ++ show (exprType aCond) ++
-        ")"
+        "incorrect type for condition (expected: " ++ format BoolType ++
+        ", actual: " ++ format (exprType aCond) ++ ")"
 
       aDoStmts <- mapM analyseStmt doStmts
       return $ AWhile aCond aDoStmts
@@ -302,17 +297,17 @@ analyseStmt (While pos cond doStmts)
 -- Checks the Argument has the same type as the Parameter, and that if the
 -- Parameter is a pass by reference, then the argument is a Scalar.
 assertParamMatchesArgs :: Param -> AExpr -> SemanticAnalysis ()
-assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
+assertParamMatchesArgs (Param pos passBy baseType ident) arg
   = do
       assert ( baseType == exprType arg) $ SemanticError pos $
-        "call with mismatched parameter and argument types (expected " ++
-        show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
+        "call with mismatched parameter and argument types (expected: " ++
+        format baseType ++ ", actual: " ++ format (exprType arg) ++ ")"
 
       -- Now check that Parameters indicating pass by ref is a Scalar
       when (passBy == Ref) $ case arg of
           AScalarExpr _ -> return ()
           _ -> semanticError $ SemanticError pos $
-            "passed non-scalar to reference parameter " ++ show (name)
+            "passed non-scalar to reference parameter " ++ prettify ident
 
 analyseExpr :: Expr -> SemanticAnalysis AExpr
 
@@ -336,8 +331,8 @@ analyseExpr (UnExpr pos op expr)
       attrs <- case maybeInstrPair of
         Nothing -> do
           semanticError $ SemanticError pos $ "cannot apply unary " ++
-            "operator " ++ show op ++ " to operand of type " ++
-            show (exprType aExpr)
+            "operator " ++ format op ++ " to operand of type " ++
+            format (exprType aExpr)
           -- for error recovery, default values are given
           return $ UnExprAttr { unExprInstr = NegIntInstr
                               , unExprResultType = exprType aExpr
@@ -361,8 +356,8 @@ analyseExpr (BinExpr pos op lExpr rExpr)
       attrs <- case maybeInstrPair of
         Nothing -> do
           semanticError $ SemanticError pos $ "cannot apply binary " ++
-            "operator " ++ show op ++ " to operands of type " ++
-            show lType ++ " and " ++ show rType
+            "operator " ++ format op ++ " to operands of type " ++
+            format lType ++ " and " ++ format rType
           return $ BinExprAttr { binExprInstr = SubIntInstr
                                , binExprResultType = lType
                                }
@@ -374,15 +369,15 @@ analyseExpr (BinExpr pos op lExpr rExpr)
 
 
 analyseScalar :: Scalar -> SemanticAnalysis AScalar
-analyseScalar (Single pos ident@(Id _ name))
+analyseScalar (Single pos ident)
   = do
       -- lookup the indentifier, hopefully if exists
-      maybeRecord <- lookupVar name
+      maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
-            "reference undeclared single variable " ++ show name
+            "reference undeclared single variable " ++ prettify ident
           -- error recovery: continue, assuming that the variable exists and
           -- has some default attributes:
           return $ dummyVarRecord { varShape = Dim0 }
@@ -401,20 +396,20 @@ analyseScalar (Single pos ident@(Id _ name))
                              , singleBaseType = varType record'
                              }
       return $ ASingle ident attrs
-analyseScalar (Array pos ident@(Id _ name) exprI)
+analyseScalar (Array pos ident exprI)
   = do
       aExprI <- analyseExpr exprI
       assert (exprType aExprI == IntType) $ SemanticError pos $
-        "array index must be an integer expression (got: " ++
-        show (exprType aExprI) ++")"
+        "array index must be an integer expression (received type: " ++
+        format (exprType aExprI) ++ ")"
 
       -- lookup the indentifier, hopefully if exists
-      maybeRecord <- lookupVar name
+      maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
-            "reference undeclared array variable " ++ show name
+            "reference undeclared array variable " ++ prettify ident
           -- error recovery: continue, assuming that the array exists and
           -- has some default attributes:
           return $ dummyVarRecord { varShape = Dim1 1 }
@@ -432,27 +427,27 @@ analyseScalar (Array pos ident@(Id _ name) exprI)
                             , arrayBaseType = varType record'
                             }
       return $ AArray ident aExprI attrs
-analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
+analyseScalar (Matrix pos ident exprI exprJ)
   = do
       -- analyse first index expression
       aExprI <- analyseExpr exprI
       assert (exprType aExprI == IntType) $ SemanticError pos $
-        "first matrix index must be an integer expression (got: " ++
-        show (exprType aExprI) ++")"
+        "first matrix index must be an integer expression (received type: " ++
+        format (exprType aExprI) ++ ")"
 
       -- analyse second index expression
       aExprJ <- analyseExpr exprJ
       assert (exprType aExprJ == IntType) $ SemanticError pos $
-        "second matrix index must be an integer expression (got: " ++
-        show (exprType aExprJ) ++")"
+        "second matrix index must be an integer expression (received type: " ++
+        format (exprType aExprJ) ++ ")"
 
       -- lookup the indentifier, hopefully if exists
-      maybeRecord <- lookupVar name
+      maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
         Nothing -> do
           semanticError $ SemanticError pos $
-            "reference undeclared matrix variable " ++ show name
+            "reference undeclared matrix variable " ++ prettify ident
           -- error recovery: continue, assuming that the matrix exists and
           -- has some default attributes:
           return $ dummyVarRecord { varShape = Dim2 1 1 }
@@ -472,6 +467,17 @@ analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
                              , matrixBaseType = varType record'
                              }
       return $ AMatrix ident aExprI aExprJ attrs
+
+
+dummyVarRecord :: VarRecord
+dummyVarRecord
+  = VarRecord { varShape = Dim0
+              , varType = IntType
+              , varPassBy = Val
+              , varStackSlot = Slot 0
+              , varDefnPos = NoPos
+              }
+
 
 -- exprType
 -- Infer the result type of an annotated expression. Not recursive, because we
