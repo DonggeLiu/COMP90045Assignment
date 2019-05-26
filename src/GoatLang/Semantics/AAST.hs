@@ -24,34 +24,57 @@ data AGoatProgram
 data AProc
   = AProc Id [AParam] [ADecl] [AStmt] ProcAttr
 data ProcAttr
-  = ProcAttr { procFrameSize :: FrameSize }
+  = ProcAttr { procFrameSize :: FrameSize
+             , prettifiedProc :: String 
+             }
 
 data AParam
   = AParam PassBy BaseType Id ParamAttr
 data ParamAttr
-  = ParamAttr { paramStackSlot :: Slot }
+  = ParamAttr { paramStackSlot :: Slot
+              , prettifiedParam :: String
+              }
 
 data ADecl
   = ADecl BaseType Id Dim DeclAttr
 data DeclAttr
-  = DeclAttr { declStackSlots :: [Slot] }
+  = DeclAttr { declStackSlots :: [Slot]
+             , prettifiedDecl :: String
+             }
 
 
 data AStmt
-  = AAsg AScalar AExpr
+  = AAsg AScalar AExpr AsgAttr
   | ARead AScalar ReadAttr
   | AWriteExpr AExpr WriteExprAttr
-  | AWriteString String
+  | AWriteString String WriteStringAttr
   | ACall Id [AExpr] CallAttr
-  | AIf AExpr [AStmt]
-  | AIfElse AExpr [AStmt] [AStmt]
-  | AWhile AExpr [AStmt]
+  | AIf AExpr [AStmt] IfAttr
+  | AIfElse AExpr [AStmt] [AStmt] IfElseAttr
+  | AWhile AExpr [AStmt] WhileAttr
+data AsgAttr
+  = AsgAttr { prettifiedAsg :: String }
 data ReadAttr
-  = ReadAttr { readBuiltin :: BuiltinFunc }
+  = ReadAttr { readBuiltin :: BuiltinFunc
+             , prettifiedRead :: String
+             }
 data WriteExprAttr
-  = WriteExprAttr { writeExprBuiltin :: BuiltinFunc }
+  = WriteExprAttr { writeExprBuiltin :: BuiltinFunc 
+                  , prettifiedWriteExpr :: String 
+                  }
+data WriteStringAttr
+  = WriteStringAttr { prettifiedWriteString :: String }
 data CallAttr
-  = CallAttr { callPassBys :: [PassBy] }
+  = CallAttr { callPassBys :: [PassBy] 
+             , prettifiedCall :: String
+             }
+data IfAttr
+  = IfAttr { prettifiedIf :: String }
+data IfElseAttr
+  = IfElseAttr { prettifiedIfElse :: String }
+data WhileAttr
+  = WhileAttr { prettifiedWhile :: String }
+
 
 data AScalar
   = ASingle Id SingleAttr
@@ -80,6 +103,7 @@ data AExpr
   | ABinExpr BinOp AExpr AExpr BinExprAttr
   | AUnExpr UnOp AExpr UnExprAttr
   | AFloatCast AExpr
+
 data BinExprAttr
   = BinExprAttr { binExprInstr :: (Reg -> Reg -> Reg -> Instruction)
                 , binExprResultType :: BaseType

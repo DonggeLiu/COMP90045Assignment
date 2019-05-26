@@ -18,6 +18,7 @@ module GoatLang.Semantics.Analysis where
 import Control.Monad (when)
 
 import GoatLang.Syntax.AST
+import GoatLang.Syntax.Printer (prettify)
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
 import GoatLang.Semantics.SymbolTable
@@ -102,9 +103,8 @@ assertMainProc
             (procDefnPos mainRecord)
             "main procedure must have no parameters"
 
-
 analyseProc :: Proc -> SemanticAnalysis AProc
-analyseProc (Proc pos ident params decls stmts)
+analyseProc proc@(Proc pos ident params decls stmts)
   = do
       -- construct the local variable symbol table in a first pass over the 
       -- params and declarations:
@@ -116,7 +116,9 @@ analyseProc (Proc pos ident params decls stmts)
       -- prepare the annotations for this procedure (the main attribute
       -- is the frame size)
       frameSize <- getRequiredFrameSize
-      let attrs = ProcAttr { procFrameSize = frameSize }
+      let attrs = ProcAttr { procFrameSize = frameSize
+                           , prettifiedProc = prettify proc
+                           }
       
       -- with this environment set up, analyse the procedure's component
       -- statements:
@@ -130,29 +132,31 @@ analyseProc (Proc pos ident params decls stmts)
 
 
 declareAnalyseParam :: Param -> SemanticAnalysis AParam
-declareAnalyseParam (Param pos passBy baseType ident@(Id _ name))
+declareAnalyseParam param@(Param pos passBy baseType ident@(Id _ name))
   = do
       -- allocate stack space for this local variable (all params only take
       -- a single stack slot)
-      stackSlot <- allocateStackSlots 1
+      nextFreeSlot <- allocateStackSlots 1
 
       -- prepare the variable record for the symbol table
       let newRecord = VarRecord { varShape = Dim0
                                 , varType = baseType
                                 , varPassBy = passBy
-                                , varStackSlot = stackSlot
+                                , varStackSlot = nextFreeSlot
                                 , varDefnPos = pos
                                 }
       -- add this variable to the symbol table for the current scope, checking
       -- for duplicate definitions:
       addVarMapping name newRecord
       -- now prepare the annotated param for code generation:
-      let attrs = ParamAttr { paramStackSlot = stackSlot }
+      let attrs = ParamAttr { paramStackSlot = nextFreeSlot
+                            , prettifiedParam = prettify param
+                            }
       return $ AParam passBy baseType ident attrs
 
 
 declareAnalyseDecl :: Decl -> SemanticAnalysis ADecl
-declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
+declareAnalyseDecl decl@(Decl pos baseType ident@(Id _ name) dim)
   = do
       -- allocate stack space for this local variable:
       let numRequiredSlots = numSlotsDim dim
@@ -169,7 +173,9 @@ declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
       addVarMapping name newRecord
       -- now prepare the annotated declaration for code generation:
       let allSlots = take (numRequiredSlots) [startSlot..]
-      let attrs = DeclAttr { declStackSlots = allSlots }
+      let attrs = DeclAttr { declStackSlots = allSlots
+                           , prettifiedDecl = prettify decl
+                           }
       return $ ADecl baseType ident dim attrs
     where
       -- numSlotsDim
@@ -184,8 +190,9 @@ declareAnalyseDecl (Decl pos baseType ident@(Id _ name) dim)
 
 
 analyseStmt :: Stmt -> SemanticAnalysis AStmt
-analyseStmt (Asg pos scalar expr)
+analyseStmt asn@(Asg pos scalar expr)
   = do
+      let attrs = AsgAttr { prettifiedAsg = prettify asn }
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
@@ -199,26 +206,32 @@ analyseStmt (Asg pos scalar expr)
         show (scalarType aScalar) ++ " but got " ++ show (exprType aExpr') ++
         ")"
 
-      return $ AAsg aScalar aExpr'
+      return $ AAsg aScalar aExpr' attrs
 
-analyseStmt (Read pos scalar)
+analyseStmt readscalar@(Read pos scalar)
   = do
       aScalar <- analyseScalar scalar
       let builtin = lookupReadBuiltin (scalarType aScalar)
-      let attrs = ReadAttr { readBuiltin = builtin }
+      let attrs = ReadAttr { readBuiltin = builtin
+                           , prettifiedRead = prettify readscalar
+                           }
       return $ ARead aScalar attrs
 
-analyseStmt (WriteExpr pos expr)
+analyseStmt writeexpr@(WriteExpr pos expr)
   = do
       aExpr <- analyseExpr expr
       let builtin = lookupPrintBuiltin (exprType aExpr)
-      let attrs = WriteExprAttr { writeExprBuiltin = builtin }
+      let attrs = WriteExprAttr { writeExprBuiltin = builtin
+                                , prettifiedWriteExpr = prettify writeexpr
+                                }
       return $ AWriteExpr aExpr attrs
 
-analyseStmt (WriteString pos string)
-  = return $ AWriteString string
+analyseStmt writestring@(WriteString pos string)
+  = do
+    let attrs = WriteStringAttr { prettifiedWriteString = prettify writestring}
+    return $ AWriteString string attrs
  
-analyseStmt (Call pos ident@(Id _ name) args)
+analyseStmt call@(Call pos ident@(Id _ name) args)
   = do
       aArgs <- mapM analyseExpr args
       maybeProcRecord <- lookupProc name
@@ -239,7 +252,9 @@ analyseStmt (Call pos ident@(Id _ name) args)
 
       -- Get the Call Attributes
       let passBys = [ passBy | (Param _ passBy _ _) <- params]
-      let attrs = CallAttr { callPassBys = passBys }
+      let attrs = CallAttr { callPassBys = passBys
+                           , prettifiedCall = prettify call
+                           }
 
       -- in the case of pass by value, introduce float casts if necessary:
       let aArgs' = zipWith castArg params aArgs
@@ -253,7 +268,7 @@ analyseStmt (Call pos ident@(Id _ name) args)
       castArg (Param _ Val FloatType _) arg
         = case (exprType arg) of
               IntType -> AFloatCast arg
-              otherwise -> arg
+              _ -> arg
       castArg _ arg
         = arg
 
@@ -266,9 +281,9 @@ analyseStmt (If pos cond thenStmts)
         "incorrect type for condition (expected " ++
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
-      
+      let attrs = IfAttr { prettifiedIf = prettify cond}
       aThenStmts <- mapM analyseStmt thenStmts
-      return $ AIf aCond aThenStmts
+      return $ AIf aCond aThenStmts attrs
 
 analyseStmt (IfElse pos cond thenStmts elseStmts)
   = do
@@ -279,9 +294,10 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
       
+      let attrs = IfElseAttr { prettifiedIfElse = prettify cond }
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
-      return $ AIfElse aCond aThenStmts aElseStmts
+      return $ AIfElse aCond aThenStmts aElseStmts attrs
 
 analyseStmt (While pos cond doStmts)
   = do
@@ -291,9 +307,9 @@ analyseStmt (While pos cond doStmts)
         "incorrect type for condition (expected " ++
         show (BoolType) ++ " but got " ++ show (exprType aCond) ++
         ")"
-      
+      let attrs = WhileAttr { prettifiedWhile = prettify cond }
       aDoStmts <- mapM analyseStmt doStmts
-      return $ AWhile aCond aDoStmts
+      return $ AWhile aCond aDoStmts attrs
 
 
 -- assertParamMatchesArgs
@@ -309,7 +325,7 @@ assertParamMatchesArgs (Param pos passBy baseType ident@(Id _ name)) arg
       -- Now check that Parameters indicating pass by ref is a Scalar
       when (passBy == Ref) $ case arg of 
           AScalarExpr _ -> return ()
-          otherwise     -> semanticError $ SemanticError pos $ 
+          _     -> semanticError $ SemanticError pos $ 
             "passed non-scalar to reference parameter " ++ show (name)
  
 analyseExpr :: Expr -> SemanticAnalysis AExpr
@@ -364,7 +380,7 @@ analyseScalar (Single pos ident@(Id _ name))
       -- ensure that the dimensionality is correct (Dim0):
       record' <- case (varShape record) of
         Dim0 -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing array/matrix variable as if it were a single"
           -- error recovery: continue, assuming that it's a single.
@@ -396,7 +412,7 @@ analyseScalar (Array pos ident@(Id _ name) exprI)
       -- ensure that the dimensionality is correct (Dim1):
       record' <- case (varShape record) of
         (Dim1 _) -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing single/matrix variable as if it were an array"
           -- error recovery: continue, assuming that it's an array.
@@ -434,7 +450,7 @@ analyseScalar (Matrix pos ident@(Id _ name) exprI exprJ)
       -- ensure that the dimensionality is correct (Dim2):
       record' <- case (varShape record) of
         (Dim2 _ _) -> return $ record
-        otherwise -> do
+        _ -> do
           semanticError $ SemanticError pos $
             "accessing single/array variable as if it were a matrix"
           -- error recovery: continue, assuming that it's a matrix.
@@ -568,7 +584,7 @@ lookupBinInstr op lExpr rExpr
     resultType 
       | arithmetic op = case (lType, rType) of
           (IntType, IntType) -> IntType
-          otherwise -> FloatType
+          _ -> FloatType
       | otherwise = BoolType
     arithmetic = (`elem` [Add, Sub, Mul, Div])
 

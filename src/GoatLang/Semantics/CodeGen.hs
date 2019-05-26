@@ -53,13 +53,13 @@ genCodeProc :: AProc -> CodeGen ()
 genCodeProc (AProc (Id _ procName) params decls stmts attrs)
   = do
       label $ ProcLabel procName
-      -- comment "prologue"
+      comment "prologue"
       instr $ PushStackFrameInstr (procFrameSize attrs)
       sequence_ $ zipWith genCodeRetrieveParamFrom [Reg 0..] params
       mapM_ genCodeInitVar decls
-      -- comment "procedure body"
+      comment "procedure body"
       mapM_ genCodeStmt stmts
-      -- comment "epilogue"
+      comment "epilogue"
       instr $ PopStackFrameInstr (procFrameSize attrs)
       instr ReturnInstr
 
@@ -70,7 +70,7 @@ genCodeProc (AProc (Id _ procName) params decls stmts attrs)
 genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
 genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
   = do
-      -- comment $ "retrieving " ++ name
+      comment $ "retrieving " ++ name
       -- TODO: Should the number of slots be stored in the attrs, to allow
       -- passing multi-slot things?
       instr $ StoreInstr (paramStackSlot attrs) reg
@@ -79,9 +79,9 @@ genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
 -- genCodeInitVar
 -- Action to generate code to initialise a local variable to 0.
 genCodeInitVar :: ADecl -> CodeGen ()
-genCodeInitVar decl@(ADecl baseType _ dim attrs)
+genCodeInitVar (ADecl baseType _ dim attrs)
   = do
-      -- comment $ "initialising " ++ (init $ prettify decl)
+      comment $ "initialising " ++ (init $ prettifiedDecl attrs)
       -- load the 'zero' value of the correct type into an unused (!) register
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0
@@ -95,42 +95,42 @@ genCodeInitVar decl@(ADecl baseType _ dim attrs)
 -- composite statement).
 genCodeStmt :: AStmt -> CodeGen ()
 
-genCodeStmt stmt@(AWriteExpr expr attrs)
+genCodeStmt (AWriteExpr expr attrs)
   = do
-      -- comment $ init $ prettify stmt
+      comment $ init $ prettifiedWriteExpr attrs
       genCodeExprInto (Reg 0) expr
       instr $ CallBuiltinInstr (writeExprBuiltin attrs)
 
-genCodeStmt stmt@(AWriteString str)
+genCodeStmt (AWriteString str attrs)
   = do
-      -- comment $ init $ prettify stmt
+      comment $ init $ prettifiedWriteString attrs
       instr $ StringConstInstr (Reg 0) str
       instr $ CallBuiltinInstr PrintStr
 
 genCodeStmt stmt@(ARead scalar attrs)
   = do
-      -- comment $ init $ prettify stmt
+      comment $ init $ prettifiedRead attrs
       instr $ CallBuiltinInstr (readBuiltin attrs)
       genCodeStore scalar (Reg 0)
 
-genCodeStmt stmt@(AAsg scalar expr)
+genCodeStmt stmt@(AAsg scalar expr attrs)
   = do
-      -- comment $ init $ prettify stmt
+      comment $ init $ prettifiedAsg attrs
       genCodeExprInto (Reg 0) expr
       genCodeStore scalar (Reg 0)
 
-genCodeStmt (AIf cond thenStmts)
+genCodeStmt (AIf cond thenStmts attrs)
   = do
-      -- comment $ "if " ++ prettify cond
+      comment $ "if " ++ prettifiedIf attrs
       genCodeExprInto (Reg 0) cond
       fiLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) fiLabel
       mapM_ genCodeStmt thenStmts
       label $ fiLabel
 
-genCodeStmt (AIfElse cond thenStmts elseStmts)
+genCodeStmt (AIfElse cond thenStmts elseStmts attrs)
   = do
-      -- comment $ "if-else " ++ prettify cond
+      comment $ "if-else " ++ prettifiedIfElse attrs
       genCodeExprInto (Reg 0) cond
       elseLabel <- getNewBlockLabel
       instr $ BranchOnFalseInstr (Reg 0) elseLabel
@@ -141,9 +141,9 @@ genCodeStmt (AIfElse cond thenStmts elseStmts)
       mapM_ genCodeStmt elseStmts
       label $ fiLabel
 
-genCodeStmt (AWhile cond stmts)
+genCodeStmt (AWhile cond stmts attrs)
   = do
-      -- comment $ "while " ++ prettify cond
+      comment $ "while " ++ prettifiedWhile attrs
       whileLabel <- getNewBlockLabel
       label $ whileLabel
       genCodeExprInto (Reg 0) cond
@@ -154,7 +154,7 @@ genCodeStmt (AWhile cond stmts)
 
 genCodeStmt stmt@(ACall (Id _ procName) args attrs)
   = do
-      -- comment $ init $ prettify stmt
+      comment $ init $ prettifiedCall attrs
       sequence_ $ zipWith3 genCodeArgInto [Reg 0..] (callPassBys attrs) args
       instr $ CallInstr $ ProcLabel procName
 
