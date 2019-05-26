@@ -68,9 +68,9 @@ genCodeProc (AProc (Id _ procName) params decls stmts attrs)
 -- Retrieve the value of a passed argument from a register into the
 -- appropriate stack slot corresponding to the paramater (local variable).
 genCodeRetrieveParamFrom :: Reg -> AParam -> CodeGen ()
-genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
+genCodeRetrieveParamFrom reg (AParam _ _ _ attrs)
   = do
-      -- comment $ "retrieving " ++ name
+      comment $ "retrieve " ++ (init $ prettifiedParam attrs)
       instr $ StoreInstr (paramStackSlot attrs) reg
 
 
@@ -79,7 +79,7 @@ genCodeRetrieveParamFrom reg (AParam _ _ (Id _ name) attrs)
 genCodeInitVar :: ADecl -> CodeGen ()
 genCodeInitVar (ADecl baseType _ dim attrs)
   = do
-      comment $ "initialising " ++ (init $ prettifiedDecl attrs)
+      comment $ "initialise " ++ (init $ prettifiedDecl attrs)
       -- load the 'zero' value of the correct type into an unused (!) register
       case baseType of
         FloatType -> instr $ RealConstInstr (Reg 0) 0.0

@@ -113,9 +113,7 @@ analyseProc proc@(Proc pos ident params decls stmts)
       -- prepare the annotations for this procedure (the main attribute
       -- is the frame size)
       frameSize <- getRequiredFrameSize
-      let attrs = ProcAttr { procFrameSize = frameSize
-                           , prettifiedProc = prettify proc
-                           }
+      let attrs = ProcAttr { procFrameSize = frameSize }
       
       -- with this environment set up, analyse the procedure's component
       -- statements:
@@ -147,7 +145,7 @@ declareAnalyseParam param@(Param pos passBy baseType ident)
       addVarMapping ident newRecord
       -- now prepare the annotated param for code generation:
       let attrs = ParamAttr { paramStackSlot = nextFreeSlot
-                            , prettifiedParam = prettify param
+                            , prettifiedParam = init $ prettify param
                             }
       return $ AParam passBy baseType ident attrs
 
@@ -171,7 +169,7 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
       -- now prepare the annotated declaration for code generation:
       let allSlots = take (numRequiredSlots) [startSlot..]
       let attrs = DeclAttr { declStackSlots = allSlots
-                           , prettifiedDecl = prettify decl
+                           , prettifiedDecl = init $ prettify decl
                            }
       return $ ADecl baseType ident dim attrs
     where
@@ -189,7 +187,7 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
 analyseStmt :: Stmt -> SemanticAnalysis AStmt
 analyseStmt asn@(Asg pos scalar expr)
   = do
-      let attrs = AsgAttr { prettifiedAsg = prettify asn }
+      let attrs = AsgAttr { prettifiedAsg = init $ prettify asn }
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
@@ -212,7 +210,7 @@ analyseStmt readscalar@(Read pos scalar)
       aScalar <- analyseScalar scalar
       let builtin = lookupReadBuiltin (scalarType aScalar)
       let attrs = ReadAttr { readBuiltin = builtin
-                           , prettifiedRead = prettify readscalar
+                           , prettifiedRead = init $ prettify readscalar
                            }
       return $ ARead aScalar attrs
 
@@ -221,13 +219,17 @@ analyseStmt writeexpr@(WriteExpr pos expr)
       aExpr <- analyseExpr expr
       let builtin = lookupPrintBuiltin (exprType aExpr)
       let attrs = WriteExprAttr { writeExprBuiltin = builtin
-                                , prettifiedWriteExpr = prettify writeexpr
+                                , prettifiedwriteExpr
+                                    = init $ prettify writeexpr
                                 }
       return $ AWriteExpr aExpr attrs
 
 analyseStmt writestring@(WriteString pos string)
   = do
-      let attrs = WriteStringAttr { prettifiedWriteString = prettify writestring}
+      let attrs = WriteStringAttr { prettifiedWriteString
+                                      = init $ prettify writestring
+                                  }
+      
       return $ AWriteString string attrs
  
 analyseStmt call@(Call pos ident args)
@@ -252,7 +254,7 @@ analyseStmt call@(Call pos ident args)
       -- Get the Call Attributes
       let passBys = [ passBy | (Param _ passBy _ _) <- params]
       let attrs = CallAttr { callPassBys = passBys
-                           , prettifiedCall = prettify call
+                           , prettifiedCall = init $ prettify call
                            }
 
       -- in the case of pass by value, introduce float casts if necessary:

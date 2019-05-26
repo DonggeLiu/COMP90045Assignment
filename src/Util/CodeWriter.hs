@@ -88,7 +88,7 @@ getColourSchemeByName LightTerminal
                         , stringColour  = setGrn1
                         , numberColour  = setBlu1
                         , identColour   = setCyn1
-                        , commentColour = setWht1
+                        , commentColour = setBlk2
                         }
 getColourSchemeByName DarkTerminal
   = defaultColourScheme { keywordColour = setMgn2

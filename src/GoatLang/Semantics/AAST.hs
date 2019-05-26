@@ -24,9 +24,7 @@ data AGoatProgram
 data AProc
   = AProc Id [AParam] [ADecl] [AStmt] ProcAttr
 data ProcAttr
-  = ProcAttr { procFrameSize :: FrameSize
-             , prettifiedProc :: String 
-             }
+  = ProcAttr { procFrameSize :: FrameSize }
 
 data AParam
   = AParam PassBy BaseType Id ParamAttr
