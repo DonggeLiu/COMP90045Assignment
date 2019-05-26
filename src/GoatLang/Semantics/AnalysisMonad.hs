@@ -135,21 +135,20 @@ addProcMapping name newRecord
       -- NOTE: Runtime error if stack is empty:
       symTableStack <- getFromState procSymTableStack
       let (topTable:restOfStack) = symTableStack
-      
+
       -- check to make sure a procedure of the same name has not been defined
       -- already (within the current scope i.e. top proc symbol table)
       let maybeExistingRecord = lookupProcRecord topTable name
       case maybeExistingRecord of
-        Nothing -> return ()
+        Nothing -> do
+          -- safe to insert new proc record since name is unique (thus far)
+          let newTopTable = insertProcRecord name newRecord topTable
+          setProcSymTableStack $ newTopTable : restOfStack
         Just existingRecord -> semanticError $
-          RepeatedDefinitionError 
+          RepeatedDefinitionError
             (procDefnPos newRecord)
             (procDefnPos existingRecord)
             ("repeat definition of procedure " ++ show name)
-
-      -- define the procedure anyway and continue to analyse the program
-      let newTopTable = insertProcRecord name newRecord topTable
-      setProcSymTableStack $ newTopTable : restOfStack
 
 
 -- ----------------------------------------------------------------------------
@@ -184,17 +183,16 @@ addVarMapping name newRecord
       -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
       let maybeExistingRecord = lookupVarRecord topTable name
       case maybeExistingRecord of
-        Nothing -> return ()
-        Just existingRecord -> semanticError $ 
-          RepeatedDefinitionError 
+        Nothing -> do
+          -- safe to insert record since name is unique (thus far)
+          let newTopTable = insertVarRecord name newRecord topTable
+          setVarSymTableStack $ newTopTable : restOfStack
+        Just existingRecord -> semanticError $
+          RepeatedDefinitionError
             (varDefnPos newRecord)
             (varDefnPos existingRecord)
             ("repeat definition of local variable " ++ show name)
 
-      -- in any case, we will continue with this definition for the remainder
-      -- of this scope
-      let newTopTable = insertVarRecord name newRecord topTable
-      setVarSymTableStack $ newTopTable : restOfStack
 
 getRequiredFrameSize :: SemanticAnalysis FrameSize
 getRequiredFrameSize
@@ -204,8 +202,8 @@ getRequiredFrameSize
       let (VarSymTable _ numSlots : _) = symTableStack
       return $ FrameSize numSlots
 
--- Allocate the given number of new slots to the symbol table at the top of 
--- the VarSymTableStack. 
+-- Allocate the given number of new slots to the symbol table at the top of
+-- the VarSymTableStack.
 allocateStackSlots :: Int -> SemanticAnalysis Slot
 allocateStackSlots numSlots
   = do
@@ -250,4 +248,3 @@ lookupVarStack (table:stack) name
   = case (lookupVarRecord table name) of
       Nothing -> lookupVarStack stack name
       justRecord -> justRecord
-
