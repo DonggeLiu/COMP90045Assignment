@@ -6,11 +6,10 @@ import Text.Parsec (parse, eof, ParseError)
 
 import Util.CodeWriter
 
-import GoatLang.AST
-import GoatLang.Parser
-import GoatLang.PrettyPrint
-import GoatLang.Token
-
+import GoatLang.Syntax.AST
+import GoatLang.Syntax.Parser
+import GoatLang.Syntax.Printer
+import GoatLang.Syntax.Tokens
 
 
 -- A ParserUnitTest is a list of test cases assocated with a single parser.
@@ -118,7 +117,7 @@ stringLiteralTest
 pParamTest :: ParserUnitTest Param
 pParamTest
   = ParserUnitTest pParam
-    [ ParserTestCase (ParseSuccess $ Param Val BoolType (Id "a"))
+    [ ParserTestCase (ParseSuccess $ Param NoPos Val BoolType (Id NoPos "a"))
       ["val bool a", "val  bool  a", "val\tbool\ta", "val\nbool\na"]
     , ParserTestCase ParseFailure
       [ "val val var", "val ref var", "ref val var", "ref ref var"
@@ -224,43 +223,43 @@ writeDimTest
 writeParamTest :: WriterUnitTest Param
 writeParamTest
   = WriterUnitTest writeParam
-    [ WriterTestCase "val bool a" (Param Val BoolType (Id "a"))
-    , WriterTestCase "ref bool alt" (Param Ref BoolType (Id "alt"))
-    , WriterTestCase "val int bc'" (Param Val IntType (Id "bc'"))
-    , WriterTestCase "ref float ___aleph" (Param Ref FloatType (Id "___aleph"))
+    [ WriterTestCase "val bool a" (Param NoPos Val BoolType (Id NoPos "a"))
+    , WriterTestCase "ref bool alt" (Param NoPos Ref BoolType (Id NoPos "alt"))
+    , WriterTestCase "val int bc'" (Param NoPos Val IntType (Id NoPos "bc'"))
+    , WriterTestCase "ref float ___aleph" (Param NoPos Ref FloatType (Id NoPos "___aleph"))
     ]
 
 writeDeclTest :: WriterUnitTest Decl
 writeDeclTest
   = WriterUnitTest writeDecl -- no indentation
-    [ WriterTestCase "bool i[1, 2];\n"  (Decl BoolType (Id "i") (Dim2 1 2))
-    , WriterTestCase "int action[1];\n" (Decl IntType (Id "action") (Dim1 1))
-    , WriterTestCase "float boolean;\n" (Decl FloatType (Id "boolean") (Dim0))
+    [ WriterTestCase "bool i[1, 2];\n"  (Decl NoPos BoolType (Id NoPos "i") (Dim2 1 2))
+    , WriterTestCase "int action[1];\n" (Decl NoPos IntType (Id NoPos "action") (Dim1 1))
+    , WriterTestCase "float boolean;\n" (Decl NoPos FloatType (Id NoPos "boolean") (Dim0))
     ]
 
 writeScalarTest :: WriterUnitTest Scalar
 writeScalarTest
   = WriterUnitTest writeScalar
-    [ WriterTestCase "x" (Single (Id "x"))
-    , WriterTestCase "x[1]" (Array (Id "x") (IntConst 1))
-    , WriterTestCase "x[2, 3.0]" (Matrix (Id "x") (IntConst 2) (FloatConst 3.0))
+    [ WriterTestCase "x" (Single NoPos (Id NoPos "x"))
+    , WriterTestCase "x[1]" (Array NoPos (Id NoPos "x") (IntConst NoPos 1))
+    , WriterTestCase "x[2, 3.0]" (Matrix NoPos (Id NoPos "x") (IntConst NoPos 2) (FloatConst NoPos 3.0))
     ]
 
 writeStmtTest :: WriterUnitTest Stmt
 writeStmtTest
   = WriterUnitTest writeStmt -- no indentation
-    [ WriterTestCase "call f();\n" (Call (Id "f") [])
-    , WriterTestCase "call f(1);\n" (Call (Id "f") [IntConst 1])
-    , WriterTestCase "call f(1, 2);\n" (Call (Id "f") [IntConst 1, IntConst 2])
-    , WriterTestCase "x := 42;\n" (Asg (Single (Id "x")) (IntConst 42))
-    , WriterTestCase "x[1] := 42;\n" (Asg (Array (Id "x") (IntConst 1)) (IntConst 42))
-    , WriterTestCase "x[1, 2] := 42;\n" (Asg (Matrix (Id "x") (IntConst 1) (IntConst 2)) (IntConst 42))
-    , WriterTestCase "read x;\n" (Read (Single (Id "x")))
-    , WriterTestCase "read x[1];\n" (Read (Array (Id "x") (IntConst 1)))
-    , WriterTestCase "read x[1, 2];\n" (Read (Matrix (Id "x") (IntConst 1) (IntConst 2)))
-    , WriterTestCase "write x;\n" (WriteExpr $ ScalarExpr (Single (Id "x")))
-    , WriterTestCase "write x[1];\n" (WriteExpr $ ScalarExpr (Array (Id "x") (IntConst 1)))
-    , WriterTestCase "write x[1, 2];\n" (WriteExpr $ ScalarExpr (Matrix (Id "x") (IntConst 1) (IntConst 2)))
+    [ WriterTestCase "call f();\n" (Call NoPos (Id NoPos "f") [])
+    , WriterTestCase "call f(1);\n" (Call NoPos (Id NoPos "f") [IntConst NoPos 1])
+    , WriterTestCase "call f(1, 2);\n" (Call NoPos (Id NoPos "f") [IntConst NoPos 1, IntConst NoPos 2])
+    , WriterTestCase "x := 42;\n" (Asg NoPos (Single NoPos (Id NoPos "x")) (IntConst NoPos 42))
+    , WriterTestCase "x[1] := 42;\n" (Asg NoPos (Array NoPos (Id NoPos "x") (IntConst NoPos 1)) (IntConst NoPos 42))
+    , WriterTestCase "x[1, 2] := 42;\n" (Asg NoPos (Matrix NoPos (Id NoPos "x") (IntConst NoPos 1) (IntConst NoPos 2)) (IntConst NoPos 42))
+    , WriterTestCase "read x;\n" (Read NoPos (Single NoPos (Id NoPos "x")))
+    , WriterTestCase "read x[1];\n" (Read NoPos (Array NoPos (Id NoPos "x") (IntConst NoPos 1)))
+    , WriterTestCase "read x[1, 2];\n" (Read NoPos (Matrix NoPos (Id NoPos "x") (IntConst NoPos 1) (IntConst NoPos 2)))
+    , WriterTestCase "write x;\n" (WriteExpr NoPos $ ScalarExpr NoPos (Single NoPos (Id NoPos "x")))
+    , WriterTestCase "write x[1];\n" (WriteExpr NoPos $ ScalarExpr NoPos (Array NoPos (Id NoPos "x") (IntConst NoPos 1)))
+    , WriterTestCase "write x[1, 2];\n" (WriteExpr NoPos $ ScalarExpr NoPos (Matrix NoPos (Id NoPos "x") (IntConst NoPos 1) (IntConst NoPos 2)))
     -- TODO: Test compound statement writing
     ]
 
@@ -269,39 +268,39 @@ writeExprTest :: WriterUnitTest Expr
 writeExprTest
   = WriterUnitTest writeExpr
     -- literals should use correct lit writers
-    [ WriterTestCase "0" (IntConst 0)
-    , WriterTestCase "1" (IntConst 1)
-    , WriterTestCase "0.0" (FloatConst 0.0)
-    , WriterTestCase "0.0000042" (FloatConst 4.2E-6) -- no exponential
-    , WriterTestCase "true" (BoolConst True)
-    , WriterTestCase "false" (BoolConst False)
+    [ WriterTestCase "0" (IntConst NoPos 0)
+    , WriterTestCase "1" (IntConst NoPos 1)
+    , WriterTestCase "0.0" (FloatConst NoPos 0.0)
+    , WriterTestCase "0.0000042" (FloatConst NoPos 4.2E-6) -- no exponential
+    , WriterTestCase "true" (BoolConst NoPos True)
+    , WriterTestCase "false" (BoolConst NoPos False)
     -- and scalars too
-    , WriterTestCase "x" (ScalarExpr (Single (Id "x")))
-    , WriterTestCase "x[1]" (ScalarExpr (Array (Id "x") one))
-    , WriterTestCase "x[1, 1]" (ScalarExpr (Matrix (Id "x") one one))
+    , WriterTestCase "x" (ScalarExpr NoPos (Single NoPos (Id NoPos "x")))
+    , WriterTestCase "x[1]" (ScalarExpr NoPos (Array NoPos (Id NoPos "x") one))
+    , WriterTestCase "x[1, 1]" (ScalarExpr NoPos (Matrix NoPos (Id NoPos "x") one one))
     -- binexprs should print without parens if their arguments are not binexprs
-    , WriterTestCase "1 + 1" (BinExpr Add one one)
-    , WriterTestCase "1 - -1" (BinExpr Sub one (UnExpr Neg one))
-    , WriterTestCase "1 * 1" (BinExpr Mul one one)
-    , WriterTestCase "1 / 1" (BinExpr Div one one)
-    , WriterTestCase "1 < 1" (BinExpr LTh one one)
-    , WriterTestCase "1 <= 1" (BinExpr LEq one one)
-    , WriterTestCase "1 = 1" (BinExpr Equ one one)
-    , WriterTestCase "1 != 1" (BinExpr NEq one one)
-    , WriterTestCase "1 > 1" (BinExpr GTh one one)
-    , WriterTestCase "1 >= 1" (BinExpr GEq one one)
-    , WriterTestCase "1 && 1" (BinExpr And one one)
-    , WriterTestCase "1 || !1" (BinExpr Or one (UnExpr Not one))
-    , WriterTestCase "-1 || 1" (BinExpr Or (UnExpr Neg one) one)
+    , WriterTestCase "1 + 1" (BinExpr NoPos Add one one)
+    , WriterTestCase "1 - -1" (BinExpr NoPos Sub one (UnExpr NoPos Neg one))
+    , WriterTestCase "1 * 1" (BinExpr NoPos Mul one one)
+    , WriterTestCase "1 / 1" (BinExpr NoPos Div one one)
+    , WriterTestCase "1 < 1" (BinExpr NoPos LTh one one)
+    , WriterTestCase "1 <= 1" (BinExpr NoPos LEq one one)
+    , WriterTestCase "1 = 1" (BinExpr NoPos Equ one one)
+    , WriterTestCase "1 != 1" (BinExpr NoPos NEq one one)
+    , WriterTestCase "1 > 1" (BinExpr NoPos GTh one one)
+    , WriterTestCase "1 >= 1" (BinExpr NoPos GEq one one)
+    , WriterTestCase "1 && 1" (BinExpr NoPos And one one)
+    , WriterTestCase "1 || !1" (BinExpr NoPos Or one (UnExpr NoPos Not one))
+    , WriterTestCase "-1 || 1" (BinExpr NoPos Or (UnExpr NoPos Neg one) one)
     -- binexprs of binexprs SHOULD print parens
-    , WriterTestCase "1 + (1 * 1)" (BinExpr Add one (BinExpr Mul one one))
-    , WriterTestCase "(1 + 1) * 1" (BinExpr Mul (BinExpr Add one one) one)
+    , WriterTestCase "1 + (1 * 1)" (BinExpr NoPos Add one (BinExpr NoPos Mul one one))
+    , WriterTestCase "(1 + 1) * 1" (BinExpr NoPos Mul (BinExpr NoPos Add one one) one)
     -- but not nested unexprs/consts
-    , WriterTestCase "(-x + !1) * 1" (BinExpr Mul (BinExpr Add (UnExpr Neg var) (UnExpr Not one)) one)
+    , WriterTestCase "(-x + !1) * 1" (BinExpr NoPos Mul (BinExpr NoPos Add (UnExpr NoPos Neg var) (UnExpr NoPos Not one)) one)
     ]
     where
-      one = IntConst 1
-      var = ScalarExpr (Single (Id "x"))
+      one = IntConst NoPos 1
+      var = ScalarExpr NoPos (Single NoPos (Id NoPos "x"))
 
 writeIntLitTest :: WriterUnitTest Int
 writeIntLitTest

@@ -22,7 +22,9 @@ data Pos
         , lineNumber :: Int
         , colNumber  :: Int
         }
-  deriving (Show, Eq)
+  deriving (Show)
+instance Eq Pos where
+  a == b = True
 
 
 class ASTNode node
@@ -53,11 +55,8 @@ instance ASTNode Proc
 -- The number of required expressions is governed by dimensionality.
 data Id
   = Id Pos String
-    deriving (Show)
+    deriving (Show, Eq)
 instance ASTNode Id
-instance Eq Id where
-  (==) (Id _ a) (Id _ b)
-    = a == b
 instance Ord Id where
   compare (Id _ a) (Id _ b)
     = compare a b
