@@ -257,16 +257,6 @@ analyseStmt (Call pos ident@(Id _ name) args)
             assert ( baseType == exprType arg) $ SemanticError pos $
               "call with mismatched paramater and argument types (expected " ++
               show ( baseType) ++ " but got " ++ show (exprType arg) ++ ")"
-{-
-      assertParamTypeMatchesArgs :: [Param] -> [Param] -> SemanticAnalysis ()
-      assertParamTypeMatchesArgs (param:params) (arg:args)
-        = case (param:params) of
-            [] -> do
-                  param -> assert ( Type param == Type) $ SemanticError pos $
-                  "call with incorrect number of arguments (expected " ++
-                  show (length params) ++ " but got " ++ show (length args) ++ ")"
-                  assertParamTypeMatchesArgs params args
--}
 
 analyseStmt (If pos cond thenStmts)
   = do
