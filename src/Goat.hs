@@ -102,7 +102,7 @@ semanticErrorsExit src errs
       putStrLn $ red1 "Semantic errors" ++ ":"
       mapM (putStrLn . (prettifySemanticError src)) errs
       putStr $ red1 (show $ length errs)
-      putStrLn "semantic errors generated."
+      putStrLn " semantic errors generated."
       exitWith (ExitFailure 3)
 
 

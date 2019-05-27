@@ -25,7 +25,7 @@ import Util.CodeWriter
 -- Error data types
 -- ----------------------------------------------------------------------------
 
--- We'll need one type to represent a position in the Goat source file, (or no 
+-- We'll need one type to represent a position in the Goat source file, (or no
 -- position, such as for global errors or mocked-up AST nodes for testing).
 data Pos
   = NoPos
@@ -39,8 +39,8 @@ instance Eq Pos where
   (==) _ _
     = True
 instance Show Pos where
-  -- We want to be able to show positions in source files for our internal 
-  -- representation of errors and AST nodes. NOTE: We'll use another, different 
+  -- We want to be able to show positions in source files for our internal
+  -- representation of errors and AST nodes. NOTE: We'll use another, different
   -- representation for displaying error messages to the user (see `writePos`).
   show NoPos
     = "NoPos"
@@ -73,7 +73,7 @@ fromParsecError parsecError
   where
       -- convert the parsec SourcePos into our own position representation
       goatPos = fromParsecPosition (errorPos parsecError)
-      
+
       -- use Parsec's showErrorMessages function to get a proper error message,
       -- it requires a bunch of template strings be provided, to form the full
       -- message, and starts with an unnecessary newline (hence `tail`):
@@ -94,7 +94,7 @@ fromParsecPosition pos
 -- ----------------------------------------------------------------------------
 
 -- prettifySyntaxError
--- 
+--
 prettifySyntaxError :: String -> SyntaxError -> String
 prettifySyntaxError sourceCode (SyntaxError pos msg)
   = writeCode $ do
@@ -108,7 +108,7 @@ prettifySyntaxError sourceCode (SyntaxError pos msg)
       line $ write msg
 
 -- prettifySemanticError
--- 
+--
 prettifySemanticError :: String -> SemanticError -> String
 prettifySemanticError sourceCode (SemanticError pos msg)
   = writeCode $ do
@@ -121,7 +121,7 @@ prettifySemanticError sourceCode (SemanticError pos msg)
       line $ write msg
 prettifySemanticError _ (GlobalError msg)
   = writeCode $ do
-      -- no position to show 
+      -- no position to show
       write "global error" >> colon >> newline
       -- just display the message:
       line $ write msg
@@ -135,7 +135,7 @@ prettifySemanticError sourceCode (RepeatedDefinitionError pos oldPos msg)
       -- display the message describing te problem:
       line $ write msg
       -- and point to the original definition (less context necessary):
-      line $ write "orginal definition " >> writePos oldPos >> colon
+      line $ write "orginal definition " >> writePos oldPos
       writeContext oldPos 1 1 blu1 sourceCode
 
 
@@ -186,15 +186,15 @@ lineContext numLines lineNum sourceCode
 --    n lines ...                       n lines before the given position
 
 -- columnPoint
--- Create a string to be printed as a colourful pointer of a given width to a 
--- specified column position. E.g. `columnPoint 3 7 red1` would give the string 
+-- Create a string to be printed as a colourful pointer of a given width to a
+-- specified column position. E.g. `columnPoint 3 7 red1` would give the string
 -- `"     " ++ red1 "^^^"` (3 red arrows, with the final arrow in column 7).
 columnPoint :: Int -> Int -> Colourer -> String
 columnPoint numCols colNum colour
   = nChar padding ' ' ++ colour (nChar numCols '^')
   where
     padding = colNum - numCols
-    
+
     -- Helper function to create a string with n repetitions of a given Char
     nChar :: Int -> Char -> String
     nChar n char
