@@ -64,6 +64,7 @@ main
           aast <- case result of
             Left errs -> semanticErrorsExit sourceCode errs
             Right aast -> return aast
+          -- code generation
           let code = genCodeFullProgram aast
           printOzProgramColoured (detectColourScheme flags) code
 
