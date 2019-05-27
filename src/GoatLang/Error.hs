@@ -99,7 +99,7 @@ prettifySyntaxError :: String -> SyntaxError -> String
 prettifySyntaxError sourceCode (SyntaxError pos msg)
   = writeCode $ do
       -- start by giving the position of the error
-      writePos pos >> colon >> newline
+      writePos pos >> newline
       -- then attempt to display the error within the source program, with
       -- 3 lines of pre-context and 3 columns leading up to the error position:
       -- (sometimes the parsec position is off by a column or two)
@@ -113,7 +113,7 @@ prettifySemanticError :: String -> SemanticError -> String
 prettifySemanticError sourceCode (SemanticError pos msg)
   = writeCode $ do
       -- start by giving the position of the error
-      writePos pos >> colon >> newline
+      writePos pos >> newline
       -- then attempt to display the error within the source program, with
       -- 3 lines of pre-context and 1 column leading up to the error position:
       writeContext pos 3 1 red1 sourceCode
@@ -122,13 +122,13 @@ prettifySemanticError sourceCode (SemanticError pos msg)
 prettifySemanticError _ (GlobalError msg)
   = writeCode $ do
       -- no position to show 
-      colon >> newline
+      write "global error" >> colon >> newline
       -- just display the message:
       line $ write msg
 prettifySemanticError sourceCode (RepeatedDefinitionError pos oldPos msg)
   = writeCode $ do
       -- start by giving the position of the error
-      writePos pos >> colon >> newline
+      writePos pos >> newline
       -- then attempt to display the error within the source program, with
       -- 3 lines of pre-context and 1 column leading up to the error position:
       writeContext pos 3 1 red1 sourceCode
@@ -149,7 +149,7 @@ prettifySemanticError sourceCode (RepeatedDefinitionError pos oldPos msg)
 -- Format example: `"tests/samples/example.gt" (line 5, column 15)`
 writePos :: Pos -> CodeWriter ()
 writePos NoPos
-  = return () -- nothing to write
+  = return ()
 writePos (Pos lineNum colNum sourceFileName)
   = do
       write "at "
@@ -158,6 +158,7 @@ writePos (Pos lineNum colNum sourceFileName)
       parens $ commaSep $ [ write "line" >> space >> showWrite lineNum
                           , write "column" >> space >> showWrite colNum
                           ]
+      colon
 
 -- writeContext
 -- Parameters: pos numLines numCols colourer sourceCode
