@@ -1,0 +1,12 @@
+proc main()
+begin
+    write "hello\n";
+    call foo(42);
+end
+proc foo(val float x)
+    float x;
+    #     ^ semantic error: x already declared as parameter
+begin
+    write "hello\n";
+    write x;
+end
