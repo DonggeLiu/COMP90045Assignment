@@ -39,11 +39,16 @@ data ProcRecord
 
 data VarRecord
   = VarRecord { varShape :: Dim
-              , varType :: BaseType
+              , varBaseType :: BaseType
+              , varTypeSpec :: TypeSpec
               , varPassBy :: PassBy
               , varStackSlot :: Slot
               , varDefnPos :: Pos
               }
+
+data TypeSpec
+  = DeclSpec
+  | ParamSpec
 
 -- ----------------------------------------------------------------------------
 -- Querying symbol tables

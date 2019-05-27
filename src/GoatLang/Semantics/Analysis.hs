@@ -135,7 +135,8 @@ declareAnalyseParam param@(Param pos passBy baseType ident)
 
       -- prepare the variable record for the symbol table
       let newRecord = VarRecord { varShape = Dim0
-                                , varType = baseType
+                                , varBaseType = baseType
+                                , varTypeSpec = ParamSpec
                                 , varPassBy = passBy
                                 , varStackSlot = nextFreeSlot
                                 , varDefnPos = pos
@@ -158,7 +159,8 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
       startSlot <- allocateStackSlots numRequiredSlots
       -- prepare the variable record for the symbol table
       let newRecord = VarRecord { varShape = dim
-                                , varType = baseType
+                                , varBaseType = baseType
+                                , varTypeSpec = DeclSpec
                                 , varPassBy = Val
                                 , varStackSlot = startSlot
                                 , varDefnPos = pos
@@ -412,7 +414,7 @@ analyseScalar (Single pos ident)
 
       let attrs = SingleAttr { singlePassBy = varPassBy record'
                              , singleStackSlot = varStackSlot record'
-                             , singleBaseType = varType record'
+                             , singleBaseType = varBaseType record'
                              }
       return $ ASingle ident attrs
 analyseScalar (Array pos ident exprI)
@@ -443,7 +445,7 @@ analyseScalar (Array pos ident exprI)
           return $ record { varShape = Dim1 1 }
 
       let attrs = ArrayAttr { arrayStartSlot = varStackSlot record'
-                            , arrayBaseType = varType record'
+                            , arrayBaseType = varBaseType record'
                             }
       return $ AArray ident aExprI attrs
 analyseScalar (Matrix pos ident exprI exprJ)
@@ -483,7 +485,7 @@ analyseScalar (Matrix pos ident exprI exprJ)
       let (Dim2 _ rowWidth) = varShape record'
       let attrs = MatrixAttr { matrixStartSlot = varStackSlot record'
                              , matrixRowWidth = rowWidth
-                             , matrixBaseType = varType record'
+                             , matrixBaseType = varBaseType record'
                              }
       return $ AMatrix ident aExprI aExprJ attrs
 
@@ -491,7 +493,8 @@ analyseScalar (Matrix pos ident exprI exprJ)
 dummyVarRecord :: VarRecord
 dummyVarRecord
   = VarRecord { varShape = Dim0
-              , varType = IntType
+              , varBaseType = IntType
+              , varTypeSpec = DeclSpec
               , varPassBy = Val
               , varStackSlot = Slot 0
               , varDefnPos = NoPos

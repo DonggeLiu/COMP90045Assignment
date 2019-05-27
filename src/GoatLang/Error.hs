@@ -135,7 +135,7 @@ prettifySemanticError sourceCode (RepeatedDefinitionError pos oldPos msg)
       -- display the message describing te problem:
       line $ write msg
       -- and point to the original definition (less context necessary):
-      line $ write "orginal definition " >> writePos oldPos
+      line $ write "orginal declaration " >> writePos oldPos
       writeContext oldPos 1 1 blu1 sourceCode
 
 

@@ -150,7 +150,7 @@ addProcMapping ident newRecord
           RepeatedDefinitionError
             (procDefnPos newRecord)
             (procDefnPos existingRecord)
-            ("repeat definition of procedure: " ++ prettify ident)
+            ("repeat declaration of procedure: " ++ prettify ident)
 
 
 -- ----------------------------------------------------------------------------
@@ -189,11 +189,17 @@ addVarMapping ident newRecord
           -- safe to insert record since name is unique (thus far)
           let newTopTable = insertVarRecord ident newRecord topTable
           setVarSymTableStack $ newTopTable : restOfStack
-        Just existingRecord -> semanticError $
-          RepeatedDefinitionError
+        Just existingRecord -> do
+          let origTypeSpec = varTypeSpec existingRecord
+          let dupTypeSpec = varTypeSpec newRecord
+          let message = case (origTypeSpec, dupTypeSpec) of
+                (DeclSpec, DeclSpec) -> "repeat declaration of local variable: "
+                (ParamSpec, ParamSpec) -> "repeat declaration of parameter: "
+                _ -> "variable declared with same identifier as parameter: "
+          semanticError $ RepeatedDefinitionError
             (varDefnPos newRecord)
             (varDefnPos existingRecord)
-            ("repeat definition of local variable: " ++ prettify ident)
+            (message ++ prettify ident)
 
 
 getRequiredFrameSize :: SemanticAnalysis FrameSize
