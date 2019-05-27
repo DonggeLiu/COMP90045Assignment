@@ -14,6 +14,7 @@ begin
         write i+1;
         write ": ";
         read numbers[i];
+        i := i+1;
     od
 
     # sorting
@@ -21,11 +22,20 @@ begin
     while i < 10 do
         j := i;
         while j > 0 && numbers[j-1] > numbers[j] do
-            call int_swap(numbers[j-i], numbers[j]);
+            call int_swap(numbers[j-1], numbers[j]);
             j := j-1;
         od
         i := i+1;
     od
+
+    # print sorted numbers
+    i := 0;
+    while i < 10 do
+        if i != 0 then write ", "; fi
+        write numbers[i];
+        i := i+1;
+    od
+    write "\n";
 end
 
 # Swap two integers.
