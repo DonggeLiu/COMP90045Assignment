@@ -20,10 +20,9 @@ import Control.Monad.State
 
 import Util.DiffList
 
+import GoatLang.Error
 import GoatLang.Syntax.AST
 import GoatLang.Syntax.Printer
-
-import GoatLang.Semantics.Error
 import GoatLang.Semantics.SymbolTable
 
 import OzLang.Code
@@ -151,7 +150,7 @@ addProcMapping ident newRecord
           RepeatedDefinitionError
             (procDefnPos newRecord)
             (procDefnPos existingRecord)
-            ("repeat definition of procedure " ++ prettify ident)
+            ("repeat definition of procedure: " ++ prettify ident)
 
 
 -- ----------------------------------------------------------------------------
@@ -194,7 +193,7 @@ addVarMapping ident newRecord
           RepeatedDefinitionError
             (varDefnPos newRecord)
             (varDefnPos existingRecord)
-            ("repeat definition of local variable " ++ prettify ident)
+            ("repeat definition of local variable: " ++ prettify ident)
 
 
 getRequiredFrameSize :: SemanticAnalysis FrameSize

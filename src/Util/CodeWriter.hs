@@ -32,6 +32,7 @@ module Util.CodeWriter
 , space
 , newline
 , semi
+, colon
 -- and generally useful codewriter combinators
 , parens
 , brackets
@@ -199,12 +200,13 @@ semiLine lineContentWriter
 -- withIncreasedIndentation
 -- Perform a writer action with an increased level of indentation, and restore
 -- the indentation level afterwards.
-withIncreasedIndentation :: CodeWriter () -> CodeWriter () -> CodeWriter ()
+withIncreasedIndentation :: CodeWriter () -> CodeWriter a -> CodeWriter a
 withIncreasedIndentation indenter writer
   = do
       increaseIndentation indenter
-      writer
-      decreaseIndentation_
+      result <- writer
+      decreaseIndentation
+      return result
 
 -- increaseIndentation
 -- Add an indentation writer to the indentation stack
@@ -319,6 +321,12 @@ newline
 semi :: CodeWriter ()
 semi
   = write ";"
+
+-- colon
+-- To add a colon character
+colon :: CodeWriter ()
+colon
+  = write ":"
 
 
 -- ----------------------------------------------------------------------------

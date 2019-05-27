@@ -18,6 +18,7 @@ module GoatLang.Syntax.Parser where
 import Text.Parsec
 import Text.Parsec.Expr
 
+import GoatLang.Error (SyntaxError, fromParsecError)
 import GoatLang.Syntax.AST
 import GoatLang.Syntax.Tokens
 
@@ -28,9 +29,11 @@ import GoatLang.Syntax.Tokens
 -- parseProgram
 -- entry-point: Parse a full Goat program from a source code String. The
 -- filepath is only used for error messages, not for IO, and can be "".
-parseProgram :: FilePath -> String -> Either ParseError GoatProgram
+parseProgram :: FilePath -> String -> Either SyntaxError GoatProgram
 parseProgram filePath input
-  = parse pFullProgram filePath input
+  = case (parse pFullProgram filePath input) of
+      Left parseError -> Left $ fromParsecError parseError
+      Right ast -> Right ast
 
 -- pFullProgram
 -- top level parser for an entire program (including eating leading whiteSpace

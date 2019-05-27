@@ -15,19 +15,7 @@ module GoatLang.Syntax.AST where
 --
 -- ----------------------------------------------------------------------------
 
--- The position in the Goat source file.
-data Pos
-  = NoPos
-  | Pos { sourceFile :: String
-        , lineNumber :: Int
-        , colNumber  :: Int
-        }
-instance Show Pos where
-  show NoPos = "-:-"
-  show pos = show (lineNumber pos) ++ ":" ++ show (colNumber pos)
-instance Eq Pos where
-  a == b = True
-
+import GoatLang.Error (Pos)
 
 class ASTNode node
 

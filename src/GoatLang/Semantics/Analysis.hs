@@ -20,10 +20,10 @@ import Control.Monad (when)
 import GoatLang.Syntax.AST
 import GoatLang.Syntax.Printer (format, prettify)
 
+import GoatLang.Error
 import GoatLang.Semantics.AAST
 import GoatLang.Semantics.AnalysisMonad
 import GoatLang.Semantics.SymbolTable
-import GoatLang.Semantics.Error
 
 import OzLang.Code
 

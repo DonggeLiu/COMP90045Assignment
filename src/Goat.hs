@@ -20,17 +20,14 @@ import System.Environment
 import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
-import Text.Parsec
-import Text.Parsec.Error
-
 import Util.ColourParTTY
 import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
 
+import GoatLang.Error
 import GoatLang.Syntax.Parser (parseProgram)
 import GoatLang.Syntax.Printer (printGoatProgramColoured)
 import GoatLang.Semantics.CodeGen (genCodeFullProgram)
 import GoatLang.Semantics.Analysis (analyseFullProgram)
-import GoatLang.Semantics.Error (SemanticError)
 import OzLang.Print (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
@@ -84,39 +81,27 @@ detectColourScheme flags
 -- syntaxErrorExit
 -- Display syntax error diagnostic information to the user, including the
 -- relevant section of the source program, then exit (with failure).
-syntaxErrorExit :: String -> ParseError -> IO a
+syntaxErrorExit :: String -> SyntaxError -> IO a
 syntaxErrorExit src err
   = do
-      let pos = errorPos err
-      let lineNum = sourceLine pos
-      let colNum = sourceColumn pos
-
-      putStrLn $ red1 "Syntax error" ++ " at " ++ show pos ++ ":"
-      -- show 3 lines of context:
-      putStr   $ unlines $ take (min lineNum 3) $ drop (lineNum-3) $ lines src
-      -- point to the problem:
-      -- (and surrounding characters, since sometimes parsec point off-by-1)
-      putStr   $ take (colNum-2) (repeat ' ') ++ red1 "^^^"
-      putStrLn $ showErrorMessagesDefaults (errorMessages err)
-
+      putStr $ red1 "Syntax error "
+      putStr $ prettifySyntaxError src err
       exitWith (ExitFailure 2)
-
--- showErrorMessagesDefaults
--- wrap Parsec's showErrorMessages function, which requires a bunch of template
--- strings be provided.
-showErrorMessagesDefaults :: [Message] -> String
-showErrorMessagesDefaults
-  = showErrorMessages
-      "or" "unknown parse error" "expecting" "unexpected" "end of input"
 
 -- semanticErrorsExit
 -- Display semantic error diagnostic information to the user, including the
 -- relevant section of the source program, then exit (with failure).
 semanticErrorsExit :: String -> [SemanticError] -> IO a
+semanticErrorsExit src [err]
+  = do
+      putStr $ red1 "Semantic error "
+      putStr $ prettifySemanticError src err
+      exitWith (ExitFailure 3)
 semanticErrorsExit src errs
   = do
-      putStrLn $ red1 "Semantic error(s):"
-      mapM print errs
+      putStrLn $ red1 "Semantic errors" ++ ":"
+      mapM (putStr . (prettifySemanticError src)) errs
+      putStrLn $ "Total number of semantic errors: "++red1 (show $ length errs)
       exitWith (ExitFailure 3)
 
 

@@ -17,8 +17,8 @@ module GoatLang.Semantics.SymbolTable where
 
 import Data.Map.Strict (Map, fromList, size, (!?), elems, insert, empty)
 
+import GoatLang.Error (Pos)
 import GoatLang.Syntax.AST
-
 import OzLang.Code
 
 
