@@ -51,12 +51,12 @@ analyseGoatProgram (GoatProgram procs)
       pushProcSymTable
       mapM_ defineProc procs
 
-      -- check: there must be a procedure with arity 0 (no params) called main
-      assertMainProc
-
       -- now, with this procedure symbol table, analyse the contents of each
       -- procedure definition
       aProcs <- mapM analyseProc procs
+
+      -- check: there must be a procedure with arity 0 (no params) called main
+      assertMainProc
 
       -- we're done with the procedure symbol table (NOTE: there is only ever
       -- at most a single procedure table, but we use a stack to keep the
