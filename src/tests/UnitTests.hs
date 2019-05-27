@@ -11,6 +11,8 @@ import GoatLang.Syntax.Parser
 import GoatLang.Syntax.Printer
 import GoatLang.Syntax.Tokens
 
+import GoatLang.Error (Pos (NoPos))
+
 
 -- A ParserUnitTest is a list of test cases assocated with a single parser.
 data ParserUnitTest a
