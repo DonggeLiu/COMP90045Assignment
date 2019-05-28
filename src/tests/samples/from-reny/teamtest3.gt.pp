@@ -12,7 +12,8 @@ begin
             read ss;
             read ff;
         else
-            call a("if then                                  else", "1234");
+            call a(else', 1234);
+            write "if then                                  else";
         fi
     od
 end

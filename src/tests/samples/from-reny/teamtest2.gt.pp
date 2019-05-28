@@ -12,7 +12,9 @@ begin
             read ss;
             read ff;
         else
-            call a("if then' else", "1234", 2 || (((3 * 4) / (5 + 6)) - 7), -1, 7 >= 2, !True, hey[yes]);
+            call a(then', 1234, 2 || (((3 * 4) / (5 + 6)) - 7), -1, 7 >= 2, !True, hey[yes]);
+            write "if then' else";
+            write "1234";
         fi
     od
 end

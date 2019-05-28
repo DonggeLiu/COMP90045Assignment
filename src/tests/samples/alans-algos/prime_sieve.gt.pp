@@ -2,7 +2,7 @@ proc main ()
     int n;
     bool isprime;
 begin
-    write "Primality checking by looping.\n";
+    write "Primality checking by Sieve of Eratosthenes method.\n";
     write "Type a non-negative integer up to 1000: ";
     read n;
     write n;
@@ -35,18 +35,20 @@ begin
             result := true;
         else
             i := 0;
-            while i < (n - 1) do
+            i' := 2;
+            while i' <= n do
                 numarray[i] := true;
                 i := i + 1;
+                i' := i' + 1;
             od
             i := 0;
             i' := 2;
-            while ((i' * i') < n) && (numarray[n - 2] = true) do
+            while ((i' * i') <= n) && (numarray[n - 2] = true) do
                 if numarray[i] then
-                    j := i * i;
+                    j := i + i';
                     while j <= n do
-                        numarray[j - 2] := false;
-                        j := j + i;
+                        numarray[j] := false;
+                        j := j + i';
                     od
                 fi
                 i := i + 1;

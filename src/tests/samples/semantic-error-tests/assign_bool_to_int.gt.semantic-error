@@ -1,0 +1,6 @@
+proc main()
+    int x;
+begin
+    x := true;
+    # ^ semantic error: x is int
+end

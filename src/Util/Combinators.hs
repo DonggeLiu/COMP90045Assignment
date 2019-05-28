@@ -73,7 +73,7 @@ sepByMN sep m n p
 -- or, basically:
 --     (<:>) p_x p_xs = do {x <- p_x; xs <- p_xs; return (x:xs)}
 
--- (<:>)
+-- (<++>)
 -- 'applicative append' operator - A mnemonic shortcut for using (++) as an
 -- applicative function, to combine the results of parsec parsers.
 (<++>) :: Stream s m t =>

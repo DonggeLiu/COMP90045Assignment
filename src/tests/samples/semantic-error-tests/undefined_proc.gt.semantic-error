@@ -1,0 +1,8 @@
+proc main()
+begin
+    call foo();
+    # ^ semantic error: undefined procedure
+    call foo(1, 2, 3);
+    # ^ semantic error: undefined procedure, and wrong number of args (we assume
+    #   undefined procedures want 0 args)
+end

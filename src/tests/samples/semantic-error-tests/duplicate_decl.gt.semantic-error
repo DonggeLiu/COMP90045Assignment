@@ -1,0 +1,13 @@
+proc main()
+    int x;
+    int x;
+    #   ^ semantic error: x already declared
+begin
+    write "hello\n";
+    call foo(42, x);
+end
+proc foo(val float x, ref int y)
+begin
+    write "hello\n";
+    write x;
+end

@@ -1,0 +1,21 @@
+proc main ()
+    int x;
+begin
+    x := 42;
+    call expecting_float(42);
+    call expecting_float(x);
+    call expecting_float(21 + 21);
+    call expecting_float(21 * 2);
+end
+
+proc expecting_float(val float input)
+begin
+    write input;
+    write "\n";
+end
+
+# expected output:
+# 42.000000
+# 42.000000
+# 42.000000
+# 42.000000

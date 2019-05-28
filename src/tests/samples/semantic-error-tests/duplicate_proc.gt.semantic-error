@@ -1,0 +1,14 @@
+proc main()
+begin
+    write "hello\n";
+end
+proc main ()
+begin
+    write "hello\n";
+end
+# ^ semantic error: repeat definition of procedure "main"
+proc main ()
+begin
+    write "hello\n";
+end
+# ^ semantic error: repeat definition of procedure "main"

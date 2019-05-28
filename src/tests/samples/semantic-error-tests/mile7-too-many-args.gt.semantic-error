@@ -1,0 +1,24 @@
+# Milestone 7 test case:
+# Ensuring correct semantic error reporting
+
+proc main ()
+    int i;
+    int array1[10];      # Array - 1 D
+
+    begin
+        i := 0;
+
+        # populating 1D array
+        while i < 10 do
+            array1[i] := i;
+            i := i + 1;
+        od
+
+        # Should raise error
+        call twoParams(array1[3], i, true, 4);
+    end
+
+proc twoParams(val int array1, val int var1, val bool var2)
+    begin
+        write "hello";
+    end

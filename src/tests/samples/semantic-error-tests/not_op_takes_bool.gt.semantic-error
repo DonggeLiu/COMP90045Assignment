@@ -1,0 +1,6 @@
+proc main ()
+    int x;
+begin
+    write !x;
+    #     ^ semantic error: ! takes bool operand
+end

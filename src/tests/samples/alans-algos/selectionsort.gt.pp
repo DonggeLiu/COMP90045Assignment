@@ -11,6 +11,7 @@ begin
         write i + 1;
         write ": ";
         read numbers[i];
+        i := i + 1;
     od
     j := 0;
     while j < 10 do
@@ -25,6 +26,15 @@ begin
         call int_swap(numbers[j], numbers[i_min]);
         j := j + 1;
     od
+    i := 0;
+    while i < 10 do
+        if i != 0 then
+            write ", ";
+        fi
+        write numbers[i];
+        i := i + 1;
+    od
+    write "\n";
 end
 
 proc int_swap (ref int a, ref int b)

@@ -11,6 +11,7 @@ begin
         write i + 1;
         write ": ";
         read numbers[i];
+        i := i + 1;
     od
     n := 10;
     swapped := true;
@@ -26,6 +27,15 @@ begin
         od
         n := n - 1;
     od
+    i := 0;
+    while i < 10 do
+        if i != 0 then
+            write ", ";
+        fi
+        write numbers[i];
+        i := i + 1;
+    od
+    write "\n";
 end
 
 proc int_swap (ref int a, ref int b)

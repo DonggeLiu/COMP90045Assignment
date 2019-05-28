@@ -20,8 +20,15 @@ import System.Environment
 import Control.Monad (when, unless)
 import Data.List (nub, intersperse, intercalate, (\\))
 
-import GoatLang.Parser (parseProgram)
-import GoatLang.PrettyPrint (prettify)
+import Util.ColourParTTY
+import Util.CodeWriter (ColourSchemeName(..),ColourScheme,getColourSchemeByName)
+
+import GoatLang.Error
+import GoatLang.Syntax.Parser (parseProgram)
+import GoatLang.Syntax.Printer (printGoatProgramColoured)
+import GoatLang.Semantics.CodeGen (genCodeFullProgram)
+import GoatLang.Semantics.Analysis (analyseFullProgram)
+import OzLang.Print (printOzProgramColoured)
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -39,22 +46,66 @@ main
       sourceCode <- readFile sourceFileName
       let parsed = parseProgram sourceFileName sourceCode
       ast <- case parsed of
-        Left err  -> do
-            putStrLn $ "Parse error at " ++ show err
-            exitWith (ExitFailure 2)
+        Left err  -> syntaxErrorExit sourceCode err
         Right ast -> return ast
 
       -- handle the parsed program:
       when (flagIsSet 'a' flags) $ do
           print ast
       when (flagIsSet 'p' flags) $ do
-          putStr $ prettify ast
+          printGoatProgramColoured (detectColourScheme flags) ast
 
       -- -- CODE GENERATION PHASE -- --
 
       -- compile AST into machine code, and output executable, if possible
       when (null flags || flagIsSet 'x' flags) $ do
-          putStrLn "Sorry, can't generate code yet!"
+          -- static semantic analysis
+          let result = analyseFullProgram ast
+          aast <- case result of
+            Left errs -> semanticErrorsExit sourceCode errs
+            Right aast -> return aast
+          -- code generation
+          let code = genCodeFullProgram aast
+          printOzProgramColoured (detectColourScheme flags) code
+
+
+detectColourScheme :: [Flag] -> ColourScheme
+detectColourScheme flags
+  | flagIsSet 'l' flags = getColourSchemeByName LightTerminal
+  | flagIsSet 'd' flags = getColourSchemeByName DarkTerminal
+  | otherwise           = getColourSchemeByName NoColours
+
+-- ----------------------------------------------------------------------------
+-- Handling errors in the source program
+-- ----------------------------------------------------------------------------
+
+-- syntaxErrorExit
+-- Display syntax error diagnostic information to the user, including the
+-- relevant section of the source program, then exit (with failure).
+syntaxErrorExit :: String -> SyntaxError -> IO a
+syntaxErrorExit src err
+  = do
+      putStr $ red1 "Syntax error "
+      putStr $ prettifySyntaxError src err
+      exitWith (ExitFailure 2)
+
+-- semanticErrorsExit
+-- Display semantic error diagnostic information to the user, including the
+-- relevant section of the source program, then exit (with failure).
+semanticErrorsExit :: String -> [SemanticError] -> IO a
+semanticErrorsExit src [err]
+  = do
+      putStr $ red1 "Semantic error "
+      putStr $ prettifySemanticError src err
+      exitWith (ExitFailure 3)
+semanticErrorsExit src errs
+  = do
+      putStrLn $ red1 "Semantic errors" ++ ":"
+      mapM (putStrLn . (prettifySemanticError src)) errs
+      putStr $ red1 (show $ length errs)
+      putStrLn " semantic errors generated."
+      exitWith (ExitFailure 3)
+
 
 -- ----------------------------------------------------------------------------
 -- Processing command-line options
@@ -75,7 +126,7 @@ flagIsSet f flags
 
 -- List of valid flags
 validFlags
-  = "xaph"
+  = "xaphld"
 
 -- checkArgs
 -- Parse command line options, either ensuring they have the correct structure
@@ -89,12 +140,12 @@ checkArgs
           helpExit
       let invalidFlags = flags \\ validFlags
       unless (null invalidFlags) $ do
-          errorExit $ "invalid flag(s): " ++ (intersperse ',' invalidFlags)
+          argsErrorExit $ "invalid flag(s): " ++ (intersperse ',' invalidFlags)
       let arguments = getArguments args
       case arguments of
         [sourceFileName] -> return (Opts flags sourceFileName)
-        []               -> errorExit $ "missing required argument: file"
-        (_:excess)       -> errorExit $ "excess positional argument(s): "
+        []               -> argsErrorExit $ "missing required argument: file"
+        (_:excess)       -> argsErrorExit $ "excess positional argument(s): "
                                         ++ intercalate ", " excess
 
 -- getFlags, getArguments
@@ -116,12 +167,12 @@ helpExit
       printUsage
       exitSuccess
 
--- errorExit
+-- argsErrorExit
 -- Display an error message and then exit (with failure)
-errorExit :: String -> IO a
-errorExit problem
+argsErrorExit :: String -> IO a
+argsErrorExit problem
   = do
-      putStrLn $ "Argument error:\n  " ++ problem
+      putStrLn $ red1 "Argument error" ++ ":\n  " ++ problem
       printUsage
       exitWith (ExitFailure 1)
 
@@ -131,11 +182,15 @@ printUsage :: IO ()
 printUsage
    = do
       name <- getProgName
-      putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p] [file]\n"
+      putStrLn $ "Usage: " ++ name ++ " [-h] [-x] [-a] [-p[l|d]] [file]\n"
       putStrLn "Options and arguments:"
       putStrLn "  -x    : (or no flags) compile the file, print executable code"
       putStrLn "  -a    : parse the file and print the AST"
       putStrLn "  -p    : parse the file and pretty-print its source code"
+      putStr $ "  -l    : " ++ rainbow1 "pretty-print WITH COLOUR! "
+      putStrLn "(for light terminals)"
+      putStr $ "  -d    : " ++ rainbow2 "pretty-print WITH COLOUR! "
+      putStrLn "(for dark terminals)"
       putStrLn "  -h    : print this help message and exit"
       putStrLn "  file  : path to goat (.gt) file containing Goat source code"
       putStrLn "          (required argument for -x, -a and -p)"
@@ -159,7 +214,8 @@ printGoatHead
       putStrLn "       |==|/    \\==\\;  ;\\|  , \\ \\ / /L /::/ \\,~~ |==|-|"
       putStrLn "       |//\\\\,__/== |: ;  |L_\\  \\ V / /L::/-__/  /=/-,|"
       putStrLn "        \\ / | | \\ /: ;  ;\\ |\\\\  \\ / //|: |__\\_/=/--/,,"
-      putStrLn "         \\______,/; ;   ;;\\ @|\\  | /|@|;: \\__\\__\\_/"
+      putStr $ "         \\______,/; ;   ;;\\ "++grn2"@"++"|\\  | /|"++cyn2"@"
+      putStrLn "|;: \\__\\__\\_/"
       putStrLn "                   ;   ;;;|\\/' \\ |/ '\\/;;"
       putStrLn "                  ;   ;;;;\\  {  \\|' }/;:'"
       putStrLn "                  ;  ;;;;;:| {   |  }|;'"
@@ -190,7 +246,3 @@ printGoatHead
 --              '''|____/   \__/\___|
 --                      \_.  / _/
 --             valkyrie    \/\/
-
-
-
-

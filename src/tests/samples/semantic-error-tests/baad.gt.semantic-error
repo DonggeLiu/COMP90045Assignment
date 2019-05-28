@@ -1,0 +1,23 @@
+# no main:
+proc main'() 
+begin
+    write "hello\n";
+end
+# repeated declarations of main'
+proc main'() begin write "world\n"; end
+proc main'() begin write "again\n"; end
+# some repeated params and decls:
+proc two(val int two, val int two, ref int two)
+    bool two[1, 2];
+begin
+    write "echo!\n";
+end
+# just repeated decls:
+proc one(val int one)
+    int one;
+    int one;
+    float one;
+    int one[1];
+begin
+    write "the end!\n";
+end
