@@ -41,14 +41,13 @@ data VarRecord
   = VarRecord { varShape :: Dim
               , varBaseType :: BaseType
               , varTypeSpec :: TypeSpec
-              , varPassBy :: PassBy
               , varStackSlot :: Slot
               , varDefnPos :: Pos
               }
 
 data TypeSpec
   = DeclSpec
-  | ParamSpec
+  | ParamSpec PassBy
 
 -- ----------------------------------------------------------------------------
 -- Querying symbol tables

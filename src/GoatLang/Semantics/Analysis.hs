@@ -101,7 +101,7 @@ assertMainProc
             "main procedure must have no parameters"
 
 analyseProc :: Proc -> SemanticAnalysis AProc
-analyseProc proc@(Proc pos ident params decls stmts)
+analyseProc (Proc _ ident params decls stmts)
   = do
       -- construct the local variable symbol table in a first pass over the
       -- params and declarations:
@@ -136,8 +136,7 @@ declareAnalyseParam param@(Param pos passBy baseType ident)
       -- prepare the variable record for the symbol table
       let newRecord = VarRecord { varShape = Dim0
                                 , varBaseType = baseType
-                                , varTypeSpec = ParamSpec
-                                , varPassBy = passBy
+                                , varTypeSpec = ParamSpec passBy
                                 , varStackSlot = nextFreeSlot
                                 , varDefnPos = pos
                                 }
@@ -161,7 +160,6 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
       let newRecord = VarRecord { varShape = dim
                                 , varBaseType = baseType
                                 , varTypeSpec = DeclSpec
-                                , varPassBy = Val
                                 , varStackSlot = startSlot
                                 , varDefnPos = pos
                                 }
@@ -285,7 +283,7 @@ analyseStmt (If pos cond thenStmts)
 
       -- analyse statements
       aThenStmts <- mapM analyseStmt thenStmts
-      
+
       let attrs = IfAttr { ifPretty = prettify cond}
       return $ AIf aCond aThenStmts attrs
 
@@ -300,7 +298,7 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
       -- analyse statements
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
-      
+
       let attrs = IfElseAttr { ifElsePretty = prettify cond }
       return $ AIfElse aCond aThenStmts aElseStmts attrs
 
@@ -314,7 +312,7 @@ analyseStmt (While pos cond doStmts)
 
       -- analyse statements
       aDoStmts <- mapM analyseStmt doStmts
-      
+
       let attrs = WhileAttr { whilePretty = prettify cond }
       return $ AWhile aCond aDoStmts attrs
 
@@ -419,7 +417,10 @@ analyseScalar (Single pos ident)
           -- error recovery: continue, assuming that it's a single.
           return $ record { varShape = Dim0 }
 
-      let attrs = SingleAttr { singlePassBy = varPassBy record'
+      let passBy = case varTypeSpec record' of
+            DeclSpec -> Val
+            ParamSpec p -> p
+      let attrs = SingleAttr { singlePassBy = passBy
                              , singleStackSlot = varStackSlot record'
                              , singleBaseType = varBaseType record'
                              }
@@ -502,7 +503,6 @@ dummyVarRecord
   = VarRecord { varShape = Dim0
               , varBaseType = IntType
               , varTypeSpec = DeclSpec
-              , varPassBy = Val
               , varStackSlot = Slot 0
               , varDefnPos = NoPos
               }

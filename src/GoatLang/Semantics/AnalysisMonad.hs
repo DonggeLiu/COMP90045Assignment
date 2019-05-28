@@ -194,7 +194,7 @@ addVarMapping ident newRecord
           let dupTypeSpec = varTypeSpec newRecord
           let message = case (origTypeSpec, dupTypeSpec) of
                 (DeclSpec, DeclSpec) -> "repeat declaration of local variable: "
-                (ParamSpec, ParamSpec) -> "repeat declaration of parameter: "
+                (ParamSpec _, _) -> "repeat declaration of parameter: "
                 _ -> "variable declared with same identifier as parameter: "
           semanticError $ RepeatedDefinitionError
             (varDefnPos newRecord)
