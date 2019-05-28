@@ -84,7 +84,7 @@ defineProc (Proc pos ident params _ _)
 
 -- assertMainProc
 -- Enforce the static requirement that a procedure called 'main' exists in the
--- program. This should be called after 'defineProc' ahs been used to set up
+-- program. This should be called after 'defineProc' has been used to set up
 -- the procedure symbol table.
 assertMainProc :: SemanticAnalysis ()
 assertMainProc
@@ -187,9 +187,8 @@ declareAnalyseDecl decl@(Decl pos baseType ident dim)
 
 
 analyseStmt :: Stmt -> SemanticAnalysis AStmt
-analyseStmt asn@(Asg pos scalar expr)
+analyseStmt asg@(Asg pos scalar expr)
   = do
-      let attrs = AsgAttr { asgPretty = init $ prettify asn }
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
@@ -205,31 +204,32 @@ analyseStmt asn@(Asg pos scalar expr)
         format (scalarType aScalar) ++ ", actual: " ++
         format (exprType aExpr') ++ ")"
 
+      let attrs = AsgAttr { asgPretty = init $ prettify asg }
       return $ AAsg aScalar aExpr' attrs
 
-analyseStmt readscalar@(Read pos scalar)
+analyseStmt readScalar@(Read pos scalar)
   = do
       aScalar <- analyseScalar scalar
       let builtin = lookupReadBuiltin (scalarType aScalar)
       let attrs = ReadAttr { readBuiltin = builtin
-                           , readPretty = init $ prettify readscalar
+                           , readPretty = init $ prettify readScalar
                            }
       return $ ARead aScalar attrs
 
-analyseStmt writeexpr@(WriteExpr pos expr)
+analyseStmt writeExpr@(WriteExpr pos expr)
   = do
       aExpr <- analyseExpr expr
       let builtin = lookupPrintBuiltin (exprType aExpr)
       let attrs = WriteExprAttr { writeExprBuiltin = builtin
                                 , writeExprPretty
-                                    = init $ prettify writeexpr
+                                    = init $ prettify writeExpr
                                 }
       return $ AWriteExpr aExpr attrs
 
-analyseStmt writestring@(WriteString pos string)
+analyseStmt writeString@(WriteString pos string)
   = do
       let attrs = WriteStringAttr { writeStringPretty
-                                      = init $ prettify writestring
+                                      = init $ prettify writeString
                                   }
 
       return $ AWriteString string attrs
@@ -253,18 +253,17 @@ analyseStmt call@(Call pos ident args)
         "call with incorrect number of arguments (expected: " ++
         show (length params) ++ ", actual: " ++ show (length args) ++ ")"
 
-      -- Get the Call Attributes
-      let passBys = [ passBy | (Param _ passBy _ _) <- params]
-      let attrs = CallAttr { callPassBys = passBys
-                           , callPretty = init $ prettify call
-                           }
-
       -- in the case of pass by value, introduce float casts if necessary:
       let aArgs' = zipWith castArg params aArgs
 
       -- Checks that parameters and arguments agree
       sequence $ zipWith assertParamMatchesArgs params aArgs'
 
+      -- Get the Call Attributes
+      let passBys = [ passBy | (Param _ passBy _ _) <- params]
+      let attrs = CallAttr { callPassBys = passBys
+                           , callPretty = init $ prettify call
+                           }
       return $ ACall ident aArgs' attrs
     where
       castArg :: Param -> AExpr -> AExpr
@@ -284,8 +283,10 @@ analyseStmt (If pos cond thenStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = IfAttr { ifPretty = prettify cond}
+      -- analyse statements
       aThenStmts <- mapM analyseStmt thenStmts
+      
+      let attrs = IfAttr { ifPretty = prettify cond}
       return $ AIf aCond aThenStmts attrs
 
 analyseStmt (IfElse pos cond thenStmts elseStmts)
@@ -296,9 +297,11 @@ analyseStmt (IfElse pos cond thenStmts elseStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = IfElseAttr { ifElsePretty = prettify cond }
+      -- analyse statements
       aThenStmts <- mapM analyseStmt thenStmts
       aElseStmts <- mapM analyseStmt elseStmts
+      
+      let attrs = IfElseAttr { ifElsePretty = prettify cond }
       return $ AIfElse aCond aThenStmts aElseStmts attrs
 
 analyseStmt (While pos cond doStmts)
@@ -309,8 +312,10 @@ analyseStmt (While pos cond doStmts)
         "incorrect type for condition (expected: " ++ format BoolType ++
         ", actual: " ++ format (exprType aCond) ++ ")"
 
-      let attrs = WhileAttr { whilePretty = prettify cond }
+      -- analyse statements
       aDoStmts <- mapM analyseStmt doStmts
+      
+      let attrs = WhileAttr { whilePretty = prettify cond }
       return $ AWhile aCond aDoStmts attrs
 
 
@@ -369,8 +374,10 @@ analyseExpr (BinExpr pos op lExpr rExpr)
   = do
       aLExpr <- analyseExpr lExpr
       aRExpr <- analyseExpr rExpr
+
       -- introduce casts, if necessary
       let (aLExpr', aRExpr') = castOperands op aLExpr aRExpr
+
       let lType = exprType aLExpr'
       let rType = exprType aRExpr'
       let maybeInstrPair = lookupBinInstr op lType rType
@@ -392,7 +399,7 @@ analyseExpr (BinExpr pos op lExpr rExpr)
 analyseScalar :: Scalar -> SemanticAnalysis AScalar
 analyseScalar (Single pos ident)
   = do
-      -- lookup the indentifier, hopefully if exists
+      -- lookup the indentifier, hopefully it exists
       maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
@@ -424,7 +431,7 @@ analyseScalar (Array pos ident exprI)
         "array index must be an integer expression (received type: " ++
         format (exprType aExprI) ++ ")"
 
-      -- lookup the indentifier, hopefully if exists
+      -- lookup the indentifier, hopefully it exists
       maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
@@ -462,7 +469,7 @@ analyseScalar (Matrix pos ident exprI exprJ)
         "second matrix index must be an integer expression (received type: " ++
         format (exprType aExprJ) ++ ")"
 
-      -- lookup the indentifier, hopefully if exists
+      -- lookup the indentifier, hopefully it exists
       maybeRecord <- lookupVar ident
       record <- case maybeRecord of
         Just record -> return record
