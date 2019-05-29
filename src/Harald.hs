@@ -27,7 +27,7 @@ import Util.ColourParTTY (stripControlChars, rainbowMask, chunkControlChars)
 -- Output configuration
 -- ----------------------------------------------------------------------------
 
-width = 70      -- maximum output line width (long lines are wrapped)
+width = 78      -- maximum output line width (long lines are wrapped)
 point = 42      -- the answer to life, the universe, and everything
 colourSpeed = 3 -- how much rainbow can you handle?
 
@@ -40,9 +40,8 @@ main :: IO ()
 main
   = do
       speechBubbleTop
-      contents <- getContents
-      let contents' = filter (/='\r') contents
-      mapM speechBubbleLongLine $ lines contents'
+      contents <- fmap preprocess getContents
+      mapM speechBubbleLongLine $ lines contents
       speechBubbleBot
 
       args <- getArgs
@@ -55,7 +54,18 @@ main
           putStrLn "Your viewing experience may not be optimal if you are not"
           putStrLn "using a dark terminal. Please specify -d for dark terminals"
           putStrLn "or -l for light terminal to silence this warning. Thanks."
-
+    where
+      -- remove pesky carriage returns
+      preprocess ('\r':cs)
+        = preprocess cs
+      -- expand tab characters to four spaces
+      preprocess ('\t':cs)
+        = ' ':' ':' ':' ':preprocess cs
+      -- the rest of the input remains
+      preprocess (c:cs)
+        = c:preprocess cs
+      preprocess []
+        = []
 
 -- ----------------------------------------------------------------------------
 -- Constructing the speech bubble
@@ -115,54 +125,54 @@ rainbow speakerLines
 -- A dedication to our favourite lecturer
 haraldForLightTerminal :: [String]
 haraldForLightTerminal
-  = [ "#################`.------...`##############|   /########################"
-    , "###############`.--...`````.-..-`##########|  /#########################"
-    , "#############`:so-.``       ``./ys-########| /##########################"
-    , "############-yd+..``         ``-:oh/#######|/###########################"
-    , "###########:hh:-.``          ``.-:/o:.##################################"
-    , "##########:sh:..```          ``..-//++.#################################"
-    , "##########oy+--.``            ```-+++sy#################################"
-    , "##########oh/:-..```````   ``--..:oosyh#################################"
-    , "#########`ds/:---.--/++/. `/sso//::+oos#################################"
-    , "##########oo/:---///+//..``o/.....`:oo-#################################"
-    , "##########`:/::.````````.-`++.``  `-o/-#################################"
-    , "###########..::-``    `.--`.so-` `.+s+-#################################"
-    , "###########``//-..```:-/yo+ymNhy/:+sso:#################################"
-    , "###########`-++:-../o:..--+oyhyhhooss+.#################################"
-    , "############./+:-..+:+so+++ohmmh:.//s.##################################"
-    , "##############/+:....-:+//++os+...oo+###################################"
-    , "##############.oo:--.``.-:/+//:.:sho`###################################"
-    , "##############:o/oo//.`````..../hmh`####################################"
-    , "#############:h+/:oyss/-.---:+ymNm+#####################################"
-    , "###########`/oyo://ossydmmmmNMMNmds`####################################"
-    , "#########`-+sssy+--/+yhdNNMMMMNmddMh`###################################"
-    , "#####`.:oyosssyyys-.-/ohdmNNMNmdddMNy.##################################"
-    , "##`:+osyhdsyssyysyys/:/+osyyhdddhmNmdhh+`###############################"
+  = [ "#################`.------...`##############|   /##" ++ replicate 30 '#'
+    , "###############`.--...`````.-..-`##########|  /###" ++ replicate 30 '#'
+    , "#############`:so-.``       ``./ys-########| /####" ++ replicate 30 '#'
+    , "############-yd+..``         ``-:oh/#######|/#####" ++ replicate 30 '#'
+    , "###########:hh:-.``          ``.-:/o:.############" ++ replicate 30 '#'
+    , "##########:sh:..```          ``..-//++.###########" ++ replicate 30 '#'
+    , "##########oy+--.``            ```-+++sy###########" ++ replicate 30 '#'
+    , "##########oh/:-..```````   ``--..:oosyh###########" ++ replicate 30 '#'
+    , "#########`ds/:---.--/++/. `/sso//::+oos###########" ++ replicate 30 '#'
+    , "##########oo/:---///+//..``o/.....`:oo-###########" ++ replicate 30 '#'
+    , "##########`:/::.````````.-`++.``  `-o/-###########" ++ replicate 30 '#'
+    , "###########..::-``    `.--`.so-` `.+s+-###########" ++ replicate 30 '#'
+    , "###########``//-..```:-/yo+ymNhy/:+sso:###########" ++ replicate 30 '#'
+    , "###########`-++:-../o:..--+oyhyhhooss+.###########" ++ replicate 30 '#'
+    , "############./+:-..+:+so+++ohmmh:.//s.############" ++ replicate 30 '#'
+    , "##############/+:....-:+//++os+...oo+#############" ++ replicate 30 '#'
+    , "##############.oo:--.``.-:/+//:.:sho`#############" ++ replicate 30 '#'
+    , "##############:o/oo//.`````..../hmh`##############" ++ replicate 30 '#'
+    , "#############:h+/:oyss/-.---:+ymNm+###############" ++ replicate 30 '#'
+    , "###########`/oyo://ossydmmmmNMMNmds`##############" ++ replicate 30 '#'
+    , "#########`-+sssy+--/+yhdNNMMMMNmddMh`#############" ++ replicate 30 '#'
+    , "#####`.:oyosssyyys-.-/ohdmNNMNmdddMNy.############" ++ replicate 30 '#'
+    , "##`:+osyhdsyssyysyys/:/+osyyhdddhmNmdhh+`#########" ++ replicate 30 '#'
     ]
 haraldForDarkTerminal :: [String]
 haraldForDarkTerminal
-  = [ "###########################################|   /########################"
-    , "#################mdhhhhhhddd###############|  /#########################"
-    , "################dhhdddmmmmmdhddd###########| /##########################"
-    , "##############h+ohddmNMMMMNNmdhs/+d########|/###########################"
-    , "############h+:shddmNNNNNMNNNNdhyo/y####################################"
-    , "###########y//yhddmNMMMNMMNNNmmhhysoym##################################"
-    , "##########h+/yhhmmmNNMMNNNNNNmdddhsyosd#################################"
-    , "##########o/ohhhmmNNNMNNNNNNNNmmdhoss++#################################"
-    , "##########o/syhhdmmmmmmNNNNmmhdddyooo+/#################################"
-    , "##########:+syhyhhhhysoydNms++osyyysooo#################################"
-    , "##########oosyhhhyyysyyddmmoyddmmdmyooh#################################"
-    , "##########mysyyhmmmmmmmddhmssdmNNNmhosd#################################"
-    , "###########dhyyhmmNNNNmhhhmd+ohmNmds+sd#################################"
-    , "###########mmysyddmNmyhs/oo+../+yys++oh#################################"
-    , "###########mhssyhhhyoydhhhs+/////oo++sm#################################"
-    , "############mysyhhdsyo+ossoo/-.:ydyy+m##################################"
-    , "##############ysyddddhyssysso+sdddoos###################################"
-    , "##############mooyhhdmmdhyysssydy+/s####################################"
-    , "##############yosoossdmmmmmddddy/-/#####################################"
-    , "#############h:ssyo++oyhdhhhhs/-.-s#####################################"
-    , "############yo/oysso++/:-...```.-:+#####################################"
-    , "#########mds+++/shhyo+/:-.`  `.-::`/####################################"
-    , "#####mdho+o++++++ohdhso/:--...-:/:`./m##################################"
-    , "####so++::+++++++//+sysoo++//////..-://s################################"
+  = [ "###########################################|   /##" ++ replicate 30 '#'
+    , "#################mdhhhhhhddd###############|  /###" ++ replicate 30 '#'
+    , "################dhhdddmmmmmdhddd###########| /####" ++ replicate 30 '#'
+    , "##############h+ohddmNMMMMNNmdhs/+d########|/#####" ++ replicate 30 '#'
+    , "############h+:shddmNNNNNMNNNNdhyo/y##############" ++ replicate 30 '#'
+    , "###########y//yhddmNMMMNMMNNNmmhhysoym############" ++ replicate 30 '#'
+    , "##########h+/yhhmmmNNMMNNNNNNmdddhsyosd###########" ++ replicate 30 '#'
+    , "##########o/ohhhmmNNNMNNNNNNNNmmdhoss++###########" ++ replicate 30 '#'
+    , "##########o/syhhdmmmmmmNNNNmmhdddyooo+/###########" ++ replicate 30 '#'
+    , "##########:+syhyhhhhysoydNms++osyyysooo###########" ++ replicate 30 '#'
+    , "##########oosyhhhyyysyyddmmoyddmmdmyooh###########" ++ replicate 30 '#'
+    , "##########mysyyhmmmmmmmddhmssdmNNNmhosd###########" ++ replicate 30 '#'
+    , "###########dhyyhmmNNNNmhhhmd+ohmNmds+sd###########" ++ replicate 30 '#'
+    , "###########mmysyddmNmyhs/oo+../+yys++oh###########" ++ replicate 30 '#'
+    , "###########mhssyhhhyoydhhhs+/////oo++sm###########" ++ replicate 30 '#'
+    , "############mysyhhdsyo+ossoo/-.:ydyy+m############" ++ replicate 30 '#'
+    , "##############ysyddddhyssysso+sdddoos#############" ++ replicate 30 '#'
+    , "##############mooyhhdmmdhyysssydy+/s##############" ++ replicate 30 '#'
+    , "##############yosoossdmmmmmddddy/-/###############" ++ replicate 30 '#'
+    , "#############h:ssyo++oyhdhhhhs/-.-s###############" ++ replicate 30 '#'
+    , "############yo/oysso++/:-...```.-:+###############" ++ replicate 30 '#'
+    , "#########mds+++/shhyo+/:-.`  `.-::`/##############" ++ replicate 30 '#'
+    , "#####mdho+o++++++ohdhso/:--...-:/:`./m############" ++ replicate 30 '#'
+    , "####so++::+++++++//+sysoo++//////..-://s##########" ++ replicate 30 '#'
     ]

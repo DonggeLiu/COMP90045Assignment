@@ -1,0 +1,11 @@
+proc main()
+    int x;
+begin
+    call foo();
+end
+
+proc foo()
+    int y;
+begin
+    write x + y;
+end
