@@ -21,9 +21,14 @@ Harald: Harald.hs
 
 %.hs: src.tar
 	tar -xvf src.tar
-	touch $@
+	touch $@ *.hs */*.hs */*/*.hs
+
+darkdemo: Harald Goat
+	./Goat -h | ./Harald -d
+lightdemo: Harald Goat
+	./Goat -h | ./Harald -l
 
 clean:
 	rm -f *.o *.hi */*.o */*.hi */*/*.o */*/*.hi Goat Harald
 
-.PHONY: src clean demo
+.PHONY: clean demo

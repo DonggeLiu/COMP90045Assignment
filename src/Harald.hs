@@ -18,6 +18,8 @@ module Main where
 --
 -- ----------------------------------------------------------------------------
 
+import System.Environment
+
 import Util.ColourParTTY (stripControlChars, rainbowMask, chunkControlChars)
 
 
@@ -41,7 +43,17 @@ main
       contents <- getContents
       mapM speechBubbleLongLine $ lines contents
       speechBubbleBot
-      rainbow harald
+
+      args <- getArgs
+      case args of
+        ["-l"] -> rainbow haraldForLightTerminal
+        ["-d"] -> rainbow haraldForDarkTerminal
+        _ -> do
+          rainbow haraldForDarkTerminal
+          putStrLn "WARNING:"
+          putStrLn "Your viewing experience may not be optimal if you are not"
+          putStrLn "using a dark terminal. Please specify -d for dark terminals"
+          putStrLn "or -l for light terminal to silence this warning. Thanks."
 
 
 -- ----------------------------------------------------------------------------
@@ -98,10 +110,10 @@ rainbow speakerLines
       -- Put those lines on the screen!
       putStr $ unlines colouredLines
 
--- harald
+-- haraldForLightTerminal, haraldForDarkTerminal
 -- A dedication to our favourite lecturer
-harald :: [String]
-harald
+haraldForLightTerminal :: [String]
+haraldForLightTerminal
   = [ "#################`.------...`##############|   /########################"
     , "###############`.--...`````.-..-`##########|  /#########################"
     , "#############`:so-.``       ``./ys-########| /##########################"
@@ -125,4 +137,31 @@ harald
     , "#########`-+sssy+--/+yhdNNMMMMNmddMh`###################################"
     , "#####`.:oyosssyyys-.-/ohdmNNMNmdddMNy.##################################"
     , "##`:+osyhdsyssyysyys/:/+osyyhdddhmNmdhh+`###############################"
+    ]
+haraldForDarkTerminal :: [String]
+haraldForDarkTerminal
+  = [ "###########################################|   /########################"
+    , "#################mdhhhhhhddd###############|  /#########################"
+    , "################dhhdddmmmmmdhddd###########| /##########################"
+    , "##############h+ohddmNMMMMNNmdhs/+d########|/###########################"
+    , "############h+:shddmNNNNNMNNNNdhyo/y####################################"
+    , "###########y//yhddmNMMMNMMNNNmmhhysoym##################################"
+    , "##########h+/yhhmmmNNMMNNNNNNmdddhsyosd#################################"
+    , "##########o/ohhhmmNNNMNNNNNNNNmmdhoss++#################################"
+    , "##########o/syhhdmmmmmmNNNNmmhdddyooo+/#################################"
+    , "##########:+syhyhhhhysoydNms++osyyysooo#################################"
+    , "##########oosyhhhyyysyyddmmoyddmmdmyooh#################################"
+    , "##########mysyyhmmmmmmmddhmssdmNNNmhosd#################################"
+    , "###########dhyyhmmNNNNmhhhmd+ohmNmds+sd#################################"
+    , "###########mmysyddmNmyhs/oo+../+yys++oh#################################"
+    , "###########mhssyhhhyoydhhhs+/////oo++sm#################################"
+    , "############mysyhhdsyo+ossoo/-.:ydyy+m##################################"
+    , "##############ysyddddhyssysso+sdddoos###################################"
+    , "##############mooyhhdmmdhyysssydy+/s####################################"
+    , "##############yosoossdmmmmmddddy/-/#####################################"
+    , "#############h:ssyo++oyhdhhhhs/-.-s#####################################"
+    , "############yo/oysso++/:-...```.-:+#####################################"
+    , "#########mds+++/shhyo+/:-.`  `.-::`/####################################"
+    , "#####mdho+o++++++ohdhso/:--...-:/:`./m##################################"
+    , "####so++::+++++++//+sysoo++//////..-://s################################"
     ]
