@@ -191,11 +191,4 @@ lineContext numLines lineNum sourceCode
 -- `"     " ++ red1 "^^^"` (3 red arrows, with the final arrow in column 7).
 columnPoint :: Int -> Int -> Colourer -> String
 columnPoint numCols colNum colour
-  = nChar padding ' ' ++ colour (nChar numCols '^')
-  where
-    padding = colNum - numCols
-
-    -- Helper function to create a string with n repetitions of a given Char
-    nChar :: Int -> Char -> String
-    nChar n char
-      = take n $ repeat char
+  = replicate (colNum - numCols) ' ' ++ colour (replicate numCols '^')
