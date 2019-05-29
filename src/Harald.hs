@@ -18,17 +18,17 @@ module Main where
 --
 -- ----------------------------------------------------------------------------
 
-import Data.List.Split (chunksOf)
+import Util.ColourParTTY (stripControlChars, rainbowMask, chunkControlChars)
 
-import Util.ColourParTTY (stripControlChars, rainbowMask)
 
 -- ----------------------------------------------------------------------------
 -- Output configuration
 -- ----------------------------------------------------------------------------
 
-width = 70
-point = 42
-colourSpeed = 3
+width = 70      -- maximum output line width (long lines are wrapped)
+point = 42      -- the answer to life, the universe, and everything
+colourSpeed = 3 -- how much rainbow can you handle?
+
 
 -- ----------------------------------------------------------------------------
 -- Program entry-point
@@ -68,7 +68,7 @@ speechBubbleBot
 
 speechBubbleLongLine :: String -> IO ()
 speechBubbleLongLine line
-  = mapM_ speechBubbleSingleLine $ chunksOf (width-1) line
+  = mapM_ speechBubbleSingleLine $ chunkControlChars (width-1) line
       
 speechBubbleSingleLine :: String -> IO ()
 speechBubbleSingleLine line
@@ -86,6 +86,8 @@ speechBubbleSingleLine line
 -- Ascii art
 -- ----------------------------------------------------------------------------
 
+-- rainbow
+-- Print an ascii-art list of lines with a 256 colour rainbow
 rainbow :: [String] -> IO ()
 rainbow speakerLines
   = do
@@ -97,7 +99,7 @@ rainbow speakerLines
       putStr $ unlines colouredLines
 
 -- harald
--- Our favourite lecturer
+-- A dedication to our favourite lecturer
 harald :: [String]
 harald
   = [ "#################`.------...`##############|   /########################"

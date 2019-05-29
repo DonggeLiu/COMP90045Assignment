@@ -13,6 +13,8 @@
 #                                                                             #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+all: Goat Harald
+
 SOURCES=*.hs Util/*.hs GoatLang/*.hs GoatLang/*/*.hs OzLang/*.hs
 Goat: $(SOURCES)
 	ghc Goat.hs
