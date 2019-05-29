@@ -93,6 +93,18 @@ data MatrixAttr
                , matrixBaseType :: BaseType
                }
 
+-- scalarType
+-- Access the base type of an annotated scalar reference.
+scalarType :: AScalar -> BaseType
+scalarType (ASingle _ attrs)
+  = singleBaseType attrs
+scalarType (AArray _ _ attrs)
+  = arrayBaseType attrs
+scalarType (AMatrix _ _ _ attrs)
+  = matrixBaseType attrs
+
+
+
 data AExpr
   = AScalarExpr AScalar
   | ABoolConst Bool
@@ -110,3 +122,23 @@ data UnExprAttr
   = UnExprAttr { unExprInstr :: (Reg -> Reg -> Instruction)
                , unExprResultType :: BaseType
                }
+
+-- exprType
+-- Access the result type of an annotated expression. Not recursive, because we
+-- already annotated each expression with enough information to know its result
+-- type.
+exprType :: AExpr -> BaseType
+exprType (AScalarExpr scalar)
+  = scalarType scalar
+exprType (ABoolConst _)
+  = BoolType
+exprType (AFloatConst _)
+  = FloatType
+exprType (AIntConst _)
+  = IntType
+exprType (ABinExpr op lExpr rExpr attrs)
+  = binExprResultType attrs
+exprType (AUnExpr op expr attrs)
+  = unExprResultType attrs
+exprType (AFloatCast expr)
+  = FloatType

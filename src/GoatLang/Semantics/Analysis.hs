@@ -508,39 +508,6 @@ dummyVarRecord
               }
 
 
--- exprType
--- Infer the result type of an annotated expression. Not recursive, because we
--- already annotated each expression with enough information to know its result
--- type! Woo!
-exprType :: AExpr -> BaseType
-exprType (AScalarExpr scalar)
-  = scalarType scalar
-exprType (ABoolConst _)
-  = BoolType
-exprType (AFloatConst _)
-  = FloatType
-exprType (AIntConst _)
-  = IntType
-exprType (ABinExpr op lExpr rExpr attrs)
-  = binExprResultType attrs
-exprType (AUnExpr op expr attrs)
-  = unExprResultType attrs
-exprType (AFloatCast expr)
-  = FloatType
-
--- scalarType
--- Infer the base type of an annotated scalar reference. It doesn't involve the
--- symbol table because we have already annotated each scalar with its base
--- type! Woo hoo!
-scalarType :: AScalar -> BaseType
-scalarType (ASingle _ attrs)
-  = singleBaseType attrs
-scalarType (AArray _ _ attrs)
-  = arrayBaseType attrs
-scalarType (AMatrix _ _ _ attrs)
-  = matrixBaseType attrs
-
-
 -- lookupReadBuiltin
 -- Given a target type, what Oz builtin function should we use to Read one?
 lookupReadBuiltin :: BaseType -> BuiltinFunc
