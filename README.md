@@ -137,5 +137,5 @@ Optional extensions:
 - [ ] Comprehensively test all behaviour mentioned in specification
 - [ ] Improve error messaging by removing spurious errors
 - [ ] Add novelty output modes
-- [ ] Create auto-extracting submission + makefile
+- [x] Create auto-extracting submission + makefile
 - [ ] Submit to `nutmeg2`

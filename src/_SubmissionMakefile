@@ -1,7 +1,0 @@
-Goat: src.tar
-	tar -xvf src.tar
-	ghc Goat.hs
-
-clean:
-	rm -f *.o *.hi */*.o */*.hi Goat
-

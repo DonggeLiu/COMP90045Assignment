@@ -13,19 +13,19 @@
 #                                                                             #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-all: Goat Harald
-
 SOURCES=*.hs Util/*.hs GoatLang/*.hs GoatLang/*/*.hs OzLang/*.hs
 Goat: $(SOURCES)
 	ghc Goat.hs
 
-Harald: Harald.hs Util/*.hs
+Harald: Harald.hs Util/ColourParTTY.hs
 	ghc Harald.hs
 
-submission: clean $(SOURCES) _SubmissionMakefile Makefile
+all: Goat Harald
+
+submission: clean $(SOURCES) Submission.makefile Makefile
 	mkdir submission
-	tar -cvf submission/src.tar Goat.hs GoatLang/*.hs Util/*.hs
-	cp _SubmissionMakefile submission/Makefile
+	tar -cvf submission/src.tar $(SOURCES)
+	cp Submission.makefile submission/Makefile
 
 # Automated tests:
 
