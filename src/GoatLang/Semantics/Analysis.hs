@@ -48,7 +48,7 @@ analyseGoatProgram (GoatProgram procs)
   = do
       -- construct the global procedure table in a first pass over the program's
       -- list of procedures
-      pushProcSymTable
+      pushBlankProcSymTable
       mapM_ defineProc procs
 
       -- now, with this procedure symbol table, analyse the contents of each
@@ -105,7 +105,7 @@ analyseProc (Proc _ ident params decls stmts)
   = do
       -- construct the local variable symbol table in a first pass over the
       -- params and declarations:
-      pushVarSymTable
+      pushBlankVarSymTable
       aParams <- mapM declareAnalyseParam params
       aDecls <- mapM declareAnalyseDecl decls
 
@@ -190,11 +190,9 @@ analyseStmt asg@(Asg pos scalar expr)
       aScalar <- analyseScalar scalar
       aExpr <- analyseExpr expr
       -- we may need to add a cast to the expression in case of float := int
-      let lType = scalarType aScalar
-      let rType = exprType aExpr
-      aExpr' <- if (lType == FloatType && rType == IntType)
-        then return $ AFloatCast aExpr
-        else return $ aExpr
+      let aExpr' = case (scalarType aScalar, exprType aExpr) of
+            (FloatType, IntType) -> AFloatCast aExpr
+            _ -> aExpr
 
       -- we may only assign an expression with matching result type
       assert (scalarType aScalar == exprType aExpr') $ SemanticError pos $

@@ -100,30 +100,6 @@ setSemanticErrors newErrors
       state <- get
       put $ state { semanticErrors = newErrors }
 
--- getProcSymTableStack1
--- Helper function to access the stack of procedure symbol tables, careful to
--- throw a sensible runtime error in the case where the procedure symbol table 
--- stack is empty.
-getProcSymTableStack1 :: SemanticAnalysis [ProcSymTable]
-getProcSymTableStack1
-  = do
-      symTableStack <- getFromState procSymTableStack
-      case symTableStack of
-        [] -> error "accessing empty procSymTableStack"
-        stack -> return stack
-
--- getVarSymTableStack1
--- Helper function to access the stack of variable symbol tables, careful to
--- throw a sensible runtime error in the case where the variable symbol table 
--- stack is empty.
-getVarSymTableStack1 :: SemanticAnalysis [VarSymTable]
-getVarSymTableStack1
-  = do
-      symTableStack <- getFromState varSymTableStack
-      case symTableStack of
-        [] -> error "accessing empty varSymTableStack"
-        stack -> return stack
-
 
 -- ----------------------------------------------------------------------------
 -- Reporting errors to the Semantic Analysis
@@ -150,23 +126,46 @@ assert cond err
 -- ----------------------------------------------------------------------------
 
 -- pushProcSymTable
--- Add a new procedure symbol table to the procedure symbol table stack
-pushProcSymTable :: SemanticAnalysis ()
-pushProcSymTable
+-- Add a new procedure symbol table atop the procedure symbol table stack.
+pushProcSymTable :: ProcSymTable -> SemanticAnalysis ()
+pushProcSymTable newProcSymTable
   = do
       currentStack <- getFromState procSymTableStack
-      setProcSymTableStack $ emptyProcSymTable : currentStack
+      setProcSymTableStack $ newProcSymTable : currentStack
+
+-- pushBlankProcSymTable
+-- Add a new, empty procedure symbol table to the procedure symbol table stack.
+pushBlankProcSymTable :: SemanticAnalysis ()
+pushBlankProcSymTable
+  = pushProcSymTable emptyProcSymTable
 
 -- popProcSymTable
 -- Remove and return the top procedure symbol table from the procedure symbol 
--- table stack. RUNTIME ERROR if performed when stack is empty.
+-- table stack.
+-- Throw a sensible runtime error in the case where the procedure symbol table 
+-- stack is empty.
 popProcSymTable :: SemanticAnalysis ProcSymTable
 popProcSymTable
   = do
-      symTableStack <- getProcSymTableStack1
-      let (topProcSymTable:restOfStack) = symTableStack
-      setProcSymTableStack restOfStack
-      return topProcSymTable
+      symTableStack <- getFromState procSymTableStack
+      case symTableStack of
+        [] -> error "attempt to modify top of empty procSymTableStack"
+        topProcSymTable:restOfStack -> do
+          setProcSymTableStack restOfStack
+          return topProcSymTable
+
+-- peekProcSymTable
+-- Return (but do not remove) the top procedure symbol table from the procedure 
+-- symbol table stack.
+-- Throw a sensible runtime error in the case where the procedure symbol table 
+-- stack is empty.
+peekProcSymTable :: SemanticAnalysis ProcSymTable
+peekProcSymTable
+  = do
+      symTableStack <- getFromState procSymTableStack
+      case symTableStack of
+        [] -> error "attempt to access top of empty procSymTableStack"
+        topProcSymTable:restOfStack -> return topProcSymTable
 
 -- addProcMapping
 -- Add a ProcRecord to the top procedure symbol table.
@@ -178,8 +177,8 @@ addProcMapping :: Id -> ProcRecord -> SemanticAnalysis ()
 addProcMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
-      symTableStack <- getProcSymTableStack1
-      let (topTable:restOfStack) = symTableStack
+      -- RUNTIME ERROR if performed when the stack is empty
+      topTable <- peekProcSymTable
 
       -- check to make sure a procedure of the same name has not been defined
       -- already (within the current scope i.e. top proc symbol table)
@@ -188,7 +187,9 @@ addProcMapping ident newRecord
         Nothing -> do
           -- safe to insert new proc record since name is unique (thus far)
           let newTopTable = insertProcRecord ident newRecord topTable
-          setProcSymTableStack $ newTopTable : restOfStack
+          -- replace the old symbol table with this modified symbol table
+          popProcSymTable
+          pushProcSymTable newTopTable
         Just existingRecord -> semanticError $
           RepeatedDefinitionError
             (procDefnPos newRecord)
@@ -201,23 +202,46 @@ addProcMapping ident newRecord
 -- ----------------------------------------------------------------------------
 
 -- pushVarSymTable
--- Add a new variable symbol table to the variable symbol table stack
-pushVarSymTable :: SemanticAnalysis ()
-pushVarSymTable
+-- Add a new variable symbol table atop the variable symbol table stack.
+pushVarSymTable :: VarSymTable -> SemanticAnalysis ()
+pushVarSymTable newVarSymTable
   = do
       currentStack <- getFromState varSymTableStack
-      setVarSymTableStack $ emptyVarSymTable : currentStack
+      setVarSymTableStack $ newVarSymTable : currentStack
+
+-- pushBlankVarSymTable
+-- Add a new, empty variable symbol table to the variable symbol table stack.
+pushBlankVarSymTable :: SemanticAnalysis ()
+pushBlankVarSymTable
+  = pushVarSymTable emptyVarSymTable
 
 -- popVarSymTable
 -- Remove and return the top variable symbol table from the variable symbol 
--- table stack. RUNTIME ERROR if performed when stack is empty.
+-- table stack.
+-- Throw a sensible runtime error in the case where the variable symbol table 
+-- stack is empty.
 popVarSymTable :: SemanticAnalysis VarSymTable
 popVarSymTable
   = do
-      symTableStack <- getVarSymTableStack1
-      let (topVarSymTable:restOfStack) = symTableStack
-      setVarSymTableStack restOfStack
-      return topVarSymTable
+      symTableStack <- getFromState varSymTableStack
+      case symTableStack of
+        [] -> error "attempt to modify top of empty varSymTableStack"
+        topVarSymTable:restOfStack -> do
+          setVarSymTableStack restOfStack
+          return topVarSymTable
+
+-- peekVarSymTable
+-- Return (but do not remove) the top variable symbol table from the variable 
+-- symbol table stack.
+-- Throw a sensible runtime error in the case where the variable symbol table 
+-- stack is empty.
+peekVarSymTable :: SemanticAnalysis VarSymTable
+peekVarSymTable
+  = do
+      symTableStack <- getFromState varSymTableStack
+      case symTableStack of
+        [] -> error "attempt to access top of empty varSymTableStack"
+        topVarSymTable:restOfStack -> return topVarSymTable
 
 -- allocateStackSlots
 -- Mark the requested number of (runtime) stack slots as allocated for the
@@ -227,16 +251,21 @@ popVarSymTable
 allocateStackSlots :: Int -> SemanticAnalysis Slot
 allocateStackSlots numSlots
   = do
-      symTableStack <- getVarSymTableStack1
-      let (topTable:restOfStack) = symTableStack
+      -- extract the top symbol table from the stack
+      -- RUNTIME ERROR if performed when the symbol table stack is empty
+      topTable <- popVarSymTable
+      -- find the next available slot
       let (VarSymTable _ currentNumSlots) = topTable
+      -- modify the symbol table to note that slots have been allocated, and
+      -- restore it to the stack
       let newTopTable = allocateSlots numSlots topTable
-      setVarSymTableStack $ newTopTable : restOfStack
+      pushVarSymTable newTopTable
+      -- return the starting slot for the caller
       return $ Slot currentNumSlots
 
 -- addVarMapping
 -- Add a VarRecord to the top variable symbol table.
--- Logs a semantic error if a variable record with the same Id already exists
+-- Log a semantic error if a variable record with the same Id already exists
 -- in the TOP TABLE (but it's fine if the clashing variable record is in one
 -- of the lower tables in the stack).
 -- RUNTIME ERROR if performed when the stack is empty.
@@ -244,8 +273,8 @@ addVarMapping :: Id -> VarRecord -> SemanticAnalysis ()
 addVarMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
-      symTableStack <- getVarSymTableStack1
-      let (topTable:restOfStack) = symTableStack
+      -- RUNTIME ERROR if performed when the stack is empty
+      topTable <- peekVarSymTable
 
       -- check to make sure a local variable of the same name has not been defnd
       -- already IN THE CURRENT SCOPE (in the top symbol table on the stack)
@@ -254,13 +283,15 @@ addVarMapping ident newRecord
         Nothing -> do
           -- safe to insert record since name is unique (thus far)
           let newTopTable = insertVarRecord ident newRecord topTable
-          setVarSymTableStack $ newTopTable : restOfStack
+          -- replace the old symbol table with this modified symbol table
+          popVarSymTable
+          pushVarSymTable newTopTable
         Just existingRecord -> do
           let origTypeSpec = varTypeSpec existingRecord
           let dupTypeSpec = varTypeSpec newRecord
           let message = case (origTypeSpec, dupTypeSpec) of
                 (DeclSpec, DeclSpec) -> "repeat declaration of local variable: "
-                (ParamSpec _, _) -> "repeat declaration of parameter: "
+                (ParamSpec _,ParamSpec _) -> "repeat declaration of parameter: "
                 _ -> "variable declared with same identifier as parameter: "
           semanticError $ RepeatedDefinitionError
             (varDefnPos newRecord)
@@ -270,11 +301,12 @@ addVarMapping ident newRecord
 -- getRequiredFrameSize
 -- Access the number of stack slots required to store the variables in the
 -- variable symbol table atop the symbol table stack.
+-- RUNTIME ERROR if performed when the stack is empty.
 getRequiredFrameSize :: SemanticAnalysis FrameSize
 getRequiredFrameSize
   = do
-      symTableStack <- getVarSymTableStack1
-      let (VarSymTable _ numSlots : _) = symTableStack
+      topTable <- peekVarSymTable
+      let (VarSymTable _ numSlots) = topTable
       return $ FrameSize numSlots
 
 
@@ -289,8 +321,8 @@ getRequiredFrameSize
 lookupProc :: Id -> SemanticAnalysis (Maybe ProcRecord)
 lookupProc ident
   = do
-      state <- get
-      return $ lookupProcStack (procSymTableStack state) ident
+      symTable <- getFromState procSymTableStack
+      return $ lookupProcStack symTable ident
     where
       -- lookupProcStack
       -- Helper function to walk down a stack looking for a match, to implement
@@ -310,8 +342,8 @@ lookupProc ident
 lookupVar :: Id -> SemanticAnalysis (Maybe VarRecord)
 lookupVar ident
   = do
-      state <- get
-      return $ lookupVarStack (varSymTableStack state) ident
+      symTable <- getFromState varSymTableStack
+      return $ lookupVarStack symTable ident
     where
       -- lookupVarStack
       -- Helper function to walk down a stack looking for a match, to implement
