@@ -18,29 +18,40 @@ Here's a map (:: (a -> b) -> [a] -> [b]) of the repository:
 COMP90045Assignment/
 ├── README.md                       # <-- YOU ARE HERE
 ├── Members.txt                     # list of well-chosen team members
-├── spec/...                        # project specifications
+├── spec/...                        # project specifications and sample code
 ├── oz/...                          # provided C code for an Oz emulator
 └── src/                            # our project code!
     ├── Makefile                    # run `make` to build Goat compiler
     ├── _SubmissionMakefile         # submission requires a makefile too
     ├── Goat.hs                     # main module; compiler entry-point
-    ├── GoatLang/                   # Goat syntax: parser, pretty-printer, ast
-    │   ├── grammar.txt               # describes Goat program syntax
-    │   ├── AST.hs                    # language structure definitions
-    │   ├── Token.hs                  # lexeme parsers for
-    │   ├── Parser.hs                 # program, statement, expr parsers
-    │   ├── PrettyPrint.hs            # converting programs to strings
-    │   └── ...                       # (we may need to create more)
-    ├── OzLang/...                 # Code for targeting Oz, in another module?
-    ├── Util/                      # non-Goat-specific utilities
-    │   ├── Combinators.hs           # additional parser combinators
-    │   ├── DiffList.hs              # difference list implementation
-    │   ├── StringBuilder.hs         # efficient monadic string building
-    |   └── ...                      # (we may need to create more)
-    └── tests/                     # unit and integration tests
-        ├── samples/...              # various sample Goat programs
-        ├── testall.sh               # script to test with all samples/*.gt
-        └── testgen.py               # input/output lists for unit tests
+    ├── GoatLang/                   # working with Goat
+    │   ├── Syntax/                   # Goat syntax (stage 1)
+    │   │   ├── AST.hs                  # language structure definitions
+    │   │   ├── Parser.hs               # program, statement, expr parsers
+    │   │   ├── Printer.hs              # converting programs to strings
+    │   │   ├── Tokens.hs               # lexeme parsers for Goat
+    │   │   └── grammar.txt             # describes Goat program syntax
+    │   ├── Semantics/                # static and dynamic semantics (stage 3)
+    │   │   ├── AAST.hs                 # Annotated Abstract Syntax Tree
+    │   │   ├── Analysis.hs             # static analysis: AST -> AAST
+    │   │   ├── AnalysisMonad.hs        # State monad helpful for analysis
+    │   │   ├── CodeGen.hs              # generating Oz code from an AAST
+    │   │   ├── CodeGenMonad.hs         # State monad helpful for code genning
+    │   │   └── SymbolTable.hs          # lookup tables for variables, procs
+    │   └── Error.hs                  # representing/printing compile errors
+    ├── OzLang/                     # Targeting Oz
+    │   ├── Code.hs                   # representing Oz instructions
+    │   └── Print.hs                  # formatting Oz instructions
+    ├── Util/                       # non-Goat-specific utilities
+    │   ├── Combinators.hs            # additional parser combinators
+    │   ├── DiffList.hs               # difference list implementation
+    │   ├── CodeWriter.hs             # efficient, colourful code stringifying
+    │   └── ColourParTTY.hs           # ANSI control codes in Haskell
+    └── tests/                      # unit tests and integration tests
+        ├── samples/...               # various sample Goat programs
+        ├── testall.sh                # script to test with all samples/*.gt
+        ├── UnitTests.hs              # stage 1 input/output unit tests
+        └── milestones.sh             # run the provided stage 3 milestones
 ```
 
 ### Building
@@ -56,6 +67,8 @@ For now:
 * Add integration tests:
   - For pretty-printing tests, add `TEST.gt` and `TEST.gt.pp` somewhere inside `tests/samples`
   - For syntax error tests, add `TEST.gt.bad` (and, optionally, `TEST.gt.bad.out`) somewhere inside `tests/samples`.
+  - For semantic error tests, add `TEST.gt.semantic-error` somewhere inside `tests/samples`.
+  - For code generation tests, add `TEST.gt` and `TEST.gt.out` (and, optionally, `TEST.gt.in`) somewhere inside `tests/samples`.
 * Run `make tests` (or just `make utests` or `make itests`).
 * Probably run `make clean` afterwards :)
 
@@ -101,9 +114,28 @@ We'll reflect at the Tuesday 9th Meeting: Decide on next steps, how to finish it
 
 #### Preparation week: Thursday 2nd-Monday 6th
 
-TODO: Meet and decide on how to approach the project
+Main checklist:
 
-#### Week 1: Tuesday 7th-Monday 13th
-#### Week 2: Tuesday 14th-Monday 20th
-#### Week 3: Tuesday 21st-Monday 27th
+- [x] Code generation assuming semantically correct program
+  - [x] Milestone 1
+  - [x] Milestone 2
+  - [x] Milestone 3
+  - [x] Milestone 4
+  - [x] Milestone 5
+  - [x] Milestone 6
+- [x] Code generation with an AAST instead of an AST
+- [x] Analysis module to build the AAST
+- [x] Detect all semantic errors during AAST creation
+
+Optional extensions:
+
+- [x] Add optional syntax highlighting to generated Goat and Oz programs
+- [x] Capture multiple semantic errors in a single compile step
+
 #### Submission: Tuesday 28th, Wednesday 29th.
+
+- [ ] Comprehensively test all behaviour mentioned in specification
+- [ ] Improve error messaging by removing spurious errors
+- [ ] Add novelty output modes
+- [ ] Create auto-extracting submission + makefile
+- [ ] Submit to `nutmeg2`
