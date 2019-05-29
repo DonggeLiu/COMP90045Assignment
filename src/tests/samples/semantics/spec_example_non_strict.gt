@@ -1,0 +1,4 @@
+proc main()
+begin
+    write 5 < 8 || 5 > 8/0;
+end

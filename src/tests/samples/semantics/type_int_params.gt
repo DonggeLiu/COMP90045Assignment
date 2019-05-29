@@ -1,0 +1,8 @@
+proc main()
+begin
+    call test(42, 42);
+end
+proc test(val int x, val int y)
+begin
+    write x = y;
+end

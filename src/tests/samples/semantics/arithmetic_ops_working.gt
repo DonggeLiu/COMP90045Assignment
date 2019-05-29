@@ -1,0 +1,13 @@
+proc main()
+begin
+    write 1 + 1;
+    write 2 * 1;
+    write 4 / 2;
+    write 6 - 4;
+    write "\n";
+    write 1.0 + 1.0;
+    write 2.0 * 1.0;
+    write 4.0 / 2.0;
+    write 6.0 - 4.0;
+    write "\n";
+end

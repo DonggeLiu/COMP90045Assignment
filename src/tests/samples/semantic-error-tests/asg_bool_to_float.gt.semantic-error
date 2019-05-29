@@ -1,0 +1,5 @@
+proc main()
+    float x;
+begin
+    x := true;
+end

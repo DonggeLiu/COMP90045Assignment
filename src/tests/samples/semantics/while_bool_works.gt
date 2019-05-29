@@ -1,0 +1,7 @@
+proc main()
+    int x;
+begin
+    while x < 1 do
+        x := x + 1;
+    od
+end

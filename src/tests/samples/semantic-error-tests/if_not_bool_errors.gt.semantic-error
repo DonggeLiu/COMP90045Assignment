@@ -1,0 +1,6 @@
+proc main()
+begin
+    if 42 then
+        write "hello";
+    fi
+end

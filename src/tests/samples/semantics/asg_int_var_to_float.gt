@@ -1,0 +1,8 @@
+proc main()
+    float x;
+    int y;
+begin
+    y := 3;
+    x := y;
+    write x;
+end

@@ -1,0 +1,6 @@
+proc main()
+    bool x;
+begin
+    x := true;
+    write x;
+end

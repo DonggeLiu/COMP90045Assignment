@@ -1,0 +1,5 @@
+proc main()
+    int x;
+begin
+    write !(true || 1 > x/x) && 1 > x/x;
+end

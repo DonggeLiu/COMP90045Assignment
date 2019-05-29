@@ -1,0 +1,6 @@
+proc main()
+begin
+    while 2 do
+        write "hello";
+    od
+end

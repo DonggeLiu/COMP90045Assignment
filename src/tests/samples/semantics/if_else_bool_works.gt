@@ -1,0 +1,8 @@
+proc main()
+begin
+    if true then
+        write "hello";
+    else
+        write 42;
+    fi
+end

@@ -1,0 +1,7 @@
+proc main()
+    int x;
+    float y;
+begin
+    write "";
+    write 20 + y;
+end

@@ -1,0 +1,6 @@
+proc main()
+    float x;
+begin
+    x := 1;
+    write x;
+end

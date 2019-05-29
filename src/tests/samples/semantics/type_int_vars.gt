@@ -1,0 +1,6 @@
+proc main()
+    int x;
+    int y[1];
+begin
+    write x = y[0];
+end

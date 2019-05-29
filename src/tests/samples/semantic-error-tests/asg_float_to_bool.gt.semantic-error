@@ -1,0 +1,5 @@
+proc main()
+    bool x;
+begin
+    x := 1.0;
+end

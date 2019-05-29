@@ -1,0 +1,6 @@
+proc main()
+begin
+    if true then
+        write "hello";
+    fi
+end

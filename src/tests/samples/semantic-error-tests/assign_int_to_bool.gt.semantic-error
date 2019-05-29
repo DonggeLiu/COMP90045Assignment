@@ -1,0 +1,5 @@
+proc main()
+    bool x;
+begin
+    x := 42;
+end

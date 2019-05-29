@@ -1,0 +1,4 @@
+proc main()
+begin
+    write 21*2;
+end
