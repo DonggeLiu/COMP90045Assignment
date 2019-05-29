@@ -153,6 +153,19 @@ declareAnalyseParam param@(Param pos passBy baseType ident)
 declareAnalyseDecl :: Decl -> SemanticAnalysis ADecl
 declareAnalyseDecl decl@(Decl pos baseType ident dim)
   = do
+      -- check that the shape is semanically well-formed (arrays and matrices
+      -- must have positive dimensions)
+      case dim of
+        Dim0 -> return ()
+        Dim1 n ->
+          assert (n > 0) $ SemanticError pos
+            "The size of an array must be a positive integer"
+        Dim2 n m -> do
+          assert (n > 0) $ SemanticError pos
+            "The first dimension size of a matrix must be a positive integer"
+          assert (m > 0) $ SemanticError pos
+            "The second dimension size of a matrix must be a positive integer"
+
       -- allocate stack space for this local variable:
       let numRequiredSlots = numSlotsDim dim
       startSlot <- allocateStackSlots numRequiredSlots

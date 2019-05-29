@@ -1,0 +1,6 @@
+proc main()
+    int bad[0];
+    # ^ semantic error: size must be positive
+begin
+    write true;
+end

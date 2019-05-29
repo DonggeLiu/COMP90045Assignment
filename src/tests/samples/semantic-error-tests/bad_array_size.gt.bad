@@ -1,0 +1,6 @@
+proc main()
+    int bad[-1];
+    # ^ syntax error: size must be integer literal (non-negative)
+begin
+    write true;
+end
