@@ -3,7 +3,7 @@ module GoatLang.Error where
 -- ----------------------------------------------------------------------------
 --    COMP90045 Programming Language Implementation, Assignment Stage 3
 --
---                 GOAT - Representing compile errors
+--                 GOAT - Representing and printing compile errors
 --
 -- Well-chosen team name:              pli-dream-team-twentee-nineteen
 -- Well-chosen team members:

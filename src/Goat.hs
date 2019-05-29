@@ -1,7 +1,7 @@
 module Main where
 
 -- ----------------------------------------------------------------------------
---    COMP90045 Programming Language Implementation, Assignment Stage 1
+--    COMP90045 Programming Language Implementation, Assignment Stage 1-3
 --
 --                               GOAT - COMPILER
 --
