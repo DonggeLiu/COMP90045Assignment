@@ -1,0 +1,12 @@
+# Raise incorrect type error
+
+proc main ()
+    begin
+        # Test type casting errors
+        call ourFunc(3.9);
+    end
+
+proc ourFunc(val bool var1)
+    begin
+        write "hello";
+    end

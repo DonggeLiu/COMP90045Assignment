@@ -1,10 +1,12 @@
 proc main()
+    bool y;
 begin
-    a_func(2.0);
+    y := true;
+    a_func(y);
 end    ##  ^ Semantic error, an expression passed by reference must be a scalar
 
 
-proc a_func(ref float x)
+proc a_func(ref int x)
 begin
-    x := x + 1.0;
+    write "hello";
 end

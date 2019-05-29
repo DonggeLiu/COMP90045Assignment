@@ -1,4 +1,4 @@
-# Raise incorrect number of arguments error
+# Raise incorrect type error
 
 proc main ()
     begin
@@ -6,7 +6,7 @@ proc main ()
         call ourFunc(true);
     end
 
-proc ourFunc(val int var1)
+proc ourFunc(val float var1)
     begin
         write "hello";
     end

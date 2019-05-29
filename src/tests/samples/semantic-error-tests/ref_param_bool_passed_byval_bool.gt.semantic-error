@@ -6,5 +6,5 @@ end    ##  ^ Semantic error, an expression passed by reference must be a scalar
 
 proc a_func(ref bool x)
 begin
-    x := false;
+    write "hello";
 end
