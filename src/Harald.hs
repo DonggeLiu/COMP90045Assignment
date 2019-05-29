@@ -41,7 +41,8 @@ main
   = do
       speechBubbleTop
       contents <- getContents
-      mapM speechBubbleLongLine $ lines contents
+      let contents' = filter (/='\r') contents
+      mapM speechBubbleLongLine $ lines contents'
       speechBubbleBot
 
       args <- getArgs

@@ -153,7 +153,7 @@ stripControlChars []
 stripControlChars ('\ESC':restOfString)
   = stripControlChars $ tail $ dropWhile (/= 'm') $ restOfString
 stripControlChars (c:cs)
-  = c:stripControlChars cs
+  = c : stripControlChars cs
 
 -- chunkControlChars
 -- Split a string containing control sequences into chunks of a given length,
