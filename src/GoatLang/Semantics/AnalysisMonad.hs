@@ -66,29 +66,63 @@ analyse programAnalyser
 -- Low-level access to the components of the state (wrapping get and put)
 -- ----------------------------------------------------------------------------
 
+-- getFromState
+-- Generic accessor function that takes a SemanticAnalysisState's record
+-- accessor function and applies it to the SemanticAnalysis monad's state,
+-- retrieving the corresponding component from the state.
 getFromState :: (SemanticAnalysisState -> a) -> SemanticAnalysis a
 getFromState accessor
   = do
       state <- get
       return $ accessor state
 
+-- setVarSymTableStack
+-- Replace the analysis monad's current variable symbol table stack.
 setVarSymTableStack :: [VarSymTable] -> SemanticAnalysis ()
 setVarSymTableStack newStack
   = do
       state <- get
       put $ state { varSymTableStack = newStack }
 
+-- setProcSymTableStack
+-- Replace the analysis monad's current procedure symbol table stack.
 setProcSymTableStack :: [ProcSymTable] -> SemanticAnalysis ()
 setProcSymTableStack newStack
   = do
       state <- get
       put $ state { procSymTableStack = newStack }
 
+-- setSemanticErrors
+-- Replace the analysis monad's current (difference) list of semantic errors.
 setSemanticErrors :: DiffList SemanticError -> SemanticAnalysis ()
 setSemanticErrors newErrors
   = do
       state <- get
       put $ state { semanticErrors = newErrors }
+
+-- getProcSymTableStack1
+-- Helper function to access the stack of procedure symbol tables, careful to
+-- throw a sensible runtime error in the case where the procedure symbol table 
+-- stack is empty.
+getProcSymTableStack1 :: SemanticAnalysis [ProcSymTable]
+getProcSymTableStack1
+  = do
+      symTableStack <- getFromState procSymTableStack
+      case symTableStack of
+        [] -> error "accessing empty procSymTableStack"
+        stack -> return stack
+
+-- getVarSymTableStack1
+-- Helper function to access the stack of variable symbol tables, careful to
+-- throw a sensible runtime error in the case where the variable symbol table 
+-- stack is empty.
+getVarSymTableStack1 :: SemanticAnalysis [VarSymTable]
+getVarSymTableStack1
+  = do
+      symTableStack <- getFromState varSymTableStack
+      case symTableStack of
+        [] -> error "accessing empty varSymTableStack"
+        stack -> return stack
 
 
 -- ----------------------------------------------------------------------------
@@ -105,7 +139,7 @@ semanticError err
 
 -- assert
 -- Append a semantic error to the analysis' list of semantic errors unless
--- a condition is satisfied. Reflect common usage of semanticError.
+-- a condition is satisfied, reflecting common usage of semanticError.
 assert :: Bool -> SemanticError -> SemanticAnalysis ()
 assert cond err
   = when (not cond) $ semanticError err
@@ -115,27 +149,36 @@ assert cond err
 -- Manipulating the procedure symbol table
 -- ----------------------------------------------------------------------------
 
+-- pushProcSymTable
+-- Add a new procedure symbol table to the procedure symbol table stack
 pushProcSymTable :: SemanticAnalysis ()
 pushProcSymTable
   = do
       currentStack <- getFromState procSymTableStack
       setProcSymTableStack $ emptyProcSymTable : currentStack
 
+-- popProcSymTable
+-- Remove and return the top procedure symbol table from the procedure symbol 
+-- table stack. RUNTIME ERROR if performed when stack is empty.
 popProcSymTable :: SemanticAnalysis ProcSymTable
 popProcSymTable
   = do
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState procSymTableStack
+      symTableStack <- getProcSymTableStack1
       let (topProcSymTable:restOfStack) = symTableStack
       setProcSymTableStack restOfStack
       return topProcSymTable
 
+-- addProcMapping
+-- Add a ProcRecord to the top procedure symbol table.
+-- Log a semantic error if a procedure record with the same Id already exists
+-- in the TOP TABLE (but it's fine if the clashing procedure record is in one
+-- of the lower tables in the stack).
+-- RUNTIME ERROR if performed when the stack is empty.
 addProcMapping :: Id -> ProcRecord -> SemanticAnalysis ()
 addProcMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState procSymTableStack
+      symTableStack <- getProcSymTableStack1
       let (topTable:restOfStack) = symTableStack
 
       -- check to make sure a procedure of the same name has not been defined
@@ -157,28 +200,51 @@ addProcMapping ident newRecord
 -- Manipulating the variable symbol table
 -- ----------------------------------------------------------------------------
 
+-- pushVarSymTable
+-- Add a new variable symbol table to the variable symbol table stack
 pushVarSymTable :: SemanticAnalysis ()
 pushVarSymTable
   = do
       currentStack <- getFromState varSymTableStack
       setVarSymTableStack $ emptyVarSymTable : currentStack
 
+-- popVarSymTable
+-- Remove and return the top variable symbol table from the variable symbol 
+-- table stack. RUNTIME ERROR if performed when stack is empty.
 popVarSymTable :: SemanticAnalysis VarSymTable
 popVarSymTable
   = do
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState varSymTableStack
+      symTableStack <- getVarSymTableStack1
       let (topVarSymTable:restOfStack) = symTableStack
       setVarSymTableStack restOfStack
       return topVarSymTable
 
--- Add a VarRecord to the VarSymTable at the top of the stack
+-- allocateStackSlots
+-- Mark the requested number of (runtime) stack slots as allocated for the
+-- variable symbol table on top of the (compile time variable symbol table)
+-- stack; return the start slot of the allocated block of slots.
+-- RUNTIME ERROR if performed when the symbol table stack is empty.
+allocateStackSlots :: Int -> SemanticAnalysis Slot
+allocateStackSlots numSlots
+  = do
+      symTableStack <- getVarSymTableStack1
+      let (topTable:restOfStack) = symTableStack
+      let (VarSymTable _ currentNumSlots) = topTable
+      let newTopTable = allocateSlots numSlots topTable
+      setVarSymTableStack $ newTopTable : restOfStack
+      return $ Slot currentNumSlots
+
+-- addVarMapping
+-- Add a VarRecord to the top variable symbol table.
+-- Logs a semantic error if a variable record with the same Id already exists
+-- in the TOP TABLE (but it's fine if the clashing variable record is in one
+-- of the lower tables in the stack).
+-- RUNTIME ERROR if performed when the stack is empty.
 addVarMapping :: Id -> VarRecord -> SemanticAnalysis ()
 addVarMapping ident newRecord
   = do
       -- extract the top symbol table from the stack
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState varSymTableStack
+      symTableStack <- getVarSymTableStack1
       let (topTable:restOfStack) = symTableStack
 
       -- check to make sure a local variable of the same name has not been defnd
@@ -201,58 +267,59 @@ addVarMapping ident newRecord
             (varDefnPos existingRecord)
             (message ++ prettify ident)
 
-
+-- getRequiredFrameSize
+-- Access the number of stack slots required to store the variables in the
+-- variable symbol table atop the symbol table stack.
 getRequiredFrameSize :: SemanticAnalysis FrameSize
 getRequiredFrameSize
   = do
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState varSymTableStack
+      symTableStack <- getVarSymTableStack1
       let (VarSymTable _ numSlots : _) = symTableStack
       return $ FrameSize numSlots
-
--- Allocate the given number of new slots to the symbol table at the top of
--- the VarSymTableStack.
-allocateStackSlots :: Int -> SemanticAnalysis Slot
-allocateStackSlots numSlots
-  = do
-      -- NOTE: Runtime error if stack is empty:
-      symTableStack <- getFromState varSymTableStack
-      let (topTable:restOfStack) = symTableStack
-      let (VarSymTable _ currentNumSlots) = topTable
-      let newTopTable = allocateSlots numSlots topTable
-      setVarSymTableStack $ newTopTable : restOfStack
-      return $ Slot currentNumSlots
 
 
 -- ----------------------------------------------------------------------------
 -- Querying the stacks of symbol tables
 -- ----------------------------------------------------------------------------
 
+-- lookupProc
+-- Query the current procedure symbol table stack for a proc record matching the
+-- given Id, if it exists, scanning the symbol tables in stack order (i.e. most
+-- recently pushed table first).
 lookupProc :: Id -> SemanticAnalysis (Maybe ProcRecord)
 lookupProc ident
   = do
       state <- get
       return $ lookupProcStack (procSymTableStack state) ident
+    where
+      -- lookupProcStack
+      -- Helper function to walk down a stack looking for a match, to implement
+      -- the above function.
+      lookupProcStack :: [ProcSymTable] -> Id -> Maybe ProcRecord
+      lookupProcStack [] ident
+        = Nothing
+      lookupProcStack (table:stack) ident
+        = case (lookupProcRecord table ident) of
+            Nothing -> lookupProcStack stack ident
+            justRecord -> justRecord
 
-lookupProcStack :: [ProcSymTable] -> Id -> Maybe ProcRecord
-lookupProcStack [] ident
-  = Nothing
-lookupProcStack (table:stack) ident
-  = case (lookupProcRecord table ident) of
-      Nothing -> lookupProcStack stack ident
-      justRecord -> justRecord
-
-
+-- lookupVar
+-- Query the current variable symbol table stack for a var record matching the
+-- given Id, if it exists, scanning the symbol tables in stack order (i.e. most
+-- recently pushed table first).
 lookupVar :: Id -> SemanticAnalysis (Maybe VarRecord)
 lookupVar ident
   = do
       state <- get
       return $ lookupVarStack (varSymTableStack state) ident
-
-lookupVarStack :: [VarSymTable] -> Id -> Maybe VarRecord
-lookupVarStack [] ident
-  = Nothing
-lookupVarStack (table:stack) ident
-  = case (lookupVarRecord table ident) of
-      Nothing -> lookupVarStack stack ident
-      justRecord -> justRecord
+    where
+      -- lookupVarStack
+      -- Helper function to walk down a stack looking for a match, to implement
+      -- the above function.
+      lookupVarStack :: [VarSymTable] -> Id -> Maybe VarRecord
+      lookupVarStack [] ident
+        = Nothing
+      lookupVarStack (table:stack) ident
+        = case (lookupVarRecord table ident) of
+            Nothing -> lookupVarStack stack ident
+            justRecord -> justRecord
