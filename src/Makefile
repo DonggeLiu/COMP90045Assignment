@@ -27,6 +27,12 @@ submission: clean $(SOURCES) Submission.makefile Makefile
 	tar -cvf submission/src.tar $(SOURCES)
 	cp Submission.makefile submission/Makefile
 
+lightdemo: Harald Goat
+	./Goat -h | ./Harald -l
+
+darkdemo: Harald Goat
+	./Goat -h | ./Harald -d
+
 # Automated tests:
 
 tests: Goat utests itests
