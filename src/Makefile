@@ -17,6 +17,11 @@ SOURCES=*.hs Util/*.hs GoatLang/*.hs GoatLang/*/*.hs OzLang/*.hs
 Goat: $(SOURCES)
 	ghc Goat.hs
 
+Harald: Harald.hs Util/ColourParTTY.hs
+	ghc Harald.hs
+
+all: Goat Harald
+
 submission: clean $(SOURCES) Submission.makefile Makefile
 	mkdir submission
 	tar -cvf submission/src.tar $(SOURCES)
@@ -57,6 +62,6 @@ miles: Goat tests/milestones.sh $(MILES_DIR)
 # Makefile stuff:
 
 clean: clean_utests
-	rm -rf *.o *.hi */*.o */*.hi */*/*.o */*/*.hi Goat submission
+	rm -rf *.o *.hi */*.o */*.hi */*/*.o */*/*.hi Goat Harald submission
 
 .PHONY: clean tests itests utests clean_utests submission miles
