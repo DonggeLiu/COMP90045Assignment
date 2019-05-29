@@ -1,0 +1,6 @@
+proc main()
+    bool y[2];
+    bool y[5][4];
+begin
+    write "hello";
+end

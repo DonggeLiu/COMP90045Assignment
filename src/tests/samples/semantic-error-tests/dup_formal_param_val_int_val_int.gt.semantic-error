@@ -1,0 +1,12 @@
+# A list of formal parameters must all be distinct
+proc main()
+    bool y;
+begin
+    y := true;
+end
+
+
+proc a_func(val int x, val int x)
+begin
+    write "hello";
+end
