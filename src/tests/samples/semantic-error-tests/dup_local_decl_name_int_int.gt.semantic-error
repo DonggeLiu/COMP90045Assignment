@@ -1,0 +1,6 @@
+proc main()
+    int y;
+    int y;
+begin
+    write "hello";
+end

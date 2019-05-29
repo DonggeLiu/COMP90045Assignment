@@ -1,0 +1,12 @@
+proc main()
+    int y;
+begin
+    y := 1;
+    a_func(y);
+end    ##  ^ Semantic error, an expression passed by reference must be a scalar
+
+
+proc a_func(ref float x)
+begin
+    write "hello";
+end
