@@ -134,8 +134,8 @@ Optional extensions:
 
 #### Submission: Tuesday 28th, Wednesday 29th.
 
-- [ ] Comprehensively test all behaviour mentioned in specification
-- [ ] Improve error messaging by removing spurious errors
-- [ ] Add novelty output modes
+- [x] Comprehensively test all behaviour mentioned in specification
+- [x] Improve error messaging by removing spurious errors
+- [x] Add novelty output modes
 - [x] Create auto-extracting submission + makefile
-- [ ] Submit to `nutmeg2`
+- [x] Submit to `nutmeg2`
